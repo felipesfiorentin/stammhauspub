@@ -71,7 +71,7 @@ section{padding:90px 0}
 .card{background:rgba(7,28,18,.55);border:1px solid rgba(180,126,0,.45);border-radius:14px;padding:28px 24px}
 .card .n{font:700 13px/1 Inter,sans-serif;letter-spacing:.2em;color:var(--ouro2);margin-bottom:14px;display:block}
 .card p{margin:0;opacity:.88;font-size:16px}
-.card h3{margin-bottom:.4em}
+.card h3{margin-bottom:.4em;color:var(--ouro2)}
 .parc{border-top:1px solid rgba(180,126,0,.5);border-bottom:1px solid rgba(180,126,0,.5);padding:46px 0;text-align:center;background:linear-gradient(90deg,transparent,rgba(180,126,0,.12),transparent)}
 .parc h2{margin-bottom:.3em}
 .parc{text-align:left}.pgrid{display:grid;grid-template-columns:.8fr 1.2fr;gap:48px;align-items:center}
@@ -172,7 +172,7 @@ def page(cur, title, desc, body, hero_sol=True):
 <meta name="theme-color" content="#113325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site/site.css?v=6"></head><body{'' if cur=='home' else ' data-sol'}>
+<link rel="stylesheet" href="/assets/site/site.css?v=7"></head><body{'' if cur=='home' else ' data-sol'}>
 {nav(cur)}
 {body}
 {FOOT}
@@ -242,7 +242,7 @@ HOME = f'''
 <div class="tz rv">
 <a href="/cardapio/" style="{ph(5858067,900)}"><div><h3>Cardápio</h3><p>Vamos manter o suspense.</p><span class="go">Ver →</span></div></a>
 <a href="/fotos/" style="{ph(9315792,900)}"><div><h3>Fotos</h3><p>As melhores imagens da casa, em breve.</p><span class="go">Ver →</span></div></a>
-<a href="/equipe/" style="{ph(34638198,900)}"><div><h3>Equipe</h3><p>Quem faz a casa acontecer.</p><span class="go">Ver →</span></div></a>
+<a href="/equipe/" style="{ph(30148777,900)}"><div><h3>Equipe</h3><p>Quem faz a casa acontecer.</p><span class="go">Ver →</span></div></a>
 </div></div></section>
 
 <section class="cta rv"><div class="wrap"><span class="eb">Honre suas raízes</span><h2>Embriague-se aqui.</h2>
