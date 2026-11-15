@@ -105,6 +105,7 @@ section{padding:90px 0}
 .team .m{border:1.5px dashed rgba(217,166,46,.5);border-radius:14px;padding:46px 20px;text-align:center;opacity:.8}
 .team .m i{display:block;width:70px;height:70px;border-radius:50%;background:rgba(234,231,218,.08);margin:0 auto 14px}
 .tl{border-left:2px solid rgba(180,126,0,.6);margin:34px 0 0 8px;padding-left:28px}
+.tl figure{margin:16px 0 0}.tl figure img{width:100%;border-radius:10px;display:block;filter:sepia(.45) contrast(1.05);border:1px solid rgba(217,166,46,.35)}.tl figcaption{font-size:12px;color:var(--mut,#9fb3a6);margin-top:6px;line-height:1.5}
 .tl .t{position:relative;margin-bottom:34px}.tl .t:before{content:"";position:absolute;left:-37px;top:7px;width:14px;height:14px;border-radius:50%;background:var(--ouro);border:3px solid var(--escuro)}
 .draft{border:1px dashed rgba(217,166,46,.6);border-radius:10px;padding:14px 18px;font-size:14.5px;background:rgba(180,126,0,.1);margin-bottom:34px}
 .cta{background:linear-gradient(135deg,#0D5B1D,#113325);text-align:center;border-top:1px solid rgba(180,126,0,.5);border-bottom:1px solid rgba(180,126,0,.5)}
@@ -148,9 +149,9 @@ def nav(cur):
 <button class="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button></div><nav class="menu">{menu}</nav></header>'''
 
 FOOT = '''<footer><div class="wrap"><div class="ft">
-<div><img src="/assets/site/logo-padrao.png" alt="Das Stammhaus Pub"><p class="mut">Pub de estilo europeu em um casarão histórico.<br>Canoinhas · Santa Catarina</p><p style="font-style:italic;font-family:'Playfair Display',serif;color:#d9a62e">O que é bom resiste ao tempo.</p></div>
+<div><img src="/assets/site/logo-padrao.png" alt="Das Stammhaus Pub"><p class="mut">Um pub europeu no coração de Canoinhas - SC</p><p style="font-style:italic;font-family:'Playfair Display',serif;color:#d9a62e">O que é bom resiste ao tempo.</p></div>
 <div><h4>A casa</h4><ul><li><a href="/historia/">História e fundadores</a></li><li><a href="/equipe/">Equipe</a></li><li><a href="/cardapio/">Cardápio</a></li><li><a href="/fotos/">Fotos</a></li></ul></div>
-<div><h4>Visite</h4><ul><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
+<div><h4>Visite</h4><ul><li>Rua Getúlio Vargas, 839<br>Canoinhas · SC</li><li><a href="https://www.google.com/maps/dir/?api=1&destination=Rua+Get%C3%BAlio+Vargas+839+Canoinhas+SC" target="_blank" rel="noopener">Como chegar? →</a></li><li><a href="https://wa.me/5547992505290" target="_blank" rel="noopener">WhatsApp: (47) 99250-5290</a></li><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
 </div><div class="copy"><span>© 2026 Das Stammhaus Pub · Canoinhas, SC</span><span>Imagens ilustrativas de banco de imagens (Pexels) · fotos reais em breve</span></div></div></footer>'''
 
 def page(cur, title, desc, body, hero_sol=True):
@@ -160,7 +161,7 @@ def page(cur, title, desc, body, hero_sol=True):
 <meta name="theme-color" content="#113325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site/site.css?v=4"></head><body{'' if cur=='home' else ' data-sol'}>
+<link rel="stylesheet" href="/assets/site/site.css?v=5"></head><body{'' if cur=='home' else ' data-sol'}>
 {nav(cur)}
 {body}
 {FOOT}
@@ -186,7 +187,7 @@ HOME = f'''
 <div class="cards rv">
 <div class="card"><span class="n">01</span><h3>Chopp bem tirado</h3><p>Chopp gelado, no ponto, em parceria exclusiva com a Heineken, e bebidas bem servidas.</p></div>
 <div class="card"><span class="n">02</span><h3>Música de qualidade</h3><p>Som profissional em volume que convida à conversa. Rock, blues, MPB e pop rock, sem gritar para ser ouvido.</p></div>
-<div class="card"><span class="n">03</span><h3>Gastronomia descomplicada</h3><p>Menu enxuto e caprichado, pensado para acompanhar a noite. Os detalhes seguem em segredo até a inauguração.</p></div>
+<div class="card"><span class="n">03</span><h3>Gastronomia descomplicada</h3><p>Menu pensado para trazer as melhores especialidades alemãs, com eficiência e qualidade. Os detalhes seguem em segredo até a inauguração.</p></div>
 <div class="card"><span class="n">04</span><h3>Casarão com história</h3><p>Dois andares de arquitetura preservada, madeira nobre e a herança madeireira da região em cada canto.</p></div>
 </div></div></section>
 
@@ -195,7 +196,7 @@ HOME = f'''
 <div class="rv"><span class="eb">O casarão</span><h2>Dois andares de herança madeireira</h2>
 <p class="lead">O Das Stammhaus nasce de um casarão, de uma cidade e de gente que gosta de coisa bem feita. A restauração preserva a arquitetura e a força da cultura madeireira e da imigração europeia que formaram Canoinhas.</p>
 <p class="mut">Madeira nobre, marcenaria fina e precisão histórica: sem exageros e sem caricaturas.</p>
-<p class="mut" style="font-size:14px">Na foto, o casarão antes da obra.</p><a class="btn o" href="/historia/">Nossa história</a></div></div></section>
+<p class="mut" style="font-size:14px">Na foto, o casarão há nove meses, antes da obra. Hoje ele está todo reformado, e a revelação acontece na inauguração, dia 18/11/2026.</p><a class="btn o" href="/historia/">Nossa história</a></div></div></section>
 
 <section class="alt"><div class="wrap split rev">
 <div class="ph rv" style="{ph(5984690)}" role="img" aria-label="Parreiral (imagem ilustrativa)"></div>
@@ -235,30 +236,34 @@ HOME = f'''
 '''
 
 HIST = f'''
-<section class="pagehero" style="--bg:url('{PX(38949607,1600)}')"><div class="wrap"><span class="eb">História</span><h1>Raízes que resistem ao tempo</h1>
-<p class="lead">A história de um casarão, de uma cidade e de gente que gosta de coisa bem feita.</p></div></section>
+<section class="pagehero" style="--bg:url('https://upload.wikimedia.org/wikipedia/commons/d/dd/Contestado_tropa_Ex%C3%A9rcito.jpg')"><div class="wrap"><span class="eb">História</span><h1>Raízes que resistem ao tempo</h1>
+<p class="lead">Da erva-mate e das serrarias do Planalto Norte ao casarão da Getúlio Vargas: uma história de madeira, imigrantes e gente que constrói para durar.</p></div></section>
 <section><div class="wrap" style="max-width:860px">
-<div class="draft rv"><b>Texto em construção.</b> Este é um primeiro resumo, que vamos lapidar com datas, nomes e fatos confirmados sobre o casarão e a região.</div>
 <div class="tl rv">
-<div class="t"><span class="eb">A cidade</span><h3>Canoinhas e a força da madeira</h3><p>Canoinhas, no Planalto Norte de Santa Catarina, tem a história ligada à cultura madeireira e à chegada de imigrantes europeus. É dessa herança que o Das Stammhaus tira a madeira nobre, a marcenaria fina e o respeito pelo que dura.</p></div>
-<div class="t"><span class="eb">O casarão</span><h3>Dois andares de arquitetura preservada</h3><p>O pub ocupa um casarão histórico de dois andares, com jardim e um parreiral de mais de 50 anos. A restauração mantém o caráter da casa e comunica permanência.</p></div>
-<div class="t"><span class="eb">A ideia</span><h3>Um lugar para ficar</h3><p>Percebemos que a cidade tinha poucas opções de lazer com substância para o público maduro, que muitas vezes viaja para outras cidades ou deixa de sair. Quisemos um refúgio onde dá para conversar, ouvir boa música e beber bem, sem pressa.</p></div>
-<div class="t"><span class="eb">A curadoria</span><h3>O que é bom resiste ao tempo</h3><p>Do chopp à acústica, da seleção musical ao menu enxuto: cada detalhe passa por curadoria. Daí o nome, Das Stammhaus, a casa-raiz, o lugar de encontro de quem se reconhece.</p></div>
+<div class="t"><span class="eb">A terra</span><h3>Erva-mate e madeira: a economia que fez Canoinhas</h3><p>Canoinhas fica no Planalto Norte de Santa Catarina, onde a economia nasceu do extrativismo da erva-mate e, depois, da madeira. A força da erva-mate foi tamanha que a cidade ficou conhecida como a Capital Mundial da Erva-mate, e hoje uma grande cuia na praça Lauro Müller lembra essa herança.</p></div>
+<div class="t"><span class="eb">1910</span><h3>A maior serraria da América do Sul</h3><p>Em 1910, a Southern Brazil Lumber and Colonization Company, a famosa Lumber, instalou em Três Barras, vizinha de Canoinhas, uma serraria que chegou a ser apontada como a maior da América do Sul. A empresa também trouxe imigrantes europeus para a região, entre eles poloneses e ucranianos, que ajudaram a formar a identidade local.</p></div>
+<div class="t"><span class="eb">1912 a 1916</span><h3>O Contestado</h3><p>Canoinhas e Três Barras estiveram no cenário da Guerra do Contestado, um dos conflitos mais marcantes da história do sul do Brasil. A serraria da Lumber chegou a ser guarnecida por tropas do Exército durante os ataques, e a vila de Canoinhas foi retratada na imprensa da época.</p>
+<figure><img src="https://upload.wikimedia.org/wikipedia/commons/d/dd/Contestado_tropa_Ex%C3%A9rcito.jpg" alt="Tropa do Exército guarnecendo a serraria em Três Barras" loading="lazy"><figcaption>Tropa do Exército guarnecendo a serraria durante ataque rebelde em Três Barras. Foto: Claro Jansson / Acervo Dorothy Jansson Moretti (Senado Federal), CC BY-SA 4.0.</figcaption></figure>
+<figure><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/FON-FON%21_NO_CONTESTADO%21_-_Villa_de_Canoinhas.jpg" alt="Militares na vila de Canoinhas, 1915" loading="lazy"><figcaption>Militares na vila de Canoinhas, revista Fon-Fon!, 9 de janeiro de 1915. Domínio público.</figcaption></figure></div>
+<div class="t"><span class="eb">Depois da guerra</span><h3>A madeira volta a mover a cidade</h3><p>Terminados os combates, as empresas permaneceram e a economia local foi reativada pela erva-mate e pela madeira. A Lumber operou em Três Barras até 1940, quando foi estatizada.</p>
+<figure><img src="/assets/site/canoinhas-antiga.jpg" alt="Canoinhas em foto de arquivo" loading="lazy"><figcaption>Canoinhas em foto de arquivo.</figcaption></figure></div>
+<div class="t"><span class="eb">O casarão</span><h3>Um casarão de dois andares na Rua Getúlio Vargas</h3><p>É dessa herança que o Das Stammhaus tira a madeira nobre, a marcenaria fina e o respeito pelo que dura. O casarão histórico de dois andares, com jardim e um parreiral de mais de 50 anos, foi restaurado para abrigar o pub e preservar o caráter da casa.</p></div>
+<div class="t"><span class="eb">Hoje</span><h3>Um pub europeu no coração de Canoinhas</h3><p>Canoinhas tinha poucas opções de lazer com substância para o público maduro, que muitas vezes viaja para outras cidades ou deixa de sair. O Das Stammhaus nasce para ser o ponto de encontro: chopp Heineken tirado do jeito certo, música ao vivo e um menu pensado para trazer as melhores especialidades alemãs, com eficiência e qualidade. Daí o nome: Stammhaus, a casa-raiz, o lugar de quem se reconhece.</p></div>
 </div>
-<div class="split rv" style="margin-top:56px"><div class="ph tall" style="background-image:url('/assets/site/casarao-pre-obra.jpg')" role="img" aria-label="O casarão antes da obra"></div><div><span class="eb">Ponto de partida</span><h3>O casarão antes da obra</h3><p>É assim que ele está hoje, antes da restauração: dois andares, janelas de madeira, a fachada com as marcas do tempo. Tudo o que o Das Stammhaus vai ser nasce daqui.</p></div></div>
+<div class="split rv" style="margin-top:56px"><div class="ph tall" style="background-image:url('/assets/site/casarao-pre-obra.jpg')" role="img" aria-label="O casarão há nove meses, antes da obra"></div><div><span class="eb">Ponto de partida</span><h3>O casarão há nove meses</h3><p>Assim ele estava antes da obra. Hoje está todo reformado, e a revelação acontece na inauguração, dia 18/11/2026.</p><a class="btn" href="/reservas/">Reservar minha noite</a></div></div>
 <p class="quote rv" style="margin-top:50px">Honre suas raízes, embriague-se aqui.<small>Nosso brinde</small></p>
 </div></section>
 <section class="alt"><div class="wrap"><div class="center rv"><span class="eb">Os fundadores</span><h2>Quem está por trás da casa</h2></div>
 <div class="fnd rv">
 <div class="card"><img class="pf" src="/assets/site/felipe.jpg" alt="Felipe Schadeck Fiorentin" loading="lazy"><div class="role">Co-fundador</div><h3>Felipe Schadeck Fiorentin</h3><p>Engenheiro agrônomo com carreira em agricultura digital. Traz rigor de gestão, análise de dados e processos para uma casa que quer ser impecável e duradoura.</p></div>
-<div class="card"><img class="pf" src="/assets/site/regina.jpg" alt="Mirian Regina Strack Schadeck" loading="lazy"><div class="role">Co-fundadora</div><h3>Mirian Regina Strack Schadeck</h3><p>Advogada e perita criminal da Polícia Científica. Cuida de gestão financeira e conformidade e da cultura de hospitalidade e do relacionamento com o público.</p></div>
+<div class="card"><img class="pf" src="/assets/site/regina.jpg" alt="Mirian Regina Strack Schadeck" loading="lazy"><div class="role">Co-fundadora</div><h3>Mirian Regina Strack Schadeck</h3><p>Advogada e Agente de Perícia Criminal da Polícia Científica. Cuida de gestão financeira e conformidade e da cultura de hospitalidade e do relacionamento com o público.</p></div>
 </div>
-<p class="mut center rv" style="margin-top:26px">Biografias em construção: vamos contar essa parte com mais calma, e com fotos.</p></div></section>
+</div></section>
 <section class="cta rv"><div class="wrap"><h2>Venha fazer parte dessa história.</h2><div class="row"><a class="btn" href="/reservas/">Reservar minha noite</a></div></div></section>
 '''
 
 EQ = f'''
-<section class="pagehero" style="--bg:url('{PX(34638198,1600)}')"><div class="wrap"><span class="eb">Equipe</span><h1>Quem faz a casa acontecer</h1>
+<section class="pagehero" style="--bg:url('{PX(30148777,1600)}')"><div class="wrap"><span class="eb">Equipe</span><h1>Quem faz a casa acontecer</h1>
 <p class="lead">Atendimento atento, conversa de verdade e capricho em cada chopp.</p></div></section>
 <section><div class="wrap center"><div class="draft rv" style="max-width:620px;margin:0 auto 10px"><b>Em construção.</b> Vamos apresentar a nossa equipe aqui, em breve.</div>
 <div class="team rv"><div class="m"><i></i>Em breve</div><div class="m"><i></i>Em breve</div><div class="m"><i></i>Em breve</div><div class="m"><i></i>Em breve</div></div>
