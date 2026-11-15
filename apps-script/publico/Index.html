@@ -141,18 +141,18 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     <h1>Seu lugar está garantido!</h1>
     <p class="lead" id="ok-lead"></p>
     <div class="card" style="text-align:left"><dl class="sum" id="ok-sum" style="margin:0"></dl></div>
-    <div class="aviso-box" style="text-align:left"><b>Chegue cedo:</b> a reserva vale até as <span class="ate">20h</span>. Guarde o protocolo: com ele e o celular do titular você consulta ou cancela a reserva.</div>
+    <div class="aviso-box" style="text-align:left"><b>Chegue cedo:</b> a reserva vale até as <span class="ate">20h</span>. Para consultar ou cancelar depois, basta usar o seu nome e celular.</div>
     <button class="danger" id="ok-cancel">Cancelar esta reserva</button>
     <button class="ghost" id="ok-home">Voltar ao início</button>
   </section>
 
   <section id="s-look" class="hide">
     <h1>Consultar ou cancelar reserva</h1>
-    <p class="lead">Informe o protocolo e o celular do titular (a primeira pessoa da reserva).</p>
+    <p class="lead">Informe o nome completo e o celular usados na reserva.</p>
     <div class="card">
-      <label for="lProt">Protocolo</label>
-      <input id="lProt" type="text" autocapitalize="characters" placeholder="Ex.: R12" maxlength="12">
-      <label for="lTel">Celular do titular</label>
+      <label for="lNome">Nome completo</label>
+      <input id="lNome" type="text" autocomplete="name" placeholder="Nome e sobrenome" maxlength="80">
+      <label for="lTel">Celular</label>
       <input id="lTel" type="tel" inputmode="numeric" placeholder="(42) 99999-9999" maxlength="15">
       <p class="err" id="e-look"></p>
       <button class="btn" id="btn-look">Consultar</button>
@@ -173,7 +173,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
 (function(){
   var $=function(i){return document.getElementById(i)};
   var CLI=(function(){try{var k=sessionStorage.getItem('cli');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('cli',k)}return k}catch(e){return Math.random().toString(36).slice(2)}})();
-  var ZAP='5547992505290', INFO={valor:40,ate:'20h',max:4}, NOITES=[], N=null, QTD=1, RES=null, RES_TEL='';
+  var ZAP='5547992505290', INFO={valor:40,ate:'20h',max:4}, NOITES=[], N=null, QTD=1, RES=null, RES_TEL='', RES_NOME='';
   var TEL_RE=/^\([1-9]\d\) 9\d{4}-\d{4}$/, NOME_RE=/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{3,78}$/;
   var TELAS=['s-home','s-form','s-ok','s-look','s-aviso'];
   var IMG='https://stammhauspub.github.io/assets/cards/';
@@ -223,7 +223,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
       if(n.lotado){b.disabled=true}else b.onclick=function(){abrir(n)};
       L.appendChild(b)});
     if(!NOITES.length)L.innerHTML='<p class="hint">Nenhuma noite disponível no momento.'+contato()+'</p>'}
-  $('b-look').onclick=function(){$('lProt').value='';$('lTel').value='';$('e-look').textContent='';ir('s-look')};
+  $('b-look').onclick=function(){$('lNome').value='';$('lTel').value='';$('e-look').textContent='';ir('s-look')};
 
   /* ---- INGRESSO ---- */
   var BANDAS={18:{l:'ph18L.jpg',r:'ph18R.jpg',logo:'logo18.png',show:'21h'},19:{l:'ph19L.jpg',r:'ph19R.jpg',logo:'logo19.png',show:'22h'},20:{l:'ph20L.jpg',r:'ph20R.jpg',w:'ph20W.jpg',logo:'logo20.png',show:'22h'},21:{l:'ph21L.jpg',r:'ph21R.jpg',logo:'logo21.png',show:'22h'}};
@@ -281,7 +281,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     if(!validar())return;var b=$('btn-res');busy(b,true,'Reservando…');
     run('reservar',{dia:N.dia,pessoas:coleta(),cli:CLI,site:$('site').value}).then(function(r){busy(b,false);trata(r)},function(e){busy(b,false);falha($('e-geral'),e,'reservar')})};
   function trata(r){
-    if(r.ok){RES=r.resumo;RES_TEL=RES.pessoas[0].tel;sucesso(RES);return}
+    if(r.ok){RES=r.resumo;RES_NOME=RES.pessoas[0].nome;RES_TEL=RES.pessoas[0].tel;sucesso(RES);return}
     if(r.code==='invalido'||r.code==='ja_consta'){erro(r.campo==='geral'||!r.campo?'geral':r.campo,r.msg||'Confira os dados informados.');if(r.code==='ja_consta')$('e-geral').innerHTML+=contato('Olá! A reserva bloqueou meu cadastro ('+r.code+') para a noite '+N.label+'.');return}
     if(r.code==='lotado'){carregar();aviso('Esta noite esgotou','As vagas desta noite acabaram de se esgotar. Ainda há outras noites da semana esperando por você.'+contato('Olá! Queria entrar na lista de espera da noite '+N.label+'.'));return}
     if(r.code==='sem_vagas'){carregar();$('e-geral').innerHTML='Restam apenas <b>'+r.restantes+'</b> vaga(s) nesta noite. Reduza a quantidade de pessoas e tente de novo.';N.vagas=r.restantes;if(QTD>r.restantes){QTD=Math.max(1,r.restantes);pessoas(false)}else botoesQtd();return}
@@ -302,22 +302,25 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     var b=$('ok-cancel');
     if(!b.dataset.sure){b.dataset.sure='1';b.dataset.t=b.textContent;b.textContent='Toque de novo para confirmar o cancelamento';setTimeout(function(){delete b.dataset.sure;if(b.dataset.t)b.textContent=b.dataset.t},6000);return}
     delete b.dataset.sure;busy(b,true,'Cancelando…');
-    run('cancelarReserva',RES.protocolo,RES_TEL).then(function(r){busy(b,false);
+    run('cancelarReserva',RES.protocolo,RES_NOME,RES_TEL).then(function(r){busy(b,false);
       if(r.ok){carregar();aviso('Reserva cancelada','Tudo certo, as vagas foram liberadas. Se mudar de ideia, é só reservar de novo.')}
       else if(r.code==='limite')falha_msg('Muitas tentativas. Aguarde alguns minutos.');else falha_msg('Não foi possível cancelar: reserva não encontrada ou já cancelada.')},
       function(e){busy(b,false);falha_msg('Falha ao cancelar. Tente de novo ou fale com a equipe.')})};
   function falha_msg(m){aviso('Atenção',esc(m)+contato('Olá! Preciso de ajuda com a minha reserva '+(RES?RES.protocolo:'')+'.'))}
   mascara($('lTel'));
   $('l-voltar').onclick=function(){ir('s-home')};
+  function abreRes(r,n,tl){RES=r;RES_NOME=n;RES_TEL=tl;sucesso(r);$('ok-lead').textContent='Esta é a sua reserva.'}
   $('btn-look').onclick=function(){
-    var p=$('lProt').value.trim().toUpperCase(),t=$('lTel').value,e=$('e-look');e.textContent='';
-    if(!/^R\d{1,8}$/.test(p)){e.textContent='Informe o protocolo, como no exemplo: R12.';return}
-    if(!TEL_RE.test(t)){e.textContent='Informe o celular do titular no formato (42) 99999-9999.';return}
+    var n=$('lNome').value.replace(/\s+/g,' ').trim(),t=$('lTel').value,e=$('e-look');e.textContent='';
+    if(!NOME_RE.test(n)){e.textContent='Informe o nome completo (nome e sobrenome), como na reserva.';return}
+    if(!TEL_RE.test(t)){e.textContent='Informe o celular no formato (42) 99999-9999.';return}
     var b=$('btn-look');busy(b,true,'Consultando…');
-    run('abrirReserva',p,t).then(function(r){busy(b,false);
-      if(r.ok){RES=r.resumo;RES_TEL=t;sucesso(RES);$('ok-lead').textContent='Esta é a sua reserva.'}
+    run('abrirReserva',n,t).then(function(r){busy(b,false);
+      if(r.ok&&r.resumos.length===1)abreRes(r.resumos[0],n,t);
+      else if(r.ok){e.innerHTML='<b>Encontramos '+r.resumos.length+' reservas. Qual deseja abrir?</b><br>'+r.resumos.map(function(x,i){return '<button class="ghost" data-i="'+i+'" type="button" style="margin-top:8px">'+esc(x.diaLabel)+'</button>'}).join('');
+        [].forEach.call(e.querySelectorAll('button'),function(bt){bt.onclick=function(){abreRes(r.resumos[+bt.dataset.i],n,t)}})}
       else if(r.code==='limite')e.textContent='Muitas tentativas. Aguarde alguns minutos e tente de novo.';
-      else e.innerHTML='Não encontramos uma reserva ativa com esses dados. Confira o protocolo e o celular do titular.'+contato('Olá! Não consegui consultar minha reserva. Protocolo: '+p)},
+      else e.innerHTML='Não encontramos uma reserva ativa com esses dados. Confira o nome completo e o celular.'+contato('Olá! Não consegui consultar minha reserva em nome de '+n+'.')},
       function(x){busy(b,false);falha(e,x,'abrirReserva')})};
 
   function aviso(t,l){$('a-titulo').textContent=t;$('a-lead').innerHTML=l;ir('s-aviso')}

@@ -99,11 +99,11 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(cnt(w,19).total===t0-1&&cnt(w,19).confirmadosPessoas===1,'convidado confirma sozinho: acompanhante liberado (total -1)');
  // ---- cancelar reserva ----
  w=W();r=R(w.pub.reservar({dia:20,pessoas:[P('Joana Silva','(42) 99500-0001'),P('Pedro Silva','(42) 99500-0002')],cli:'i'}));const pr=r.resumo.protocolo;
- ok(R(w.pub.abrirReserva(pr,'(42) 99500-0002')).code==='nao_achou','consulta com celular que não é do titular é recusada');
- ok(R(w.pub.abrirReserva(pr,'(42) 99500-0001')).ok,'titular consulta a reserva com protocolo + celular');
- ok(R(w.pub.cancelarReserva(pr,'(42) 99500-0002')).code==='nao_achou'&&cnt(w,20).publico===2,'cancelar com celular errado é recusado');
- ok(R(w.pub.cancelarReserva(pr,'(42) 99500-0001')).ok&&cnt(w,20).publico===0&&w.sheets.Reservas.rows.slice(1).every(x=>x[6]==='Cancelado'),'cancelamento libera as 2 vagas e marca Cancelado');
- ok(R(w.pub.cancelarReserva(pr,'(42) 99500-0001')).code==='nao_achou','cancelar duas vezes não funciona');
+ ok(R(w.pub.abrirReserva('Joana Silva','(42) 99500-0002')).code==='nao_achou','consulta com nome e celular que não batem é recusada');
+ ok(R(w.pub.abrirReserva('joana  SILVA','(42) 99500-0001')).resumos.length===1&&R(w.pub.abrirReserva('Pedro Silva','(42) 99500-0002')).ok,'consulta por nome + celular (sem acento/caixa, qualquer pessoa da reserva)');
+ ok(R(w.pub.cancelarReserva(pr,'Joana Silva','(42) 99500-0002')).code==='nao_achou'&&cnt(w,20).publico===2,'cancelar com celular errado é recusado');
+ ok(R(w.pub.cancelarReserva(pr,'Joana Silva','(42) 99500-0001')).ok&&cnt(w,20).publico===0&&w.sheets.Reservas.rows.slice(1).every(x=>x[6]==='Cancelado'),'cancelamento libera as 2 vagas e marca Cancelado');
+ ok(R(w.pub.cancelarReserva(pr,'Joana Silva','(42) 99500-0001')).code==='nao_achou','cancelar duas vezes não funciona');
  ok(R(w.pub.reservar({dia:20,pessoas:[P('Joana Silva','(42) 99500-0001')],cli:'j'})).ok,'após cancelar, a mesma pessoa pode reservar de novo');
  // limite de tentativas por cliente
  {let ult;for(let i=0;i<8;i++)ult=R(w.pub.reservar({dia:21,pessoas:[P('Spam Teste','abc')],cli:'spam'}));ok(ult.code==='limite','muitas tentativas do mesmo cliente -> limite')}
@@ -143,8 +143,8 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok((await pg.textContent('#a-titulo'))==='Reserva cancelada'&&cnt(w,18).publico===0,'cancelamento pela página libera as vagas');
  // consulta por protocolo
  w.pub.reservar({dia:19,pessoas:[P('Rita Lopes','(42) 99700-0001')],cli:'m'});
- await pg.click('#a-voltar');await pg.click('#b-look');await pg.fill('#lProt','x');await pg.fill('#lTel','(42) 99700-0001');await pg.click('#btn-look');ok((await pg.textContent('#e-look')).includes('protocolo'),'protocolo inválido é recusado');
- await pg.fill('#lProt','r5');await pg.fill('#lTel','(42) 99700-0001');await pg.click('#btn-look');await pg.waitForSelector('#s-ok:not(.hide)');ok((await pg.textContent('#ok-sum')).includes('Rita Lopes'),'consulta por protocolo + celular do titular abre a reserva');
+ await pg.click('#a-voltar');await pg.click('#b-look');await pg.fill('#lNome','x');await pg.fill('#lTel','(42) 99700-0001');await pg.click('#btn-look');ok((await pg.textContent('#e-look')).includes('nome completo'),'nome inválido é recusado');
+ await pg.fill('#lNome','Rita Lopes');await pg.fill('#lTel','(42) 99700-0001');await pg.click('#btn-look');await pg.waitForSelector('#s-ok:not(.hide)');ok((await pg.textContent('#ok-sum')).includes('Rita Lopes'),'consulta por nome + celular abre a reserva');
  await pg.close();
  // noite lotada na home + sem_vagas na página
  w=W();enche(w,19,25);

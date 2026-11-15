@@ -91,24 +91,29 @@ function reservar_(p) {
   } finally { lock.releaseLock(); }
 }
 
-function achaReserva_(prot, tel) {
-  var d = digitos_(tel), rows = reservas_().filter(function (r) { return r.prot === String(prot).trim().toUpperCase() && r.status === 'Confirmado'; });
-  return rows.length && digitos_(rows[0].titTel) === d ? rows : null;
+function achaReservas_(nome, tel) {
+  var d = digitos_(tel), nn = normNome_(nome), grupos = {}, ordem = [];
+  var rows = reservas_().filter(function (r) { return r.status === 'Confirmado'; });
+  rows.forEach(function (r) { if (digitos_(r.tel) === d && normNome_(r.nome) === nn && !grupos[r.prot]) { grupos[r.prot] = []; ordem.push(r.prot); } });
+  rows.forEach(function (r) { if (grupos[r.prot]) grupos[r.prot].push(r); });
+  return ordem.map(function (p) { return grupos[p]; });
 }
 
-function abrirReserva_(prot, tel) {
-  if (!limite_('rv' + cli_(String(prot)), 8, 900)) return {ok: false, code: 'limite'};
-  var rows = achaReserva_(prot, tel);
-  if (!rows) return {ok: false, code: 'nao_achou'};
-  var cfg = cfg_();
-  return {ok: true, resumo: resumoRes_(rows[0].prot, rows[0].dia, prog_(), rows.map(function (r) { return {nome: r.nome, tel: r.tel}; }), cfg)};
+function abrirReserva_(nome, tel) {
+  if (!limite_('rv' + cli_(digitos_(tel)), 8, 900)) return {ok: false, code: 'limite'};
+  var g = achaReservas_(nome, tel);
+  if (!g.length) return {ok: false, code: 'nao_achou'};
+  var cfg = cfg_(), prog = prog_();
+  return {ok: true, resumos: g.map(function (rows) {
+    return resumoRes_(rows[0].prot, rows[0].dia, prog, rows.map(function (r) { return {nome: r.nome, tel: r.tel}; }), cfg);
+  })};
 }
 
-function cancelarReserva_(prot, tel) {
-  if (!limite_('rv' + cli_(String(prot)), 8, 900)) return {ok: false, code: 'limite'};
+function cancelarReserva_(prot, nome, tel) {
+  if (!limite_('rv' + cli_(digitos_(tel)), 8, 900)) return {ok: false, code: 'limite'};
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
-    var rows = achaReserva_(prot, tel);
+    var rows = achaReservas_(nome, tel).filter(function (g) { return g[0].prot === String(prot).trim().toUpperCase(); })[0];
     if (!rows) return {ok: false, code: 'nao_achou'};
     var sh = aba_(ABA.RES), agora = new Date();
     rows.forEach(function (r) { sh.getRange(r.linha, 7).setValue('Cancelado'); sh.getRange(r.linha, 11).setValue(agora); });
@@ -119,5 +124,5 @@ function cancelarReserva_(prot, tel) {
 
 function dados()                   { return api_('dados',    dados_,           arguments); }
 function reservar(p)               { return api_('reservar', reservar_,        arguments); }
-function abrirReserva(prot, tel)   { return api_('abrir',    abrirReserva_,    arguments); }
-function cancelarReserva(prot, tel){ return api_('cancelar', cancelarReserva_, arguments); }
+function abrirReserva(nome, tel)   { return api_('abrir',    abrirReserva_,    arguments); }
+function cancelarReserva(prot, nome, tel){ return api_('cancelar', cancelarReserva_, arguments); }
