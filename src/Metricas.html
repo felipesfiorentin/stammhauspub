@@ -34,6 +34,38 @@ details{margin-top:10px}summary{cursor:pointer;color:#d9a62e;font-weight:600;fon
 .sec{font-family:'Playfair Display',Georgia,serif;font-size:20px;margin:26px 0 10px}
 .err{background:rgba(7,28,18,.6);border:1px solid var(--laranja);border-radius:12px;padding:16px;text-align:center}
 .mut{color:#b9b5a6;font-size:12.5px}
+.tk{--b:57px;position:relative;margin:4px 0 16px;border-radius:8px;overflow:hidden;color:#16241b;background-color:#eee7d3;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .15  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),radial-gradient(ellipse at 50% 40%,#f6f1e1 0%,#eee7d3 55%,#ddd3b6 100%);
+  box-shadow:0 10px 26px rgba(0,0,0,.45);
+  -webkit-mask:radial-gradient(circle 10px at 0 calc(100% - var(--b)),#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 10px at 100% calc(100% - var(--b)),#0000 98%,#000) right/51% 100% no-repeat;
+  mask:radial-gradient(circle 10px at 0 calc(100% - var(--b)),#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 10px at 100% calc(100% - var(--b)),#0000 98%,#000) right/51% 100% no-repeat}
+.tk-ph{position:absolute;top:0;bottom:var(--b);background-size:cover;background-position:center;mix-blend-mode:multiply}
+.tk-ph.l{left:0;width:29%;-webkit-mask-image:linear-gradient(90deg,#000 62%,#0000);mask-image:linear-gradient(90deg,#000 62%,#0000)}
+.tk-ph.r{right:0;width:30%;opacity:.5;-webkit-mask-image:linear-gradient(270deg,#000 55%,#0000);mask-image:linear-gradient(270deg,#000 55%,#0000)}
+.tk::before{content:"";position:absolute;inset:6px;border:1.5px solid rgba(22,36,27,.75);border-radius:5px;z-index:2;pointer-events:none}
+.tk::after{content:"";position:absolute;inset:10px;border:.75px solid rgba(22,36,27,.4);border-radius:3px;z-index:2;pointer-events:none}
+.tk-in{position:relative;z-index:1;display:grid;grid-template-columns:29% 1fr 84px;min-height:200px}
+.tk-main{grid-column:2;padding:20px 8px 12px 4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center}
+.tk-top{font:700 9px/1.25 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#7a5400}
+.tk-logo{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:8px 0}
+.tk-logo img{max-width:100%;max-height:86px;width:auto;height:auto}
+.tk-eb{font:italic 600 13px/1 'Playfair Display',Georgia,serif;color:#16241b;letter-spacing:.04em;margin:-2px 0 8px}.tk-eb.hide{display:none}
+.tk-gen{font:italic 600 14px/1.1 'Playfair Display',Georgia,serif;color:#16241b;letter-spacing:.02em}
+.tk-stub{grid-column:3;border-left:2px dashed rgba(22,36,27,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 6px;background:rgba(238,231,211,.80);text-align:center}
+.tk-stub .dw{font:800 10px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#7a5400}
+.tk-stub .dd{font:800 38px/1 'Playfair Display',Georgia,serif;margin:6px 0 4px;color:#16241b}
+.tk-stub .dm{font:700 11px/1 Inter,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#16241b}
+.tk-hr{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;background:#e4dcc3;border-top:1.5px solid rgba(22,36,27,.7);padding:10px 14px 12px;text-align:center}
+.tk-hr div+div{border-left:1px solid rgba(22,36,27,.4)}
+.tk-hr small{display:block;font:700 9px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#4c5a4f}
+.tk-hr b{display:block;font:800 19px/1.1 'Playfair Display',Georgia,serif;margin-top:5px;color:#16241b}
+.tk.wide .tk-ph{display:none}.tk.wide .tk-in{grid-template-columns:1fr 84px;grid-template-rows:auto auto;min-height:0}.tk.wide .tk-main{grid-column:1;grid-row:1;padding:16px 8px 8px 14px}.tk.wide .tk-stub{grid-column:2;grid-row:1}.tk.wide .tk-logo{padding:6px 0}.tk.wide .tk-logo img{max-height:50px}
+.tk-wp{display:none;grid-column:1/-1;grid-row:2;aspect-ratio:3/1;background-size:100% 100%;mix-blend-mode:multiply;border-top:1.5px solid rgba(22,36,27,.55)}.tk.wide .tk-wp{display:block}
+.tk-pub{width:54px;height:auto;display:block;margin:0 auto 9px;opacity:.9}
+.tk .tk-hr{grid-template-columns:repeat(3,minmax(0,1fr));box-sizing:border-box;height:var(--b);padding:0 8px 3px;align-content:center;align-items:center}.tk .tk-hr small{white-space:nowrap}.tk .tk-hr b{font-size:18px;white-space:nowrap}
+.tk{margin:0}
+.tk .tk-hr .st{font:800 15px/1.1 'Playfair Display',Georgia,serif;margin-top:5px;white-space:nowrap}.st.d{color:#1f6b2c}.st.l{color:#b03a18}.tk-hr small i{font-style:normal;letter-spacing:0;text-transform:none;color:#4c5a4f}
+.nc{display:flex;flex-direction:column}.nc .card{border-top-left-radius:0;border-top-right-radius:0;border-top:0;margin-top:-1px;flex:1}
 </style></head><body><div class="wrap">
 <div class="top"><div><h1>Métricas da Semana de Inauguração</h1><p class="sub" id="sub">Carregando…</p></div><button id="ref">Atualizar agora</button></div>
 <div id="app"></div></div>
@@ -42,6 +74,18 @@ var K=<?!= JSON.stringify(k) ?>;
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function brl(v){return 'R$ '+Number(v).toFixed(2).replace('.',',')}
+var IMG='https://stammhauspub.github.io/assets/cards/',LOGOD='data:image/png;base64,__LOGOD__',MESES=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+var BANDAS={18:{l:'ph18L.jpg',r:'ph18R.jpg',logo:'logo18.png',show:'21h'},19:{l:'ph19L.jpg',r:'ph19R.jpg',logo:'logo19.png',show:'22h'},20:{l:'ph20L.jpg',r:'ph20R.jpg',w:'ph20W.jpg',logo:'logo20.png',show:'22h'},21:{l:'ph21L.jpg',r:'ph21R.jpg',logo:'logo21.png',show:'22h'}};
+function tk(n,r){
+  var b=BANDAS[n.dia],m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·'),pct=String(n.pct).replace('.',',');
+  var st=n.lotado?'<b class="st l">LOTADO</b>':'<b class="st d">'+n.restantes+' vagas</b>';
+  if(!b)return '<div class="card"><h2>'+esc(n.label)+'</h2></div>';
+  return '<div class="tk'+(b.w?' wide':'')+'">'+(b.w?'':'<div class="tk-ph l" style="background-image:url('+IMG+b.l+')"></div><div class="tk-ph r" style="background-image:url('+IMG+b.r+')"></div>')
+   +'<div class="tk-in"><div class="tk-main"><div class="tk-top">Semana de Inauguração</div><div class="tk-logo"><img src="'+IMG+b.logo+'" alt="'+esc(at[0].trim())+'"></div>'
+   +(String(n.dia)==='21'?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+esc(at[1]?at[1].trim():'')+'</div></div>'
+   +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt=""><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div>'
+   +(b.w?'<div class="tk-wp" style="background-image:url('+IMG+b.w+')"></div>':'')+'</div>'
+   +'<div class="tk-hr"><div><small>Lotação</small><b>'+n.total+'<span style="font:600 11px Inter,sans-serif;color:#4c5a4f"> /'+r.teto+'</span></b></div><div><small>Ocupação</small><b>'+pct+'%</b></div><div><small>Disponível</small>'+st+'</div></div></div>'}
 function carregar(){
   if(!K){$('app').innerHTML='<div class="err">Link sem chave de acesso. Peça o link completo a quem administra.</div>';$('sub').textContent='';return}
   google.script.run.withSuccessHandler(draw).withFailureHandler(function(e){$('app').innerHTML='<div class="err">Falha ao carregar: '+esc(e&&e.message||e)+'</div>'}).metricas(K)}
@@ -58,7 +102,7 @@ function draw(r){
    +'<div class="kpi"><small>Entrada estimada (público)</small><b>'+brl(t.receita)+'</b></div></div><div class="grid">';
   r.noites.forEach(function(n){
     var w1=n.confirmadosPessoas/r.teto*100,w2=n.pendentesPessoas/r.teto*100,w3=n.publico/r.teto*100;
-    h+='<div class="card"><span class="badge '+(n.lotado?'lot':'disp')+'">'+(n.lotado?'LOTADO':'Disponível')+'</span><h2>'+esc(n.label)+'</h2><p class="at">'+esc(n.atracao)+'</p>'
+    h+='<div class="nc">'+tk(n,r)+'<div class="card">'
      +'<div class="bar" title="'+n.total+' de '+r.teto+'"><i class="b1" style="width:'+w1+'%"></i><i class="b2" style="width:'+w2+'%"></i><i class="b3" style="width:'+w3+'%"></i></div>'
      +'<div class="leg"><span style="--c:#2f7a3b">convidados confirmados</span><span style="--c:#8a6a1a">convidados sem resposta</span><span style="--c:#B47E00">público</span></div>'
      +'<table><tr><td>Total comprometido</td><td class="n"><b>'+n.total+' / '+r.teto+'</b> ('+n.pct.toString().replace('.',',')+'%)</td></tr>'
@@ -70,7 +114,7 @@ function draw(r){
      +'<tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table>';
     if(n.reservasLista.length){h+='<details><summary>Reservas do público ('+n.reservasLista.length+')</summary><table><tr><th>Prot.</th><th>Pessoas</th><th>Celular do titular</th></tr>'
       +n.reservasLista.map(function(g){return '<tr><td>'+esc(g.prot)+'</td><td>'+g.nomes.map(esc).join('<br>')+'</td><td>'+esc(g.tel)+'</td></tr>'}).join('')+'</table></details>'}
-    h+='</div>'});
+    h+='</div></div>'});
   h+='</div><h2 class="sec">Últimas movimentações</h2><div class="card"><table><tr><th>Quando</th><th>Origem</th><th>O quê</th></tr>'
    +(r.atividade.length?r.atividade.map(function(e){return '<tr><td class="n">'+esc(e.quando)+'</td><td>'+esc(e.tipo)+'</td><td>'+esc(e.texto)+'</td></tr>'}).join(''):'<tr><td colspan="3" class="mut">Sem movimentações ainda.</td></tr>')
    +'</table></div><p class="mut">Regra: teto de '+r.teto+' pessoas por noite (capacidade '+r.capacidade+' + 10%). Convidado sem resposta conta '+(r.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>';
