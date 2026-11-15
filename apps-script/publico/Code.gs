@@ -577,3 +577,92 @@ function testeWhats() {
   var prog = prog_(), dia = Number(Object.keys(prog).sort()[0]), blob = ingressoImagem_(dia, 'Teste Stammhaus', 'TESTE', prog);
   return waEnviar_(tel, waUpload_(blob), 'Teste Stammhaus', dia, 'TESTE', prog);
 }
+
+
+/* ======================= CONVITES POR WHATSAPP (envio automático, em lote) =======================
+ * Projeto PÚBLICO. Lê a aba Convidados (J telefone, L "convite enviado em", M situação do envio pela API) e dispara o template de
+ * convite (categoria Marketing, aprovado na Meta) a quem tem celular válido e ainda não recebeu. Gatilho de 1 min, 15 por rodada.
+ * Liga/desliga: Config convites_ativo = SIM/NAO. Propriedades: WA_TEMPLATE_CONVITE (padrão convite_inauguracao), WA_IDIOMA, WA_TOKEN, WA_PHONE_ID.
+ * Quem já recebeu (pelo painel ou pela API) tem a coluna L preenchida e nunca é reenviado. Falha: 3 tentativas e fica "FALHOU" (reenvio manual). */
+var CV_COL = {TEL: 10, ENV: 12, SIT: 13};
+var CV_LOTE = 15, CV_MAX_DIA = 200;   // 200/dia: abaixo do limite de 250 destinatários por 24 h do número novo
+
+function cvAtivo_() { var o = {}; lerConfig_().forEach(function (r) { if (r[0]) o[String(r[0]).trim()] = r[1]; }); return String(o.convites_ativo || 'NAO').trim().toUpperCase() === 'SIM'; }
+function cvTelOk_(t) { return /^\([1-9]\d\) 9\d{4}-\d{4}$/.test(String(t || '').trim()); }
+function cvAcomp_(ac) { return Number(ac) === 1 ? 'Seu convite inclui um acompanhante.' : 'Convite individual.'; }
+
+function cvEnviar_(tel, nome, dia, ac, prog) {
+  var p = prog[dia] || {};
+  var body = {messaging_product: 'whatsapp', recipient_type: 'individual', to: waNum_(tel), type: 'template', template: {
+    name: waProp_('WA_TEMPLATE_CONVITE', 'convite_inauguracao'), language: {code: waProp_('WA_IDIOMA', 'pt_BR')},
+    components: [{type: 'body', parameters: [{type: 'text', text: String(nome).trim().split(/\s+/)[0]}, {type: 'text', text: p.label || ('Noite ' + dia)},
+      {type: 'text', text: p.atracao || '-'}, {type: 'text', text: cvAcomp_(ac)}]}]}};
+  var r = UrlFetchApp.fetch(WA_API + waProp_('WA_PHONE_ID') + '/messages', {method: 'post', muteHttpExceptions: true, contentType: 'application/json',
+    headers: {Authorization: 'Bearer ' + waProp_('WA_TOKEN')}, payload: JSON.stringify(body)});
+  var j = JSON.parse(r.getContentText() || '{}');
+  if (r.getResponseCode() >= 300 || !j.messages) throw new Error('WA_CONVITE ' + r.getResponseCode() + ': ' + (j.error && j.error.message || r.getContentText()).slice(0, 150));
+  return j.messages[0].id;
+}
+
+function cvGarantirColunas_(sh) { try { if (sh.getMaxColumns() < CV_COL.SIT) sh.insertColumnsAfter(sh.getMaxColumns(), CV_COL.SIT - sh.getMaxColumns()); } catch (e) {} }
+
+/* situação: '' (não tentado) | 'ENVIADO · wamid' | 'ERRO n · mensagem' | 'FALHOU · mensagem' */
+function processarConvitesWhats() {
+  if (!cvAtivo_() || !waPronto_()) return {ok: false, motivo: 'desligado ou sem credenciais'};
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return {ok: false, motivo: 'ocupado'};
+  var ini = Date.now(), feitos = 0, erros = 0;
+  try {
+    var sh = aba_(ABA.CONV), n = sh.getLastRow(), prog = prog_();
+    if (n < 2) return {ok: true, feitos: 0};
+    cvGarantirColunas_(sh);
+    var v = sh.getRange(2, 1, n - 1, CV_COL.SIT).getValues(), hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), enviadosHoje = 0;
+    v.forEach(function (r) { var e = r[CV_COL.ENV - 1]; if (e instanceof Date && Utilities.formatDate(e, TZ, 'yyyy-MM-dd') === hoje && /^ENVIADO/.test(String(r[CV_COL.SIT - 1]))) enviadosHoje++; });
+    for (var i = 0; i < v.length && feitos < CV_LOTE && enviadosHoje + feitos < CV_MAX_DIA && Date.now() - ini < 240000; i++) {
+      var r = v[i], li = i + 2, tel = String(r[CV_COL.TEL - 1] || '').trim(), sit = String(r[CV_COL.SIT - 1] || '');
+      if (!r[1] || !cvTelOk_(tel) || r[CV_COL.ENV - 1] || /^(ENVIADO|FALHOU)/.test(sit)) continue;
+      if (sh.getRange(li, CV_COL.ENV).getValue()) continue;   // alguém marcou enviado pelo painel enquanto rodava
+      var tent = (/^ERRO (\d)/.exec(sit) || [0, 0])[1] * 1;
+      try {
+        var wamid = cvEnviar_(tel, String(r[1]), Number(r[2]), r[5], prog);
+        sh.getRange(li, CV_COL.ENV).setValue(new Date()); sh.getRange(li, CV_COL.SIT).setValue('ENVIADO · ' + wamid);
+      } catch (e) {
+        var msg = String(e.message).slice(0, 160);
+        sh.getRange(li, CV_COL.SIT).setValue((tent + 1 >= WA_MAX_TENT ? 'FALHOU · ' : 'ERRO ' + (tent + 1) + ' · ') + msg);
+        registrarErro_('WA', 'processarConvitesWhats', 'S99', e); erros++;
+        if (erros >= 5) break;   // algo sistêmico (token, template não aprovado): para e não queima as tentativas de todos
+      }
+      feitos++;
+      Utilities.sleep(250);
+    }
+    return {ok: true, feitos: feitos, erros: erros};
+  } finally { lock.releaseLock(); }
+}
+
+/* contagens para conferir antes de ligar (rodar no editor) */
+function resumoConvitesWhats() {
+  var sh = aba_(ABA.CONV), n = sh.getLastRow(); if (n < 2) return {};
+  cvGarantirColunas_(sh);
+  var v = sh.getRange(2, 1, n - 1, CV_COL.SIT).getValues(), o = {convidados: 0, comTelefone: 0, jaEnviados: 0, aEnviar: 0, falhou: 0};
+  v.forEach(function (r) {
+    if (!r[1]) return; o.convidados++;
+    var ok = cvTelOk_(r[CV_COL.TEL - 1]); if (ok) o.comTelefone++;
+    if (r[CV_COL.ENV - 1]) o.jaEnviados++; else if (/^FALHOU/.test(String(r[CV_COL.SIT - 1]))) o.falhou++; else if (ok) o.aEnviar++;
+  });
+  console.log(JSON.stringify(o)); return o;
+}
+
+/* cria a linha de controle na aba Config (desligada) e instala o gatilho de 1 minuto. Rodar uma vez, depois de aprovar o template. */
+function instalarConvitesWhats() {
+  var sh = aba_(ABA.CFG), v = lerConfig_(), tem = v.some(function (r) { return String(r[0]).trim() === 'convites_ativo'; });
+  if (!tem) sh.getRange(sh.getLastRow() + 1, 1, 1, 2).setValues([['convites_ativo', 'NAO']]);
+  if (!ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'processarConvitesWhats'; })) ScriptApp.newTrigger('processarConvitesWhats').timeBased().everyMinutes(1).create();
+  return 'ok: ligue com Config convites_ativo = SIM';
+}
+
+/* teste: envia o convite a UM celular (propriedade WA_TESTE_TEL) sem mexer na planilha */
+function testeConviteWhats() {
+  var tel = waProp_('WA_TESTE_TEL'); if (!tel) throw new Error('Defina a propriedade WA_TESTE_TEL (ex.: 47999999999)');
+  var prog = prog_(), dia = Number(Object.keys(prog).sort()[0]);
+  return cvEnviar_(tel, 'Teste Stammhaus', dia, 1, prog);
+}
