@@ -37,3 +37,8 @@
 - Exportar lista de portaria: PDF (gListaPdf, qualquer usuário logado) e "Imprimir lista"; nomes da lista + reservas, ordem alfabética, coluna OK.
 - Login do painel com a logo padrão branco e dourado e "Área restrita"; /painel/ no site abre o login direto (iframe).
 - Testes: e2e6.js (23 verificações).
+
+## Parte 7 — envio manual do ingresso por WhatsApp (sem depender da Meta)
+- Painel, detalhe do dia: botão "WhatsApp" por pessoa (convidados: titular e acompanhante; reservas do público: cada pessoa). Abre o WhatsApp do pub com o número e a mensagem prontos (noite, atração, protocolo; reserva traz validade e valor); a equipe só toca em enviar.
+- `estadoGestao_` passa a devolver `prot` (C+linha) do convidado confirmado.
+- Teste novo: `tests/e2e7.js`.
