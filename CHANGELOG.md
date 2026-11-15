@@ -48,4 +48,5 @@
 - Painel: tela "Convites WhatsApp" (filtros, KPIs, botão por pessoa com mensagem pronta, registro de envio, desfazer). Editar convidado ganha celular.
 - `gConviteMarcar`, `gSincronizarLista`; `estadoGestao_` devolve tel, tipo, env.
 - Dados de pessoas (telefones) NÃO ficam no repositório: a lista é lida da planilha na hora.
+- Revisão da harmonização (lista reajustada pela equipe): casamento por grafia (Maicon/Maycon, Hoffman/Hoffmann), por apelido com mesmo sobrenome e noite (Beto/Roberto Olsen) com nome da lista em busca_extra; "+1" da lista vira acompanhante = 1 no banco e a linha do acompanhante que tinha nome (e a lista não traz mais) é removida se ainda não respondeu. `sincronizarListaAgora` roda sem menu.
 

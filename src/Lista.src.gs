@@ -7,7 +7,11 @@
  *     Sem estilo definido: não é incluída; vai ao relatório.
  *  4. Quando a lista nomeia o acompanhante em linha própria (linha "-" logo após um convite Físico) e o banco o tinha como "+1",
  *     o "+1" do titular é zerado (a vaga continua contando uma vez só, agora com nome).
- *  5. Nada é apagado, renomeado ou movido de noite. Divergências de noite, de "+1" e nomes só do banco vão ao relatório.
+ *  5. Quando a lista tem "+1" para o titular, o banco passa a ter acompanhante = 1 e a linha do acompanhante que antes tinha nome
+ *     (logo abaixo do titular no banco, que a lista não traz mais) é removida, se ainda não respondeu. A vaga continua contando uma vez só.
+ *  6. Nome escrito de outra forma na lista (grafia, sobrenome a mais, apelido com mesmo sobrenome na mesma noite) casa com a mesma pessoa;
+ *     o nome do banco é mantido e o nome da lista entra na busca_extra, para o convidado se achar pelos dois.
+ *  7. Nada é movido de noite nem renomeado. Divergências de noite e nomes só do banco vão ao relatório.
  * Repetir a sincronização é seguro (idempotente). */
 
 var LISTA_ID = '1Pi6Za8_D4me13YUZna6y9TrsIZA7EpM-dZry-pzODgA';
@@ -30,6 +34,20 @@ function lnTel_(bruto) {
   return {erro: m, bruto: String(bruto)};
 }
 
+function lnDist_(a, b) {
+  var m = a.length, n = b.length, d = [], i, j;
+  for (i = 0; i <= m; i++) { d[i] = [i]; }
+  for (j = 1; j <= n; j++) d[0][j] = j;
+  for (i = 1; i <= m; i++) for (j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+  return d[m][n];
+}
+function lnGrafia_(ta, tb) {   // mesmos tokens, cada um igual ou com 1 letra de diferença (mín. 5 letras)
+  if (ta.length !== tb.length || ta.length < 2) return false;
+  var difs = 0;
+  for (var i = 0; i < ta.length; i++) { if (ta[i] === tb[i]) continue; if (ta[i].length >= 5 && tb[i].length >= 5 && lnDist_(ta[i], tb[i]) <= 1) difs++; else return false; }
+  return difs <= 1;
+}
+
 function lnTipo_(s) { var t = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); return t.indexOf('fisico') === 0 ? 'Físico' : t.indexOf('digital') === 0 ? 'Digital' : ''; }
 
 /* linhas brutas da lista (array de arrays, sem cabeçalho): [#, data, nome, grupo, estilo, convite, telefone] */
@@ -49,33 +67,46 @@ function lnParse_(linhas) {
 
 /* banco: [{linha,id,nome,dia,estilo,grupo,acomp,tel,tipo}] ; lista: saída de lnParse_ ; devolve o plano de mudanças */
 function lnPlano_(lista, banco) {
-  var plano = {tel: [], tipo: [], novos: [], zeraAc: [], marcaAc: [], rel: []};   // rel: [categoria, nome, detalhe]
+  var plano = {tel: [], tipo: [], novos: [], zeraAc: [], marcaAc: [], busca: [], remover: [], rel: []};   // rel: [categoria, nome, detalhe]
   var rel = function (c, n, d) { plano.rel.push([c, n, d || '']); };
   var titulares = lista.filter(function (l) { return !l.mais1; });
   var mais1 = {};
   lista.forEach(function (l) { if (l.mais1) mais1[lnNorm_(l.nome)] = 1; });
 
   var porNorm = {}; banco.forEach(function (b) { porNorm[lnNorm_(b.nome)] = b; });
-  function acha(l) {
+  function acha(l, livres) {
     var k = lnNorm_(l.nome); if (porNorm[k]) return {b: porNorm[k], modo: 'exato'};
     var tl = lnTokens_(l.nome), cand = banco.filter(function (b) {
       var tb = lnTokens_(b.nome), c = tl.length <= tb.length ? [tl, tb] : [tb, tl];
       return c[0].length >= 2 && c[0].every(function (t) { return c[1].indexOf(t) >= 0; }) && (!l.dia || l.dia === b.dia);
     });
-    return cand.length === 1 ? {b: cand[0], modo: 'parcial'} : null;
+    if (cand.length === 1) return {b: cand[0], modo: 'parcial'};
+    cand = banco.filter(function (b) { return (!l.dia || l.dia === b.dia) && lnGrafia_(tl, lnTokens_(b.nome)); });
+    return cand.length === 1 ? {b: cand[0], modo: 'grafia'} : null;
   }
   var usados = {}, casou = [];
   titulares.forEach(function (l) { var a = acha(l); casou.push(a); if (a) usados[a.b.id] = 1; });
+  /* 2ª passada: mesmo sobrenome e mesma noite, entre quem sobrou dos dois lados (apelido, ex.: Beto/Roberto) */
+  titulares.forEach(function (l, ix) {
+    if (casou[ix] || !l.dia) return;
+    var tl = lnTokens_(l.nome), ult = tl[tl.length - 1];
+    var cand = banco.filter(function (b) { var tb = lnTokens_(b.nome); return !usados[b.id] && b.dia === l.dia && tl.length >= 2 && tb.length >= 2 && tb[tb.length - 1] === ult && ult.length >= 4; });
+    var concorre = titulares.filter(function (x, j) { var tx = lnTokens_(x.nome); return !casou[j] && j !== ix && x.dia === l.dia && tx[tx.length - 1] === ult; }).length;
+    if (cand.length === 1 && !concorre) { casou[ix] = {b: cand[0], modo: 'apelido'}; usados[cand[0].id] = 1; }
+  });
 
   titulares.forEach(function (l, ix) {
     var a = casou[ix], b = a && a.b;
     if (b) {
-      if (a.modo === 'parcial') rel('Nome diferente (mesma pessoa)', l.nome, 'banco: "' + b.nome + '" · mantido o nome do banco');
+      if (a.modo !== 'exato') {
+        rel(a.modo === 'apelido' ? 'Nome diferente (conferir se é a mesma pessoa)' : 'Nome diferente (mesma pessoa)', l.nome, 'banco: "' + b.nome + '" · mantido o nome do banco; o nome da lista entra na busca');
+        plano.busca.push({linha: b.linha, id: b.id, texto: l.nome.replace(/\+\s*1/g, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(), atual: b.busca || ''});
+      }
       if (l.dia && l.dia !== b.dia) rel('Noite diferente', l.nome, 'lista: ' + l.dia + ' · banco: ' + b.dia + ' · nada alterado');
       if (l.tel.tel && l.tel.tel !== b.tel) plano.tel.push({linha: b.linha, id: b.id, nome: b.nome, tel: l.tel.tel});
       if (l.tipo && l.tipo !== b.tipo) plano.tipo.push({linha: b.linha, tipo: l.tipo});
       var tem = !!mais1[lnNorm_(l.nome)];
-      if (tem && !b.acomp) { rel('Acompanhante (+1) só na lista', l.nome, 'lista tem "+1"; banco sem acompanhante · nada alterado'); }
+      if (tem && !b.acomp) { plano.marcaAc.push({linha: b.linha, id: b.id, nome: b.nome}); rel('Acompanhante (+1) incluído no banco', b.nome, 'a lista tem "+1"; banco passa a ter direito a acompanhante'); }
     } else if (l.dia) {
       plano.novos.push({nome: l.nome, dia: l.dia, estilo: l.estilo, grupo: l.grupo || 'Lista', acomp: mais1[lnNorm_(l.nome)] ? 1 : 0, tel: l.tel.tel || '', tipo: l.tipo, ref: l.n});
     } else {
@@ -94,7 +125,14 @@ function lnPlano_(lista, banco) {
     if (par || novo) { plano.zeraAc.push({linha: b.linha, id: b.id, nome: b.nome, acomp: prox.nome}); rel('Acompanhante agora tem nome', b.nome, '"+1" do banco zerado · acompanhante na lista: ' + prox.nome); }
   });
 
-  var pend = banco.filter(function (b) { return !usados[b.id]; });
+  /* regra 5: linha de acompanhante que a lista não traz mais, logo abaixo do titular que agora tem "+1" */
+  var ordem = banco.slice().sort(function (x, y) { return x.linha - y.linha; }), removidos = {};
+  ordem.forEach(function (o, ix) {
+    if (usados[o.id] || !ix) return;
+    var ant = ordem[ix - 1], li = titulares.filter(function (x, j) { return casou[j] && casou[j].b.id === ant.id; })[0];
+    if (li && mais1[lnNorm_(li.nome)] && ant.dia === o.dia) { plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: ant.nome}); removidos[o.id] = 1; rel('Acompanhante com nome removido do banco', o.nome, 'a lista agora traz só "+1" para ' + ant.nome + ' · vaga continua contando uma vez só'); }
+  });
+  var pend = banco.filter(function (b) { return !usados[b.id] && !removidos[b.id]; });
   pend.forEach(function (b) { rel('Só no banco (não está na lista)', b.nome, 'noite ' + b.dia + ' · nada alterado'); });
   /* "+1" divergente que sobrou */
   banco.forEach(function (b) {
@@ -129,7 +167,7 @@ function lnBanco_() {
   var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
   var n = sh.getLastRow(); if (n < 2) return [];
   return sh.getRange(2, 1, n - 1, LISTA_COL.ENV).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0,
+    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0, busca: String(r[6] || ''),
             tel: String(r[LISTA_COL.TEL - 1] || ''), tipo: String(r[LISTA_COL.TIPO - 1] || ''), env: r[LISTA_COL.ENV - 1]};
   }).filter(function (c) { return c.id; });
 }
@@ -146,6 +184,10 @@ function lnAplicar_(plano, quem) {
   plano.tel.forEach(function (x) { sh.getRange(x.linha, LISTA_COL.TEL).setValue(x.tel); });
   plano.tipo.forEach(function (x) { sh.getRange(x.linha, LISTA_COL.TIPO).setValue(x.tipo); });
   plano.zeraAc.forEach(function (x) { sh.getRange(x.linha, 6).setValue(0); });
+  plano.marcaAc.forEach(function (x) { sh.getRange(x.linha, 6).setValue(1); });
+  plano.busca.forEach(function (x) {
+    var tem = lnNorm_(x.atual); if (lnNorm_(x.texto) && (' ' + tem + ' ').indexOf(' ' + lnNorm_(x.texto) + ' ') < 0) sh.getRange(x.linha, 7).setValue(x.atual ? x.atual + ' ' + x.texto : x.texto);
+  });
   var ult = sh.getLastRow(), formulas = null;
   try { if (ult >= 2) { var f = sh.getRange(ult, 8, 1, 2).getFormulas()[0]; if (f.some(function (z) { return z; })) formulas = sh.getRange(ult, 8, 1, 2); } } catch (e) {}
   plano.novos.forEach(function (x) {
@@ -157,16 +199,24 @@ function lnAplicar_(plano, quem) {
     if (x.tipo) sh.getRange(nl, LISTA_COL.TIPO).setValue(x.tipo);
     x.id = id;
   });
+  /* remoções por último (as linhas abaixo sobem); só quem ainda não respondeu */
+  var confs = confs_(), removidos = [];
+  plano.remover.slice().sort(function (x, y) { return y.linha - x.linha; }).forEach(function (x) {
+    if (ultConf_(x.id, confs)) { plano.rel.push(['Não removido (já respondeu)', x.nome, 'linha mantida; resolva no painel']); return; }
+    sh.deleteRow(x.linha); removidos.push(x);
+  });
+  plano.removidosOk = removidos;
   SpreadsheetApp.flush();
   var rel = garantirAba_('Harmonizacao', ['categoria', 'nome', 'detalhe']);
   rel.clearContents(); rel.getRange(1, 1, 1, 3).setValues([['categoria', 'nome', 'detalhe']]).setFontWeight('bold');
   var linhas = plano.rel.slice();
+  plano.marcaAc.forEach(function (x) { linhas.push(['"+1" aplicado ao banco', x.nome, 'acompanhante = 1']); });
   plano.novos.forEach(function (x) { linhas.push(['Incluído no banco', x.nome, 'noite ' + x.dia + (x.acomp ? ' · com +1' : '') + ' · ' + x.id]); });
   linhas.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
   if (linhas.length) rel.getRange(2, 1, linhas.length, 3).setValues(linhas);
   rel.getRange(linhas.length + 3, 1).setValue('Última sincronização: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss') + (quem ? ' · ' + quem : ''));
   try { rel.setColumnWidths(1, 1, 280); rel.setColumnWidths(2, 1, 260); rel.setColumnWidths(3, 1, 520); } catch (e) {}
-  return {telefones: plano.tel.length, tipos: plano.tipo.length, incluidos: plano.novos.length, acZerados: plano.zeraAc.length, pendencias: plano.rel.length, resumo: plano.resumo};
+  return {telefones: plano.tel.length, tipos: plano.tipo.length, incluidos: plano.novos.length, acZerados: plano.zeraAc.length, acIncluidos: plano.marcaAc.length, removidos: removidos.length, pendencias: plano.rel.length, resumo: plano.resumo};
 }
 
 function sincronizarLista_(quem) {
@@ -186,4 +236,10 @@ function sincronizarListaMenu() {
     var o = lnAplicar_(plano, 'menu'); atualizarPainelSeguro_();
     ui.alert('Pronto', 'Telefones: ' + o.telefones + ' · incluídos: ' + o.incluidos + ' · pendências: ' + o.pendencias + '\nVeja a aba Harmonizacao.', ui.ButtonSet.OK);
   } catch (e) { ui.alert('Não foi possível sincronizar: ' + e.message); }
+}
+
+/* sem menu: para rodar direto do editor do Apps Script (Executar) */
+function sincronizarListaAgora() {
+  var o = sincronizarLista_('editor'); atualizarPainelSeguro_();
+  console.log(JSON.stringify(o)); return o;
 }
