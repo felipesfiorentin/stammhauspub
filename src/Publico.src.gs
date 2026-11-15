@@ -87,6 +87,7 @@ function reservar_(p) {
     SpreadsheetApp.flush();
     if (String(sh.getRange(linha, 2).getValue()) !== prot || String(sh.getRange(linha + n - 1, 5).getValue()) !== v.pessoas[n - 1].nome) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     atualizarPainelSeguro_();
+    enfileirarWhats_('R', prot, v.dia, v.pessoas);
     return {ok: true, resumo: resumoRes_(prot, v.dia, prog, v.pessoas, cfg)};
   } finally { lock.releaseLock(); }
 }
@@ -117,6 +118,7 @@ function cancelarReserva_(prot, nome, tel) {
     if (!rows) return {ok: false, code: 'nao_achou'};
     var sh = aba_(ABA.RES), agora = new Date();
     rows.forEach(function (r) { sh.getRange(r.linha, 7).setValue('Cancelado'); sh.getRange(r.linha, 11).setValue(agora); });
+    cancelarFilaWhats_('R', rows[0].prot, null);
     atualizarPainelSeguro_();
     return {ok: true};
   } finally { lock.releaseLock(); }

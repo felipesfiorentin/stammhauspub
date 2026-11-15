@@ -23,7 +23,7 @@ HDR_G = "/* ====================================================================
 g = HDR_G + rd('Comum.src.gs') + '\n' + rd('Busca.src.gs') + '\n' + rd('Code.src.gs') + '\n' + rd('Metricas.src.gs') + '\n' + rd('Gestao.src.gs')
 # ---- público ----
 HDR_P = "/* =====================================================================\n * Das Stammhaus Pub — RESERVAS DO PÚBLICO. ARQUIVO ÚNICO (Code.gs). Projeto separado do dos convidados.\n * ===================================================================== */\n"
-p = HDR_P + rd('Comum.src.gs') + '\n' + rd('Publico.src.gs').replace("'__SHEET_ID__'", "'%s'" % sid)
+p = HDR_P + rd('Comum.src.gs') + '\n' + rd('Publico.src.gs').replace("'__SHEET_ID__'", "'%s'" % sid) + '\n' + rd('Whats.src.gs')
 pt = rd('Publico.template.html').replace('__LOGO__', logo).replace('__IMGBASE__', IMGBASE).replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())
 for d, name, txt in (('convidados', 'Code.gs', g), ('convidados', 'Index.html', t), ('convidados', 'Gestao.html', rd('Gestao.html').replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())), ('convidados', 'Metricas.html', rd('Metricas.html').replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())),
                      ('publico', 'Code.gs', p), ('publico', 'Index.html', pt)):

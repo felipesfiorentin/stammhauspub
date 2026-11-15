@@ -68,6 +68,7 @@ function render(){var h='<div class="leg"><span class="l1">Confirmados</span><sp
  var tt={conf:0,pend:0,nao:0,pub:0,tot:0};S.noites.forEach(function(n){tt.conf+=n.confirmadosPessoas;tt.pend+=n.pendentesPessoas;tt.nao+=n.naoVaiConvites;tt.pub+=n.publico;tt.tot+=n.total});
  h+='<div class="card row sp"><span><b>Semana:</b> '+tt.tot+' pessoas comprometidas · '+tt.conf+' confirmadas · '+tt.pend+' sem resposta · '+tt.nao+' convites "não vai" · '+tt.pub+' do público</span><span>Receita de ingressos (público): <b>R$ '+(tt.pub*S.valor)+'</b></span></div>';
  if(SEL!=null)h+=detalhe(noite(SEL));
+ h+=whatsCard();
  h+='<div class="card"><h2>Últimas alterações da gestão</h2><div class="aud" id="aud">'+(S.auditoria.length?S.auditoria.map(function(a){return'<div>'+esc(a.quando)+' · <b>'+esc(a.quem)+'</b> · '+esc(a.acao)+' — '+esc(a.det)+'</div>'}).join(''):'<div>Nenhuma alteração registrada.</div>')+'</div></div>';
  $('app').innerHTML=h}
 function detalhe(n){var h='<div class="card"><div class="row sp"><h2>Noite '+n.dia+' · '+esc(n.label)+'</h2><div class="tabs"><button class="'+(TAB==='conv'?'on':'')+'" data-tab="conv">Convidados</button><button class="'+(TAB==='res'?'on':'')+'" data-tab="res">Reservas do público</button></div></div>';
@@ -88,6 +89,9 @@ function detalhe(n){var h='<div class="card"><div class="row sp"><h2>Noite '+n.d
    r.pessoas.map(function(p){return'<tr><td>'+esc(p.nome)+'</td><td><small>'+esc(p.tel)+'</small></td><td><button class="s" data-a="rep" data-id="'+esc(r.prot)+'" data-l="'+p.linha+'">Editar</button> <button class="s d" data-a="rrp" data-id="'+esc(r.prot)+'" data-l="'+p.linha+'">Remover</button></td></tr>'}).join('')+'</table></div>'});
   if(!R.length)h+='<div class="sub">Nenhuma reserva do público nesta noite.</div>'}
  return h+'</div>'}
+function whatsCard(){var w=S.whats;if(!w)return'';var c=w.contagem||{};var h='<div class="card"><div class="row sp"><h2>Ingressos por WhatsApp</h2><span class="tag '+(w.ativo?'t-c':'t-p')+'">'+(w.ativo?'Envio ligado':'Envio desligado')+'</span></div><p class="sub" style="margin:8px 0">Enviados: <b>'+(c.ENVIADO||0)+'</b> · Na fila: <b>'+(c.PENDENTE||0)+'</b> · Falharam: <b>'+(c.FALHOU||0)+'</b> · Sem número: <b>'+(c.SEM_NUMERO||0)+'</b></p>';
+ if(w.pendencias.length){h+='<table class="tb"><tr><th>Pessoa</th><th>Noite</th><th>Status</th><th></th></tr>'+w.pendencias.map(function(x){return'<tr><td>'+esc(x.nome)+'<br><small>'+esc(x.ref)+(x.detalhe?' · '+esc(x.detalhe):'')+'</small></td><td>'+x.dia+'</td><td>'+esc(x.status)+(x.tent?' ('+x.tent+')':'')+'</td><td>'+(x.status==='FALHOU'||x.status==='SEM_NUMERO'?'<button class="s" data-a="wr" data-l="'+x.linha+'">Reenviar</button>':'')+'</td></tr>'}).join('')+'</table>'}
+ return h+'</div>'}
 function norm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim()}
 function opcoesDia(sel,sem){return S.noites.filter(function(n){return n.dia!==sem}).map(function(n){return'<option value="'+n.dia+'"'+(n.dia===sel?' selected':'')+'>Noite '+n.dia+' · '+esc(n.label)+' ('+n.total+'/'+S.teto+')</option>'}).join('')}
 /* modal: campos → envia; se a noite lota, pede confirmação explícita ("forçar") */
@@ -104,6 +108,7 @@ document.addEventListener('click',function(e){var t=e.target;
  if(t.id==='addc')return novoConv();if(t.id==='addr')return novaRes();
  var a=t.getAttribute&&t.getAttribute('data-a');if(!a)return;var id=t.getAttribute('data-id'),l=t.getAttribute('data-l');
  var c=S.convidados.filter(function(x){return x.id===id})[0],r=S.reservas.filter(function(x){return x.prot===id})[0];
+ if(a==='wr'){if(busy)return;busy=true;run('gWhatsReenviar',[K,Number(l)],function(r){busy=false;if(r&&r.ok===false){toast(msgErro(r));return}S=r;toast('Reenvio na fila');render()});return}
  if(a==='mc')modal('Mudar '+esc(c.nome)+' de noite','<label>Nova noite</label><select id="f1">'+opcoesDia(0,c.dia)+'</select>','Mover',function(f,cb){run('gMoverConvidado',[K,id,Number(val('f1')),f],cb)});
  if(a==='ec')statusConv(c);
  if(a==='ed')modal('Editar convidado','<label>Nome no convite</label><input type="text" id="f1" value="'+esc(c.nome)+'"><label>Direito a acompanhante</label><select id="f2"><option value="0"'+(c.acomp?'':' selected')+'>Não</option><option value="1"'+(c.acomp?' selected':'')+'>Sim</option></select>','Salvar',function(f,cb){run('gEditarConvidado',[K,id,{nome:val('f1'),acomp:Number(val('f2'))}],cb)});

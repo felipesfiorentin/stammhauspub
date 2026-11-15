@@ -216,6 +216,7 @@ function confirmar_(p) {
     if (String(sh.getRange(linha, 2).getValue()) !== g.id) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     if (antes) sh.getRange(antes.linha, 10).setValue('Substituído');
     atualizarPainelSeguro_();
+    enfileirarWhats_('C', g.id, g.dia, [{nome: d.titNome, tel: d.titTel}].concat(d.acNome ? [{nome: d.acNome, tel: d.acTel || d.titTel}] : []));
     var res = resumo_(g, d, prog_()); res.protocolo = 'C' + linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -281,6 +282,7 @@ function atualizar_(p) {
     aba_(ABA.CONF).getRange(c.linha, 5, 1, 5).setValues([[d.titNome, d.titTel, d.acNome, d.acTel, pessoas]]);
     aba_(ABA.CONF).getRange(c.linha, 13).setValue(new Date());
     atualizarPainelSeguro_();
+    enfileirarWhats_('C', g.id, g.dia, [{nome: d.titNome, tel: d.titTel}].concat(d.acNome ? [{nome: d.acNome, tel: d.acTel || d.titTel}] : []));
     var res = resumo_(g, d, prog_()); res.protocolo = 'C' + c.linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -294,6 +296,7 @@ function cancelar_(id, tel) {
     if (!c) return {ok: false, code: 'tel_incorreto'};
     var sh = aba_(ABA.CONF);
     sh.getRange(c.linha, 10).setValue('Cancelado'); sh.getRange(c.linha, 13).setValue(new Date());
+    cancelarFilaWhats_('C', c.id, null);
     atualizarPainelSeguro_();
     return {ok: true};
   } finally { lock.releaseLock(); }

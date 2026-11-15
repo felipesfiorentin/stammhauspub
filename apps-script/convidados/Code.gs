@@ -95,7 +95,8 @@ function cfg_() {
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
-    horario: String(o.horario || '').trim()
+    horario: String(o.horario || '').trim(),
+    waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM'
   };
 }
 
@@ -207,6 +208,7 @@ function prog_() {
     m[Number(r[0])] = {
       dia: Number(r[0]),
       label: d ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
+      iso: d ? p[0] + '-' + p[1] + '-' + p[2] : '',
       atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || '')
     };
   });
@@ -246,6 +248,46 @@ function proximaLinha_(sh) {
   return 2;
 }
 
+
+/* ---------- FILA DO WHATSAPP (aba "Whats") ----------
+ * Quem grava uma confirmação/reserva só ENFILEIRA (status PENDENTE); o envio é feito pelo projeto público
+ * (processarFilaWhats, gatilho de 1 min). Só enfileira se Config whatsapp_ativo = SIM. Nunca derruba a gravação. */
+var WA_CAB = ['data/hora', 'origem', 'ref', 'dia', 'nome', 'celular', 'status', 'tentativas', 'wamid', 'detalhe', 'atualizado'];
+function abaWa_() {
+  var ss = ss_(), sh = ss.getSheetByName('Whats') || ss.insertSheet('Whats');
+  if (sh.getLastRow() === 0) { sh.getRange(1, 1, 1, WA_CAB.length).setValues([WA_CAB]); try { sh.getRange(1, 1, 1, WA_CAB.length).setFontWeight('bold'); sh.setFrozenRows(1); } catch (e) {} }
+  return sh;
+}
+function waChave_(o, ref, dia, nome, tel) { return [o, ref, dia, String(nome).toLowerCase().replace(/\s+/g, ' ').trim(), digitos_(tel)].join('|'); }
+/* origem: 'R' (reserva do público, ref = protocolo) ou 'C' (convidado, ref = id); pessoas: [{nome, tel}] */
+function enfileirarWhats_(origem, ref, dia, pessoas) {
+  try {
+    if (!cfg_().waAtivo) return 0;
+    var sh = abaWa_(), n = sh.getLastRow(), tem = {}, agora = new Date();
+    if (n >= 2) sh.getRange(2, 1, n - 1, 7).getValues().forEach(function (r) {
+      if (r[6] !== 'FALHOU' && r[6] !== 'CANCELADO') tem[waChave_(r[1], r[2], r[3], r[4], r[5])] = 1;
+    });
+    var novos = [];
+    pessoas.forEach(function (p) {
+      if (!p || !p.nome) return;
+      var k = waChave_(origem, ref, dia, p.nome, p.tel);
+      if (tem[k]) return; tem[k] = 1;
+      novos.push([agora, origem, String(ref), Number(dia), String(p.nome), String(p.tel || ''), digitos_(p.tel) ? 'PENDENTE' : 'SEM_NUMERO', 0, '', '', agora]);
+    });
+    if (novos.length) sh.getRange(sh.getLastRow() + 1, 1, novos.length, WA_CAB.length).setValues(novos);
+    return novos.length;
+  } catch (e) { try { console.error('whats fila: ' + e.message); } catch (_) {} return 0; }
+}
+/* cancelamento/mudança de dia: o que ainda não foi enviado deixa de valer */
+function cancelarFilaWhats_(origem, ref, dia) {
+  try {
+    var sh = ss_().getSheetByName('Whats'), n = sh ? sh.getLastRow() : 0;
+    if (n < 2) return;
+    sh.getRange(2, 1, n - 1, 7).getValues().forEach(function (r, i) {
+      if (r[1] === origem && String(r[2]) === String(ref) && (dia == null || Number(r[3]) === Number(dia)) && r[6] === 'PENDENTE') sh.getRange(i + 2, 7).setValue('CANCELADO');
+    });
+  } catch (e) {}
+}
 
 /**
  * Busca tolerante de nomes (JS puro, sem dependências do Apps Script).
@@ -575,6 +617,7 @@ function confirmar_(p) {
     if (String(sh.getRange(linha, 2).getValue()) !== g.id) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     if (antes) sh.getRange(antes.linha, 10).setValue('Substituído');
     atualizarPainelSeguro_();
+    enfileirarWhats_('C', g.id, g.dia, [{nome: d.titNome, tel: d.titTel}].concat(d.acNome ? [{nome: d.acNome, tel: d.acTel || d.titTel}] : []));
     var res = resumo_(g, d, prog_()); res.protocolo = 'C' + linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -640,6 +683,7 @@ function atualizar_(p) {
     aba_(ABA.CONF).getRange(c.linha, 5, 1, 5).setValues([[d.titNome, d.titTel, d.acNome, d.acTel, pessoas]]);
     aba_(ABA.CONF).getRange(c.linha, 13).setValue(new Date());
     atualizarPainelSeguro_();
+    enfileirarWhats_('C', g.id, g.dia, [{nome: d.titNome, tel: d.titTel}].concat(d.acNome ? [{nome: d.acNome, tel: d.acTel || d.titTel}] : []));
     var res = resumo_(g, d, prog_()); res.protocolo = 'C' + c.linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -653,6 +697,7 @@ function cancelar_(id, tel) {
     if (!c) return {ok: false, code: 'tel_incorreto'};
     var sh = aba_(ABA.CONF);
     sh.getRange(c.linha, 10).setValue('Cancelado'); sh.getRange(c.linha, 13).setValue(new Date());
+    cancelarFilaWhats_('C', c.id, null);
     atualizarPainelSeguro_();
     return {ok: true};
   } finally { lock.releaseLock(); }
@@ -800,6 +845,7 @@ function prepararReservas() {
    ['max_pessoas_reserva', 4, 'Máximo de pessoas por reserva do público.'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
+   ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],
    ['pendente_conta_acompanhante', 'SIM', 'SIM: convidado sem resposta conta titular + acompanhante a que tem direito. NAO: conta só o titular.']
   ].forEach(function (x) {
     if (existentes[x[0]]) return;
@@ -874,7 +920,14 @@ function estadoGestao_(a) {
       aud.push({quando: fmtData_(r[0]), quem: String(r[1]), acao: String(r[2]), det: String(r[3])});
     });
   }
-  return {ok: true, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
+  var wh = [], cw = {}, sw = ss_().getSheetByName('Whats'), nw = sw ? sw.getLastRow() : 0;
+  if (nw >= 2) {
+    var vw = sw.getRange(2, 1, nw - 1, 11).getValues();
+    vw.forEach(function (r) { cw[r[6]] = (cw[r[6]] || 0) + 1; });
+    vw.map(function (r, i) { return {linha: i + 2, origem: String(r[1]), ref: String(r[2]), dia: Number(r[3]), nome: String(r[4]), status: String(r[6]), tent: Number(r[7]) || 0, detalhe: String(r[9])}; })
+      .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
+  }
+  return {ok: true, whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
           valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
           reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
 }
@@ -911,6 +964,7 @@ function gLotado_(dia, add, forcar) {
   if (add > 0 && t + add > teto && !forcar) return {ok: false, code: 'lotado', total: t, teto: teto, adicional: add};
   return null;
 }
+function gPessoasConf_(u) { return [{nome: u.titNome, tel: u.titTel}].concat(u.acNome ? [{nome: u.acNome, tel: u.acTel || u.titTel}] : []); }
 function gAppendConf_(sh, vals) {
   var linha = proximaLinha_(sh);
   if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
@@ -932,6 +986,8 @@ function gMoverConvidado(k, id, dia, forcar) {
       aba_(ABA.CONV).getRange(g.linha, 3).setValue(dia);
       var sh = aba_(ABA.CONF);
       confs.forEach(function (c) { if (c.id === g.id) sh.getRange(c.linha, 4).setValue(dia); });
+      var uc = ultConf_(g.id, confs);
+      if (uc && uc.status === 'Confirmado') { cancelarFilaWhats_('C', g.id, g.dia); enfileirarWhats_('C', g.id, dia, gPessoasConf_(uc)); }
       aud_(a, 'Moveu convidado', g.nome + ' (' + g.id + '): noite ' + g.dia + ' → ' + dia + (forcar ? ' [acima do teto, forçado]' : ''));
       return {ok: true};
     });
@@ -1003,6 +1059,8 @@ function gStatusConvidado(k, id, acao, p, forcar) {
       if (acao === 'nao_vai') gAppendConf_(shC, [agora, g.id, g.nome, g.dia, g.nome, '', '', '', 0, STATUS_NAO, 'Registrado pela gestão (' + a.nome + ')', '', agora]);
       if (acao === 'confirmar') gAppendConf_(shC, [agora, g.id, g.nome, g.dia, dados.titNome, dados.titTel, dados.acNome, dados.acTel, novo, 'Confirmado',
         'Registrado pela gestão (' + a.nome + ')', '', agora]);
+      if (acao === 'confirmar') enfileirarWhats_('C', g.id, g.dia, gPessoasConf_(dados));
+      else cancelarFilaWhats_('C', g.id, null);
       aud_(a, 'Status do convidado', g.nome + ' (' + g.id + ', noite ' + g.dia + '): ' + acao + (acao === 'confirmar' ? ' · ' + novo + ' pessoa(s)' : '') + (forcar ? ' [forçado]' : ''));
       return {ok: true};
     });
@@ -1023,6 +1081,8 @@ function gReservaMover(k, prot, dia, forcar) {
       var bl = gLotado_(dia, rows.length, forcar); if (bl) return bl;
       var sh = aba_(ABA.RES), agora = new Date();
       reservas_().forEach(function (r) { if (r.prot === String(prot)) { sh.getRange(r.linha, 3).setValue(dia); sh.getRange(r.linha, 11).setValue(agora); } });
+      cancelarFilaWhats_('R', String(prot), rows[0].dia);
+      enfileirarWhats_('R', String(prot), dia, rows.map(function (r) { return {nome: r.nome, tel: r.tel}; }));
       aud_(a, 'Moveu reserva', prot + ' (' + rows.length + ' pessoa(s)): noite ' + rows[0].dia + ' → ' + dia + (forcar ? ' [forçado]' : ''));
       return {ok: true};
     });
@@ -1035,6 +1095,7 @@ function gReservaCancelar(k, prot) {
       var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
       var sh = aba_(ABA.RES), agora = new Date();
       rows.forEach(function (r) { sh.getRange(r.linha, 7).setValue('Cancelado'); sh.getRange(r.linha, 11).setValue(agora); });
+      cancelarFilaWhats_('R', String(prot), null);
       aud_(a, 'Cancelou reserva', prot + ' (' + rows.map(function (r) { return r.nome; }).join(', ') + ')');
       return {ok: true};
     });
@@ -1062,6 +1123,7 @@ function gReservaPessoa(k, prot, linha, nome, tel, forcar) {
         var nl = proximaLinha_(sh); if (nl > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
         var n = Math.max.apply(null, rows.map(function (r) { return r.n; })) + 1;
         sh.getRange(nl, 1, 1, 11).setValues([[agora, String(prot), rows[0].dia, n, nome, tel, 'Confirmado', rows[0].titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora]]);
+        enfileirarWhats_('R', String(prot), rows[0].dia, [{nome: nome, tel: tel}]);
         aud_(a, 'Incluiu pessoa na reserva', prot + ': ' + nome + (forcar ? ' [forçado]' : ''));
       }
       return {ok: true};
@@ -1108,8 +1170,24 @@ function gReservaNova(k, dia, pessoas, forcar) {
       sh.getRange(l0, 1, pessoas.length, 11).setValues(pessoas.map(function (x, i) {
         return [agora, prot, dia, i + 1, x.nome, x.tel, 'Confirmado', titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora];
       }));
+      enfileirarWhats_('R', prot, dia, pessoas);
       aud_(a, 'Criou reserva', prot + ' na noite ' + dia + ': ' + pessoas.map(function (x) { return x.nome; }).join(', ') + (forcar ? ' [forçado]' : ''));
       return {ok: true, info: {protocolo: prot}};
+    });
+  }, arguments);
+}
+
+/* reenvia: volta para PENDENTE as linhas FALHOU/SEM_NUMERO/ENVIADO de uma pessoa (linha da aba Whats) */
+function gWhatsReenviar(k, linha) {
+  return api_('gWhatsReenviar', function () {
+    return gMut_(k, 'wreenviar', function (a) {
+      var sh = ss_().getSheetByName('Whats'), n = sh ? sh.getLastRow() : 0, l = Number(linha);
+      if (!sh || l < 2 || l > n) return {ok: false, code: 'nao_encontrado'};
+      var r = sh.getRange(l, 1, 1, 11).getValues()[0];
+      if (!digitos_(r[5])) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Esta pessoa está sem celular. Informe o número antes.'};
+      sh.getRange(l, 7, 1, 5).setValues([['PENDENTE', 0, '', '', new Date()]]);
+      aud_(a, 'Reenviar ingresso', r[4] + ' (' + r[2] + ')');
+      return {ok: true};
     });
   }, arguments);
 }

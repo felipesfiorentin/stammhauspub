@@ -91,7 +91,8 @@ function cfg_() {
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
-    horario: String(o.horario || '').trim()
+    horario: String(o.horario || '').trim(),
+    waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM'
   };
 }
 
@@ -203,6 +204,7 @@ function prog_() {
     m[Number(r[0])] = {
       dia: Number(r[0]),
       label: d ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
+      iso: d ? p[0] + '-' + p[1] + '-' + p[2] : '',
       atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || '')
     };
   });
@@ -242,3 +244,43 @@ function proximaLinha_(sh) {
   return 2;
 }
 
+
+/* ---------- FILA DO WHATSAPP (aba "Whats") ----------
+ * Quem grava uma confirmação/reserva só ENFILEIRA (status PENDENTE); o envio é feito pelo projeto público
+ * (processarFilaWhats, gatilho de 1 min). Só enfileira se Config whatsapp_ativo = SIM. Nunca derruba a gravação. */
+var WA_CAB = ['data/hora', 'origem', 'ref', 'dia', 'nome', 'celular', 'status', 'tentativas', 'wamid', 'detalhe', 'atualizado'];
+function abaWa_() {
+  var ss = ss_(), sh = ss.getSheetByName('Whats') || ss.insertSheet('Whats');
+  if (sh.getLastRow() === 0) { sh.getRange(1, 1, 1, WA_CAB.length).setValues([WA_CAB]); try { sh.getRange(1, 1, 1, WA_CAB.length).setFontWeight('bold'); sh.setFrozenRows(1); } catch (e) {} }
+  return sh;
+}
+function waChave_(o, ref, dia, nome, tel) { return [o, ref, dia, String(nome).toLowerCase().replace(/\s+/g, ' ').trim(), digitos_(tel)].join('|'); }
+/* origem: 'R' (reserva do público, ref = protocolo) ou 'C' (convidado, ref = id); pessoas: [{nome, tel}] */
+function enfileirarWhats_(origem, ref, dia, pessoas) {
+  try {
+    if (!cfg_().waAtivo) return 0;
+    var sh = abaWa_(), n = sh.getLastRow(), tem = {}, agora = new Date();
+    if (n >= 2) sh.getRange(2, 1, n - 1, 7).getValues().forEach(function (r) {
+      if (r[6] !== 'FALHOU' && r[6] !== 'CANCELADO') tem[waChave_(r[1], r[2], r[3], r[4], r[5])] = 1;
+    });
+    var novos = [];
+    pessoas.forEach(function (p) {
+      if (!p || !p.nome) return;
+      var k = waChave_(origem, ref, dia, p.nome, p.tel);
+      if (tem[k]) return; tem[k] = 1;
+      novos.push([agora, origem, String(ref), Number(dia), String(p.nome), String(p.tel || ''), digitos_(p.tel) ? 'PENDENTE' : 'SEM_NUMERO', 0, '', '', agora]);
+    });
+    if (novos.length) sh.getRange(sh.getLastRow() + 1, 1, novos.length, WA_CAB.length).setValues(novos);
+    return novos.length;
+  } catch (e) { try { console.error('whats fila: ' + e.message); } catch (_) {} return 0; }
+}
+/* cancelamento/mudança de dia: o que ainda não foi enviado deixa de valer */
+function cancelarFilaWhats_(origem, ref, dia) {
+  try {
+    var sh = ss_().getSheetByName('Whats'), n = sh ? sh.getLastRow() : 0;
+    if (n < 2) return;
+    sh.getRange(2, 1, n - 1, 7).getValues().forEach(function (r, i) {
+      if (r[1] === origem && String(r[2]) === String(ref) && (dia == null || Number(r[3]) === Number(dia)) && r[6] === 'PENDENTE') sh.getRange(i + 2, 7).setValue('CANCELADO');
+    });
+  } catch (e) {}
+}

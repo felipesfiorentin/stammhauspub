@@ -18,3 +18,8 @@
 - Acesso: token da aba `Acesso` + coluna G "gestão (SIM/NÃO)"; link em H. Toda gravação sob lock e registrada na aba `Auditoria`.
 - Alterações que passam do teto de 81 exigem confirmação explícita ("Confirmar mesmo assim") e ficam marcadas como [forçado].
 - Texto da home: "chopes artesanais" → "chopp de qualidade".
+
+## Parte 4 — ingresso por WhatsApp (desligado por padrão)
+- Fila `Whats` (Comum), envio no projeto público (`Whats.src.gs`): ingresso em imagem (Slides → PNG), Drive por dia, API da Meta, template com imagem.
+- Ganchos em reserva, confirmação, cancelamento e gestão; cartão "Ingressos por WhatsApp" no painel de gestão (status e Reenviar).
+- Roteiro de ativação em `docs/WHATSAPP.md`.
