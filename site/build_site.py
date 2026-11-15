@@ -31,11 +31,11 @@ header.nav.sol{background:rgba(11,34,23,.96);box-shadow:0 2px 18px rgba(0,0,0,.4
 .nv a.l{display:block;padding:10px 12px;text-decoration:none;font:600 13px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
 .nv a.l:hover,.nv a.l.on{color:var(--ouro2);opacity:1}
 .nv a.int{border:1px solid rgba(234,231,218,.35);border-radius:8px;font-size:12px}
-.logo img{height:52px;width:auto}
+.logo img{height:34px;width:auto}
 .burger{display:none;background:none;border:0;color:var(--off);width:44px;height:44px;cursor:pointer;justify-self:end}
 .burger span{display:block;width:26px;height:2px;background:currentColor;margin:6px auto;transition:.2s}
 @media(max-width:940px){
- .nv{grid-template-columns:auto 1fr;height:68px}.logo img{height:40px}
+ .nv{grid-template-columns:auto 1fr;height:68px}.logo img{height:26px}
  .nv ul{display:none}.burger{display:block}
  header.nav.open{background:rgba(11,34,23,.98)}
  header.nav.open .menu{display:flex}
@@ -63,6 +63,7 @@ section{padding:90px 0}
 .quote small{display:block;margin-top:18px;font:700 12px/1 Inter,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--ouro2);font-style:normal}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
 .split.rev .ph{order:2}
+.ph.tall{aspect-ratio:4/5;max-width:460px;margin:0 auto;width:100%}
 .ph{aspect-ratio:4/3;border-radius:14px;background:#000 center/cover;box-shadow:0 18px 50px rgba(0,0,0,.5);position:relative;overflow:hidden}
 .ph:after{content:"";position:absolute;inset:10px;border:1px solid rgba(217,166,46,.55);border-radius:8px;pointer-events:none}
 @media(max-width:860px){.split{grid-template-columns:1fr;gap:28px}.split.rev .ph{order:0}section{padding:64px 0}}
@@ -97,6 +98,7 @@ section{padding:90px 0}
 .sus .lock{width:64px;height:64px;border:1.5px solid var(--ouro);border-radius:50%;margin:0 auto 26px;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--ouro2)}
 .fnd{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;margin-top:40px}
 .fnd .card{padding:32px 28px}
+.fnd .pf{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:10px;border:1px solid rgba(217,166,46,.55);margin-bottom:20px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
 .fnd .av{width:84px;height:84px;border-radius:50%;border:1.5px solid var(--ouro);background:rgba(180,126,0,.14);display:flex;align-items:center;justify-content:center;font:700 28px/1 'Playfair Display',serif;color:var(--ouro2);margin-bottom:18px}
 .fnd .role{font:700 12px/1.4 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--ouro2);margin-bottom:12px}
 .team{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:20px;margin-top:40px}
@@ -111,7 +113,7 @@ footer{background:var(--carvao);padding:64px 0 34px;font-size:15px}
 .ft{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:36px}
 .ft h4{font:700 12px/1 Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:var(--ouro2);margin:0 0 16px}
 .ft ul{list-style:none;margin:0;padding:0}.ft li{margin-bottom:9px}.ft a{text-decoration:none;opacity:.85}.ft a:hover{color:var(--ouro2);opacity:1}
-.ft img{height:56px;margin-bottom:14px}
+.ft img{height:70px;width:auto;margin-bottom:14px}
 .copy{border-top:1px solid rgba(234,231,218,.12);margin-top:40px;padding-top:22px;font-size:13px;opacity:.6;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
 @media(max-width:760px){.ft{grid-template-columns:1fr}}
 .rv{opacity:0;transform:translateY(22px);transition:opacity .8s,transform .8s}.rv.in{opacity:1;transform:none}
@@ -142,13 +144,13 @@ def nav(cur):
         return f'<li><a class="{cls}" href="{h}">{lab}</a></li>'
     L = ''.join(li(*x) for x in NAV[:3]); R = ''.join(li(*x) for x in NAV[3:])
     menu = ''.join(f'<a href="{h}">{t}{" (acesso interno)" if k=="painel" else ""}</a>' for h, t, k in NAV)
-    return f'''<header class="nav"><div class="nv"><ul>{L}</ul><a class="logo" href="/" aria-label="Das Stammhaus Pub"><img src="/assets/site/logo.png" alt="Das Stammhaus Pub"></a><ul class="r">{R}</ul>
+    return f'''<header class="nav"><div class="nv"><ul>{L}</ul><a class="logo" href="/" aria-label="Das Stammhaus Pub"><img src="/assets/site/logo-horizontal.png" alt="Das Stammhaus Pub"></a><ul class="r">{R}</ul>
 <button class="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button></div><nav class="menu">{menu}</nav></header>'''
 
 FOOT = '''<footer><div class="wrap"><div class="ft">
-<div><img src="/assets/site/logo.png" alt="Das Stammhaus Pub"><p class="mut">Pub de estilo europeu em um casarão histórico.<br>Canoinhas · Santa Catarina</p><p style="font-style:italic;font-family:'Playfair Display',serif;color:#d9a62e">O que é bom resiste ao tempo.</p></div>
+<div><img src="/assets/site/logo-padrao.png" alt="Das Stammhaus Pub"><p class="mut">Pub de estilo europeu em um casarão histórico.<br>Canoinhas · Santa Catarina</p><p style="font-style:italic;font-family:'Playfair Display',serif;color:#d9a62e">O que é bom resiste ao tempo.</p></div>
 <div><h4>A casa</h4><ul><li><a href="/historia/">História e fundadores</a></li><li><a href="/equipe/">Equipe</a></li><li><a href="/cardapio/">Cardápio</a></li><li><a href="/fotos/">Fotos</a></li></ul></div>
-<div><h4>Visite</h4><ul><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/convidados/">Já tenho convite · confirmar presença</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
+<div><h4>Visite</h4><ul><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
 </div><div class="copy"><span>© 2026 Das Stammhaus Pub · Canoinhas, SC</span><span>Imagens ilustrativas de banco de imagens (Pexels) · fotos reais em breve</span></div></div></footer>'''
 
 def page(cur, title, desc, body, hero_sol=True):
@@ -189,11 +191,11 @@ HOME = f'''
 </div></div></section>
 
 <section id="casa"><div class="wrap split">
-<div class="ph rv" style="{ph(38949607)}" role="img" aria-label="Casarão histórico de madeira (imagem ilustrativa)"></div>
+<div class="ph tall rv" style="background-image:url('/assets/site/casarao-pre-obra.jpg')" role="img" aria-label="O casarão antes da obra"></div>
 <div class="rv"><span class="eb">O casarão</span><h2>Dois andares de herança madeireira</h2>
 <p class="lead">O Das Stammhaus nasce de um casarão, de uma cidade e de gente que gosta de coisa bem feita. A restauração preserva a arquitetura e a força da cultura madeireira e da imigração europeia que formaram Canoinhas.</p>
 <p class="mut">Madeira nobre, marcenaria fina e precisão histórica: sem exageros e sem caricaturas.</p>
-<a class="btn o" href="/historia/">Nossa história</a></div></div></section>
+<p class="mut" style="font-size:14px">Na foto, o casarão antes da obra.</p><a class="btn o" href="/historia/">Nossa história</a></div></div></section>
 
 <section class="alt"><div class="wrap split rev">
 <div class="ph rv" style="{ph(5984690)}" role="img" aria-label="Parreiral (imagem ilustrativa)"></div>
@@ -218,7 +220,7 @@ HOME = f'''
 <div class="day"><div class="d"><b>20</b><span>Sexta<br>Nov</span></div><div class="a">Hardways</div><div class="s">Classic Rock</div></div>
 <div class="day"><div class="d"><b>21</b><span>Sábado<br>Nov</span></div><div class="a">Rodrigo Seidel e banda</div><div class="s">Pop Rock</div></div>
 </div>
-<div class="center rv" style="margin-top:38px"><div class="row" style="justify-content:center"><a class="btn" href="/reservas/">Reservar minha noite</a><a class="btn o" href="/convidados/">Tenho convite: confirmar presença</a></div></div></div></section>
+<div class="center rv" style="margin-top:38px"><div class="row" style="justify-content:center"><a class="btn" href="/reservas/">Reservar minha noite</a></div></div></div></section>
 
 <section><div class="wrap"><div class="center rv"><span class="eb">Em breve</span><h2>O que vem por aí</h2></div>
 <div class="tz rv">
@@ -243,12 +245,13 @@ HIST = f'''
 <div class="t"><span class="eb">A ideia</span><h3>Um lugar para ficar</h3><p>Percebemos que a cidade tinha poucas opções de lazer com substância para o público maduro, que muitas vezes viaja para outras cidades ou deixa de sair. Quisemos um refúgio onde dá para conversar, ouvir boa música e beber bem, sem pressa.</p></div>
 <div class="t"><span class="eb">A curadoria</span><h3>O que é bom resiste ao tempo</h3><p>Do chopp à acústica, da seleção musical ao menu enxuto: cada detalhe passa por curadoria. Daí o nome, Das Stammhaus, a casa-raiz, o lugar de encontro de quem se reconhece.</p></div>
 </div>
+<div class="split rv" style="margin-top:56px"><div class="ph tall" style="background-image:url('/assets/site/casarao-pre-obra.jpg')" role="img" aria-label="O casarão antes da obra"></div><div><span class="eb">Ponto de partida</span><h3>O casarão antes da obra</h3><p>É assim que ele está hoje, antes da restauração: dois andares, janelas de madeira, a fachada com as marcas do tempo. Tudo o que o Das Stammhaus vai ser nasce daqui.</p></div></div>
 <p class="quote rv" style="margin-top:50px">Honre suas raízes, embriague-se aqui.<small>Nosso brinde</small></p>
 </div></section>
 <section class="alt"><div class="wrap"><div class="center rv"><span class="eb">Os fundadores</span><h2>Quem está por trás da casa</h2></div>
 <div class="fnd rv">
-<div class="card"><div class="av">FS</div><div class="role">Co-fundador</div><h3>Felipe Schadeck Fiorentin</h3><p>Engenheiro agrônomo com carreira em agricultura digital. Traz rigor de gestão, análise de dados e processos para uma casa que quer ser impecável e duradoura.</p></div>
-<div class="card"><div class="av">MR</div><div class="role">Co-fundadora</div><h3>Mirian Regina Strack Schadeck</h3><p>Advogada e perita criminal da Polícia Científica. Cuida de gestão financeira e conformidade e da cultura de hospitalidade e do relacionamento com o público.</p></div>
+<div class="card"><img class="pf" src="/assets/site/felipe.jpg" alt="Felipe Schadeck Fiorentin" loading="lazy"><div class="role">Co-fundador</div><h3>Felipe Schadeck Fiorentin</h3><p>Engenheiro agrônomo com carreira em agricultura digital. Traz rigor de gestão, análise de dados e processos para uma casa que quer ser impecável e duradoura.</p></div>
+<div class="card"><img class="pf" src="/assets/site/regina.jpg" alt="Mirian Regina Strack Schadeck" loading="lazy"><div class="role">Co-fundadora</div><h3>Mirian Regina Strack Schadeck</h3><p>Advogada e perita criminal da Polícia Científica. Cuida de gestão financeira e conformidade e da cultura de hospitalidade e do relacionamento com o público.</p></div>
 </div>
 <p class="mut center rv" style="margin-top:26px">Biografias em construção: vamos contar essa parte com mais calma, e com fotos.</p></div></section>
 <section class="cta rv"><div class="wrap"><h2>Venha fazer parte dessa história.</h2><div class="row"><a class="btn" href="/reservas/">Reservar minha noite</a></div></div></section>
@@ -272,7 +275,8 @@ FOTOS = sus(15937644, 'Fotos', 'As fotos da casa também ficam para depois da in
 os.makedirs(OUT + '/assets/site', exist_ok=True)
 open(OUT + '/assets/site/site.css', 'w').write(CSS)
 open(OUT + '/assets/site/site.js', 'w').write(JS)
-shutil.copy(os.path.join(HERE, '..', 'src', 'logo.png'), OUT + '/assets/site/logo.png')
+for f in os.listdir(os.path.join(HERE, 'img')):
+    shutil.copy(os.path.join(HERE, 'img', f), OUT + '/assets/site/' + f)
 pages = {
  'index.html': page('home', 'Das Stammhaus Pub · Canoinhas, SC', 'Pub de estilo europeu em um casarão histórico de Canoinhas-SC. Chopp de qualidade, música ao vivo e conversa sem pressa. Semana de inauguração: 18 a 21 de novembro.', HOME),
  'historia/index.html': page('historia', 'História · Das Stammhaus Pub', 'A história do casarão, da cidade e dos fundadores do Das Stammhaus Pub, em Canoinhas-SC.', HIST),
