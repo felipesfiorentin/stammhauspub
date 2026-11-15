@@ -1,0 +1,7 @@
+# Dados pessoais dos convidados: NUNCA versionar
+convidados.json
+*.xlsx
+*.csv
+tests/convidados.json
+node_modules/
+__pycache__/
