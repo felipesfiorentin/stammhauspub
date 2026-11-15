@@ -1013,6 +1013,13 @@ function gAppendConf_(sh, vals) {
   sh.getRange(linha, 1, 1, 13).setValues([vals]);
   return linha;
 }
+/* aceita o celular digitado de qualquer jeito (47996015131, 47 99601-5131, +55 47 99601 5131) e devolve (47) 99601-5131; o que não couber no padrão volta como veio e a validação recusa */
+function gTelFmt_(t) {
+  var s = String(t || '').trim(), d = s.replace(/\D/g, '');
+  if (d.length >= 12 && d.slice(0, 2) === '55') d = d.slice(2);
+  if (d.length === 11) { var f = '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7); if (TEL_RE.test(f)) return f; }
+  return s;
+}
 function gTelOk_(t, obrig) { t = String(t || '').trim(); return t ? TEL_RE.test(t) : !obrig; }
 
 /* ===== convidados da lista ===== */
@@ -1068,7 +1075,7 @@ function gEditarConvidado(k, id, p) {
       sh.getRange(g.linha, 2).setValue(nome); sh.getRange(g.linha, 6).setValue(acomp);
       if (p && p.grupo !== undefined) sh.getRange(g.linha, 5).setValue(String(p.grupo).slice(0, 40));
       if (p && p.tel !== undefined) {
-        var tel = String(p.tel || '').trim();
+        var tel = gTelFmt_(p.tel);
         if (!gTelOk_(tel, false)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
         lnGarantirColunas_(sh); sh.getRange(g.linha, LISTA_COL.TEL).setNumberFormat('@').setValue(tel);
       }
@@ -1114,7 +1121,7 @@ function gStatusConvidado(k, id, acao, p, forcar) {
       if (acao === 'pendente') novo = 1 + (cfg.pendAc ? g.acomp : 0);
       else if (acao === 'nao_vai') novo = 0;
       else if (acao === 'confirmar') {
-        var tn = limpaNome_(p && p.titNome) || g.nome, tt = String(p && p.titTel || '').trim(), an = limpaNome_(p && p.acNome), at = String(p && p.acTel || '').trim();
+        var tn = limpaNome_(p && p.titNome) || g.nome, tt = gTelFmt_(p && p.titTel), an = limpaNome_(p && p.acNome), at = gTelFmt_(p && p.acTel);
         if (!NOME_RE.test(tn)) return {ok: false, code: 'invalido', campo: 'titNome', msg: 'Nome do convidado inválido.'};
         if (!gTelOk_(tt, false)) return {ok: false, code: 'invalido', campo: 'titTel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
         if (an) {
@@ -1178,7 +1185,7 @@ function gReservaCancelar(k, prot) {
 function gReservaPessoa(k, prot, linha, nome, tel, forcar) {
   return api_('gReservaPessoa', function () {
     return gMut_(k, 'rpessoa', function (a) {
-      nome = limpaNome_(nome); tel = String(tel || '').trim();
+      nome = limpaNome_(nome); tel = gTelFmt_(tel);
       if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
       if (!gTelOk_(tel, true)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999.'};
       var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
@@ -1228,7 +1235,7 @@ function gReservaNova(k, dia, pessoas, forcar) {
       var tels = {}, ativos = {};
       reservas_().forEach(function (r) { if (r.status === 'Confirmado') ativos[digitos_(r.tel)] = r.prot; });
       for (var i = 0; i < pessoas.length; i++) {
-        var n = limpaNome_(pessoas[i].nome), t = String(pessoas[i].tel || '').trim();
+        var n = limpaNome_(pessoas[i].nome), t = gTelFmt_(pessoas[i].tel);
         if (!NOME_RE.test(n) || n.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome' + i, msg: 'Pessoa ' + (i + 1) + ': informe nome e sobrenome.'};
         if (!gTelOk_(t, true)) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Pessoa ' + (i + 1) + ': celular no formato (42) 99999-9999.'};
         var d = digitos_(t);

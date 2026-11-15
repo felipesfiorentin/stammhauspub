@@ -1,0 +1,12 @@
+const vm=require('vm'),fs=require('fs');let P=0,F=0;const ok=(c,m)=>{c?P++:F++;console.log((c?'PASS ':'FAIL ')+m)};
+const g=fs.readFileSync('/home/claude/stammhauspub/src/Gestao.src.gs','utf8'),cm=fs.readFileSync('/home/claude/stammhauspub/src/Comum.src.gs','utf8');
+const ctx={};vm.createContext(ctx);vm.runInContext('var TEL_RE = /^\\([1-9]\\d\\) 9\\d{4}-\\d{4}$/;',ctx);
+vm.runInContext(g.slice(g.indexOf('function gTelFmt_'),g.indexOf('/* ===== convidados da lista')),ctx);
+const f=ctx.gTelFmt_,o=ctx.gTelOk_;
+ok(f('47996015131')==='(47) 99601-5131','só dígitos vira (47) 99601-5131');
+ok(f('47 99601-5131')==='(47) 99601-5131'&&f('(47)99601 5131')==='(47) 99601-5131','com espaços e hífen');
+ok(f('+55 47 99601-5131')==='(47) 99601-5131'&&f('5547996015131')==='(47) 99601-5131','com +55');
+ok(f('')===''&&o(f(''),false)&&!o(f(''),true),'vazio: ok se opcional, recusado se obrigatório');
+ok(!o(f('4799601513'),false)&&!o(f('47896015131'),false)&&!o(f('abc'),false),'inválidos continuam recusados (10 dígitos, sem o 9, texto)');
+ok(o(f('(47) 99601-5131'),true),'já formatado passa');
+console.log('\nPASS',P,'FAIL',F);
