@@ -43,7 +43,7 @@ button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;border:0;p
 .center{text-align:center}
 .sum dt{color:#b9b5a6;font-size:13px;margin-top:10px}.sum dd{margin:0;font-size:17px}
 
-.tk{--b:93px;position:relative;margin:4px 0 16px;border-radius:8px;overflow:hidden;color:#16241b;background-color:#eee7d3;
+.tk{--b:57px;position:relative;margin:4px 0 16px;border-radius:8px;overflow:hidden;color:#16241b;background-color:#eee7d3;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .15  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),radial-gradient(ellipse at 50% 40%,#f6f1e1 0%,#eee7d3 55%,#ddd3b6 100%);
   box-shadow:0 10px 26px rgba(0,0,0,.45);
   -webkit-mask:radial-gradient(circle 10px at 0 calc(100% - var(--b)),#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 10px at 100% calc(100% - var(--b)),#0000 98%,#000) right/51% 100% no-repeat;
@@ -81,7 +81,7 @@ a.zap{display:inline-block;margin-top:8px;padding:9px 14px;border-radius:8px;bac
 details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block;white-space:pre-wrap;word-break:break-word;margin-top:4px}
 .errbox{background:rgba(7,28,18,.55);border:1px solid rgba(224,78,39,.7);border-radius:10px;padding:12px 14px;color:#ffe2d8;font-size:14.5px}
 
-.tk-pr{position:relative;z-index:1;height:36px;display:flex;align-items:center;justify-content:center;gap:8px;background:#d9cfae;border-top:1.5px solid rgba(22,36,27,.7);font:700 9.5px/1.2 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#16241b;padding:0 12px;text-align:center}
+.tk-hr.x{}.tk .tk-hr{grid-template-columns:1fr 1fr 1fr}.tk .pv b{color:#7a5400}.tk-pr{position:relative;z-index:1;height:36px;display:flex;align-items:center;justify-content:center;gap:8px;background:#d9cfae;border-top:1.5px solid rgba(22,36,27,.7);font:700 9.5px/1.2 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#16241b;padding:0 12px;text-align:center}
 .tk-pr b{font:800 15px/1 'Playfair Display',Georgia,serif;letter-spacing:.02em;color:#7a5400}
 .noite{display:block;width:100%;text-align:left;background:rgba(7,28,18,.42);color:var(--off);border:1px solid rgba(180,126,0,.6);border-radius:14px;padding:16px 18px;margin:0 0 12px;position:relative}
 .noite b{display:block;font:700 19px/1.2 'Playfair Display',Georgia,serif;padding-right:96px}
@@ -103,9 +103,8 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
 
   <section id="s-home">
     <p class="eyebrow">18 a 21 de novembro · Canoinhas</p>
-    <h1>Semana de Inauguração: reserve a sua noite</h1>
-    <p class="lead">Quatro noites de música ao vivo no casarão. Escolha a sua, reserve para até <span class="mx">4</span> pessoas e garanta o seu lugar. As vagas são limitadas.</p>
-    <div class="aviso-box"><b>Entrada: R$ <span class="vl">40,00</span> por pessoa</b>, paga junto à quitação da comanda na noite. Não é necessária compra antecipada. A reserva vale somente até as <span class="ate">20h</span>.</div>
+    <h1>Faça parte da noite que vai entrar para a história de Canoinhas</h1>
+    <p class="lead">O casarão reabre as portas com quatro noites de música ao vivo, chopes artesanais e a atmosfera de um pub europeu feito para durar. Escolha a sua noite e garanta o seu lugar entre os primeiros a viver essa história.</p>
     <div id="noites"><p class="hint">Carregando as noites…</p></div>
     <p class="err" id="home-msg"></p>
     <hr class="sep">
@@ -113,7 +112,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   </section>
 
   <section id="s-form" class="hide">
-    <h1>Reservar sua noite</h1>
+    <h1>Reserve o seu lugar na história</h1>
     <div class="tk" id="tk" role="img" aria-label="Ingresso da noite">
       <div class="tk-ph l" id="tk-pl"></div><div class="tk-ph r" id="tk-pr"></div>
       <div class="tk-in">
@@ -121,30 +120,29 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
         <div class="tk-stub"><span class="dw" id="tk-dw"></span><span class="dd" id="tk-dd"></span><span class="dm" id="tk-dm"></span></div>
         <div class="tk-wp" id="tk-wp"></div>
       </div>
-      <div class="tk-hr"><div><small>Abertura da casa</small><b>18h</b></div><div><small>Início do show</small><b id="tk-show"></b></div></div>
-      <div class="tk-pr"><span>Entrada</span><b>R$ <span class="vl">40,00</span></b><span>por pessoa, paga na comanda</span></div>
+      <div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b id="tk-show"></b></div><div class="pv"><small>Entrada</small><b>R$ <span class="vl">40</span></b></div></div>
     </div>
-    <p class="tk-note">R$ <span class="vl">40,00</span> pagos junto à quitação da comanda na noite. Não é necessária compra antecipada.</p>
+    <p class="tk-note">Entrada de R$ <span class="vl">40,00</span> por pessoa, acertada junto à comanda na noite.</p>
     <div class="who"><b id="f-dia"></b><span id="f-at"></span></div>
     <div class="card">
-      <label>Quantas pessoas na reserva?</label>
+      <label>Para quantas pessoas é a reserva?</label>
       <div class="qtd" id="qtd"></div>
       <p class="hint" id="qtd-h"></p>
       <div id="pessoas"></div>
       <input class="hp" id="site" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <p class="consent">Ao tocar em “Reservar”, você consente que o Das Stammhaus Pub utilize os nomes e telefones informados para organizar a inauguração e para entrar em contato sobre esta reserva, novidades e convites futuros. Se preferir não receber mensagens, basta nos avisar a qualquer momento. A reserva vale somente até as <span class="ate">20h</span>.</p>
+      <p class="consent">Ao tocar em “Garantir meu lugar”, você consente que o Das Stammhaus Pub utilize os nomes e telefones informados para organizar a inauguração e para entrar em contato sobre esta reserva, novidades e convites futuros. Se preferir não receber mensagens, basta nos avisar a qualquer momento. A reserva vale somente até as <span class="ate">20h</span>.</p>
       <p class="err" id="e-geral"></p>
-      <button class="btn" id="btn-res">Reservar</button>
+      <button class="btn" id="btn-res">Garantir meu lugar</button>
       <button class="ghost" id="f-voltar">Voltar</button>
     </div>
   </section>
 
   <section id="s-ok" class="hide center">
     <div class="tick">✓</div>
-    <h1>Reserva confirmada!</h1>
+    <h1>Seu lugar está garantido!</h1>
     <p class="lead" id="ok-lead"></p>
     <div class="card" style="text-align:left"><dl class="sum" id="ok-sum" style="margin:0"></dl></div>
-    <div class="aviso-box" style="text-align:left"><b>Importante:</b> a reserva vale somente até as <span class="ate">20h</span>. A entrada de R$ <span class="vl">40,00</span> por pessoa é paga junto à quitação da comanda. Anote o protocolo: com ele e o celular do titular você consulta ou cancela a reserva.</div>
+    <div class="aviso-box" style="text-align:left"><b>Chegue cedo:</b> a reserva vale até as <span class="ate">20h</span>. Guarde o protocolo: com ele e o celular do titular você consulta ou cancela a reserva.</div>
     <button class="danger" id="ok-cancel">Cancelar esta reserva</button>
     <button class="ghost" id="ok-home">Voltar ao início</button>
   </section>
@@ -247,7 +245,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     var q=$('qtd');q.innerHTML='';var mx=Math.max(1,Math.min(INFO.max,N.vagas||INFO.max));
     for(var i=1;i<=INFO.max;i++){(function(i){var b=document.createElement('button');b.type='button';b.className='ghost'+(i===QTD?' on':'');b.textContent=i;
       if(i>mx){b.disabled=true;b.style.opacity='.4'}else b.onclick=function(){QTD=i;pessoas(false)};q.appendChild(b)})(i)}
-    $('qtd-h').textContent=(N.vagas<INFO.max?'Restam poucas vagas nesta noite. ':'')+'Cada pessoa precisa de nome completo e celular próprio.'}
+    $('qtd-h').textContent=(N.vagas<INFO.max?'Restam poucas vagas nesta noite. ':'')+'Pedimos nome e celular de cada pessoa para agilizar o cadastro de todos no sistema e tornar a sua chegada e a sua experiência muito mais fluidas.'}
   function pessoas(zera){
     var P=[].slice.call(document.querySelectorAll('#pessoas .pess')),old=P.map(function(p){return[p.querySelector('.pn').value,p.querySelector('.pt').value]});
     var box=$('pessoas');box.innerHTML='';
@@ -279,7 +277,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   function trata(r){
     if(r.ok){RES=r.resumo;RES_TEL=RES.pessoas[0].tel;sucesso(RES);return}
     if(r.code==='invalido'||r.code==='ja_consta'){erro(r.campo==='geral'||!r.campo?'geral':r.campo,r.msg||'Confira os dados informados.');if(r.code==='ja_consta')$('e-geral').innerHTML+=contato('Olá! A reserva bloqueou meu cadastro ('+r.code+') para a noite '+N.label+'.');return}
-    if(r.code==='lotado'){carregar();aviso('Esta noite está lotada','As vagas desta noite acabaram de se esgotar. Que tal escolher outra noite da semana?'+contato('Olá! Queria entrar na lista de espera da noite '+N.label+'.'));return}
+    if(r.code==='lotado'){carregar();aviso('Esta noite esgotou','As vagas desta noite acabaram de se esgotar. Ainda há outras noites da semana esperando por você.'+contato('Olá! Queria entrar na lista de espera da noite '+N.label+'.'));return}
     if(r.code==='sem_vagas'){carregar();$('e-geral').innerHTML='Restam apenas <b>'+r.restantes+'</b> vaga(s) nesta noite. Reduza a quantidade de pessoas e tente de novo.';N.vagas=r.restantes;if(QTD>r.restantes){QTD=Math.max(1,r.restantes);pessoas(false)}else botoesQtd();return}
     if(r.code==='limite'){$('e-geral').innerHTML='Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.'+contato('Olá! Fui bloqueado(a) por excesso de tentativas na reserva.');return}
     falha($('e-geral'),{codigo:'C02',titulo:TIPOS_C.C02,funcao:'resposta',detalhe:'código de resposta inesperado: '+r.code})}
@@ -287,10 +285,9 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   /* ---- SUCESSO / CONSULTA ---- */
   function sucesso(s){
     var tot=s.pessoas.length*(s.valor||INFO.valor);
-    $('ok-lead').textContent='Será um prazer receber '+(s.pessoas.length>1?'vocês':'você')+', '+s.pessoas[0].nome.split(' ')[0]+'.';
+    $('ok-lead').textContent='Mal podemos esperar para receber '+(s.pessoas.length>1?'vocês':'você')+' nesta noite especial, '+s.pessoas[0].nome.split(' ')[0]+'.';
     $('ok-sum').innerHTML='<dt>Noite</dt><dd>'+esc(s.diaLabel)+(s.atracao?' · '+esc(s.atracao):'')+'</dd>'
       +'<dt>Pessoas ('+s.pessoas.length+')</dt><dd>'+s.pessoas.map(function(p,i){return esc(p.nome)+'<br><span class="hint">'+esc(p.tel)+(i===0?' · titular':'')+'</span>'}).join('<br>')+'</dd>'
-      +'<dt>Entrada na noite</dt><dd>R$ '+brl(tot)+' <span class="hint">('+s.pessoas.length+' × R$ '+brl(s.valor||INFO.valor)+', pagos junto à comanda)</span></dd>'
       +'<dt>Reserva válida até</dt><dd>'+esc(s.ate||INFO.ate)+'</dd>'
       +'<dt>Protocolo</dt><dd><b>'+esc(s.protocolo)+'</b></dd>';
     $('ok-cancel').classList.remove('hide');ir('s-ok')}
