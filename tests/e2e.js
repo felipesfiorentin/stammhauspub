@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const SRC=fs.readFileSync('/home/claude/stammhaus/Code.gs','utf8');
+const SRC=fs.readFileSync('../apps-script/convidados/Code.gs','utf8');
 function mkSheet(rows){return{rows,getLastRow(){return this.rows.length},getMaxRows(){return Math.max(this.rows.length,1000)},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>x[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
@@ -10,7 +10,7 @@ function build(cap,opt={}){
  const sheets={Convidados:mkSheet([['id','nome','dia','estilo','grupo','acomp','busca'],...G.map(g=>[g.id,g.nome,g.dia,g.estilo,g.grupo,g.acomp,g.busca])]),
   Confirmacoes:mkSheet([['h']]),
   Programacao:mkSheet([['Dia','Data','Atração','Estilo','Instagram'],[18,new Date('2026-11-18T00:00:00-03:00'),'Lonesome Capitain · Country & Folk','Formal','@lonesome.capitain'],[19,new Date('2026-11-19T00:00:00-03:00'),'Os Bauretz · Soul, Disco & MPB','MPB','@osbauretz'],[20,new Date('2026-11-20T00:00:00-03:00'),'Hardways · Classic Rock','Rock','@hardways_classicrock'],[21,new Date('2026-11-21T00:00:00-03:00'),'Rodrigo Seidel e banda · Pop Rock','Pop Rock','@rodrigoseidell']]),
-  Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',cap],['mesas',19],['whatsapp_contato',''],['horario','']])};
+  Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',cap],['teto_por_noite',cap===74?81:cap],...(opt.cfgExtra||[]),['mesas',19],['whatsapp_contato',''],['horario','']])};
  const cache={};
  const ctx={console,SpreadsheetApp:{getActiveSpreadsheet:()=>({getSheetByName:n=>sheets[n]})},
   CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v}})},
@@ -20,7 +20,7 @@ function build(cap,opt={}){
   HtmlService:{},SpreadsheetApp2:1};
  ctx.SpreadsheetApp.flush=()=>{};ctx.Utilities.getUuid=()=>'abcdef12-3456-7890-abcd-ef1234567890';sheets.__ins=n=>sheets[n]=mkSheet([]);
  ctx.SpreadsheetApp.getActiveSpreadsheet=()=>({getName:()=>'Planilha teste',getId:()=>'ID123',getUrl:()=>'https://x',getSheetByName:n=>sheets[n],insertSheet:n=>sheets[n]=mkSheet([])});
- vm.createContext(ctx);if(opt.semNormalize)vm.runInContext('delete String.prototype.normalize',ctx);vm.runInContext(opt.semBusca?fs.readFileSync('/home/claude/work/Code.src.gs','utf8'):SRC,ctx);return{ctx,sheets,SRC}}
+ vm.createContext(ctx);if(opt.semNormalize)vm.runInContext('delete String.prototype.normalize',ctx);vm.runInContext(opt.semBusca?['Comum','Code','Metricas'].map(f=>fs.readFileSync('/home/claude/work/'+f+'.src.gs','utf8')).join('\n'):SRC,ctx);return{ctx,sheets,SRC}}
 (async()=>{
  const out=[];const ok=(c,m)=>{out.push((c?'PASS ':'FAIL ')+m);if(!c)process.exitCode=1};
  const br=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
@@ -28,7 +28,7 @@ function build(cap,opt={}){
   await pg.exposeFunction('__call',(fn,args)=>JSON.parse(JSON.stringify(env.ctx[fn](...args))));
   await pg.addInitScript(()=>{const mk=(s,f)=>new Proxy({},{get:(_,fn)=>(...a)=>{window.__call(fn,a).then(s,f)}});
    window.google={script:{run:{withSuccessHandler(s){return{withFailureHandler(f){return mk(s,f)}}}}}}});
-  await pg.goto('file:///home/claude/stammhaus/Index.html');return{pg,env}}
+  await pg.goto('file://../apps-script/convidados/Index.html');return{pg,env}}
  const vis=async(pg,id)=>!(await pg.$eval('#'+id,e=>e.classList.contains('hide')));
  // 1) fluxo feliz sem acompanhante, nome com erro de digitação
  let {pg,env}=await novaPagina(74);
@@ -85,11 +85,15 @@ function build(cap,opt={}){
  ok((await pg.textContent('#r-titulo')).includes('Ainda não encontramos'),'nome inexistente: mensagem amigável');await pg.screenshot({path:'shot_nenhum.png'});
  await pg.reload();await pg.fill('#q','Maria');await pg.click('#btn-buscar');ok((await pg.textContent('#busca-msg')).includes('nome e sobrenome'),'nome curto pede sobrenome');
  await pg.close();
- // 4) lotação
+ // 4) lotação: convidado da lista é garantido (mesmo com teto 1); com "só titular" pendente, aumentar o total é barrado
  ({pg,env}=await novaPagina(1));
  await pg.fill('#q','Pedro Cordeiro');await pg.click('#btn-buscar');await pg.waitForSelector('#s-result:not(.hide)');await pg.click('#r-lista button');await pg.waitForSelector('#s-form:not(.hide)');
  await pg.fill('#tNome','Pedro Cordeiro');await pg.fill('#tTel','(42) 99111-2222');await pg.fill('#aNome','Ana Cordeiro');await pg.fill('#aTel','(42) 99333-4444');await pg.click('#btn-conf');
- await pg.waitForSelector('#s-aviso:not(.hide)');ok((await pg.textContent('#a-titulo')).includes('lotação'),'capacidade excedida bloqueia (2 pessoas > 1 lugar)');
+ await pg.waitForSelector('#s-ok:not(.hide)');ok(env.sheets.Confirmacoes.rows[1][8]===2,'convidado da lista é garantido mesmo com a noite acima do teto (delta 0)');
+ ({pg,env}=await novaPagina(1,{cfgExtra:[['pendente_conta_acompanhante','NAO']]}));
+ await pg.fill('#q','Pedro Cordeiro');await pg.click('#btn-buscar');await pg.waitForSelector('#s-result:not(.hide)');await pg.click('#r-lista button');await pg.waitForSelector('#s-form:not(.hide)');
+ await pg.fill('#tNome','Pedro Cordeiro');await pg.fill('#tTel','(42) 99111-2222');await pg.fill('#aNome','Ana Cordeiro');await pg.fill('#aTel','(42) 99333-4444');await pg.click('#btn-conf');
+ await pg.waitForSelector('#s-aviso:not(.hide)');ok((await pg.textContent('#a-titulo')).includes('lotação'),'acompanhante que ultrapassa o teto é barrado (lotado)');
 
  // ---- regras de unicidade e limites ----
  {const {pg,env}=await novaPagina(74);
@@ -186,7 +190,7 @@ function build(cap,opt={}){
   ok((await pg.textContent('#ok-titulo'))==='Obrigado por avisar!'&&(await pg.textContent('#ok-sum')).includes('Não poderei ir'),'tela final da recusa é inequívoca');
   await pg.screenshot({path:'shot_naovai_ok.png',fullPage:true});
   // não consome vaga
-  ok(env.ctx.ocupacao_(18,env.ctx.confs_(),0)===0,'recusa não ocupa vaga');
+  {const cc=env.ctx.contagem_(18,env.ctx.cfg_(),env.ctx.convLeve_(),env.ctx.confs_(),env.ctx.reservas_());ok(cc.naoVaiConvites===1&&cc.confirmadosPessoas===0,'recusa não ocupa vaga e libera o convite (naoVai=1)')}
   // outro dispositivo: volta -> pede celular
   await pg.click('#ok-outra');await pg.fill('#q','Ilma Strack');await pg.click('#btn-buscar');await pg.waitForSelector('#s-result:not(.hide)');await pg.click('#r-lista .btn');await pg.waitForSelector('#s-verif:not(.hide)');
   ok((await pg.textContent('#v-titulo')).includes('não poderá ir'),'quem voltou vê "você avisou que não poderá ir"');

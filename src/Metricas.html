@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Métricas · Das Stammhaus Pub</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--verde:#113325;--ouro:#B47E00;--laranja:#E04E27;--off:#EAE7DA;--escuro:#0a2016}
+*{box-sizing:border-box}html,body{margin:0;background:var(--verde);color:var(--off);font-family:Inter,system-ui,sans-serif;line-height:1.45}
+body{min-height:100vh;background:radial-gradient(ellipse at top,#1a4a31 0%,#113325 55%,#0b2418 100%) fixed}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-family:'Playfair Display',Georgia,serif;font-size:26px;margin:0 0 2px}
+.sub{color:#b9b5a6;font-size:13.5px;margin:0 0 18px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:8px;border:1.5px solid rgba(234,231,218,.4);background:transparent;color:var(--off);padding:8px 14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0 20px}
+.kpi{background:rgba(7,28,18,.5);border:1px solid rgba(180,126,0,.5);border-radius:12px;padding:12px 14px}
+.kpi small{display:block;color:#b9b5a6;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.kpi b{font:700 26px/1.1 'Playfair Display',Georgia,serif}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+@media(max-width:480px){.grid{grid-template-columns:1fr}}
+.card{background:rgba(7,28,18,.5);border:1px solid rgba(180,126,0,.5);border-radius:14px;padding:16px}
+.card h2{font-family:'Playfair Display',Georgia,serif;font-size:19px;margin:0}
+.card .at{color:#cfcabb;font-size:13.5px;margin:0 0 10px}
+.badge{float:right;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:.05em}
+.disp{background:#2f7a3b;color:#fff}.lot{background:var(--laranja);color:#fff}
+.bar{height:16px;border-radius:99px;background:rgba(234,231,218,.15);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.b1{background:#2f7a3b}.b2{background:#8a6a1a}.b3{background:var(--ouro)}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#b9b5a6;margin:6px 0 10px}
+.leg span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+td,th{padding:5px 4px;border-bottom:1px solid rgba(234,231,218,.12);text-align:left;vertical-align:top}th{color:#b9b5a6;font-weight:600;font-size:12px}
+td.n,th.n{text-align:right;white-space:nowrap}
+details{margin-top:10px}summary{cursor:pointer;color:#d9a62e;font-weight:600;font-size:13.5px}
+.sec{font-family:'Playfair Display',Georgia,serif;font-size:20px;margin:26px 0 10px}
+.err{background:rgba(7,28,18,.6);border:1px solid var(--laranja);border-radius:12px;padding:16px;text-align:center}
+.mut{color:#b9b5a6;font-size:12.5px}
+</style></head><body><div class="wrap">
+<div class="top"><div><h1>Métricas da Semana de Inauguração</h1><p class="sub" id="sub">Carregando…</p></div><button id="ref">Atualizar agora</button></div>
+<div id="app"></div></div>
+<script>
+var K=<?!= JSON.stringify(k) ?>;
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function brl(v){return 'R$ '+Number(v).toFixed(2).replace('.',',')}
+function carregar(){
+  if(!K){$('app').innerHTML='<div class="err">Link sem chave de acesso. Peça o link completo a quem administra.</div>';$('sub').textContent='';return}
+  google.script.run.withSuccessHandler(draw).withFailureHandler(function(e){$('app').innerHTML='<div class="err">Falha ao carregar: '+esc(e&&e.message||e)+'</div>'}).metricas(K)}
+function draw(r){
+  if(!r||r.ok===false||r.erro){
+    var m=r&&r.code==='negado'?'Acesso negado. O link está incorreto ou foi desativado.':r&&r.code==='limite'?'Muitas tentativas. Aguarde alguns minutos.':'Não foi possível carregar as métricas'+(r&&r.erro?' (código '+esc(r.erro.codigo)+', ref '+esc(r.erro.ref)+')':'')+'.';
+    $('app').innerHTML='<div class="err">'+m+'</div>';$('sub').textContent='';return}
+  $('sub').textContent='Olá, '+r.quem+'. Atualizado em '+r.geradoEm+' · atualiza sozinho a cada minuto';
+  var t=r.totais,h='<div class="kpis">'
+   +'<div class="kpi"><small>Pessoas comprometidas</small><b>'+t.total+'</b></div>'
+   +'<div class="kpi"><small>Lista garantida</small><b>'+t.lista+'</b></div>'
+   +'<div class="kpi"><small>Público reservado</small><b>'+t.publico+'</b></div>'
+   +'<div class="kpi"><small>Vagas restantes (4 noites)</small><b>'+t.restantes+'</b></div>'
+   +'<div class="kpi"><small>Entrada estimada (público)</small><b>'+brl(t.receita)+'</b></div></div><div class="grid">';
+  r.noites.forEach(function(n){
+    var w1=n.confirmadosPessoas/r.teto*100,w2=n.pendentesPessoas/r.teto*100,w3=n.publico/r.teto*100;
+    h+='<div class="card"><span class="badge '+(n.lotado?'lot':'disp')+'">'+(n.lotado?'LOTADO':'Disponível')+'</span><h2>'+esc(n.label)+'</h2><p class="at">'+esc(n.atracao)+'</p>'
+     +'<div class="bar" title="'+n.total+' de '+r.teto+'"><i class="b1" style="width:'+w1+'%"></i><i class="b2" style="width:'+w2+'%"></i><i class="b3" style="width:'+w3+'%"></i></div>'
+     +'<div class="leg"><span style="--c:#2f7a3b">convidados confirmados</span><span style="--c:#8a6a1a">convidados sem resposta</span><span style="--c:#B47E00">público</span></div>'
+     +'<table><tr><td>Total comprometido</td><td class="n"><b>'+n.total+' / '+r.teto+'</b> ('+n.pct.toString().replace('.',',')+'%)</td></tr>'
+     +'<tr><td>Vagas restantes</td><td class="n">'+n.restantes+'</td></tr>'
+     +'<tr><td>Convidados confirmados (pessoas)</td><td class="n">'+n.confirmadosPessoas+'</td></tr>'
+     +'<tr><td>Convidados sem resposta (pessoas contadas · convites)</td><td class="n">'+n.pendentesPessoas+' · '+n.pendentesConvites+'</td></tr>'
+     +'<tr><td>Convidados que não vão (convites)</td><td class="n">'+n.naoVaiConvites+'</td></tr>'
+     +'<tr><td>Público: reservas · pessoas</td><td class="n">'+n.reservas+' · '+n.publico+'</td></tr>'
+     +'<tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table>';
+    if(n.reservasLista.length){h+='<details><summary>Reservas do público ('+n.reservasLista.length+')</summary><table><tr><th>Prot.</th><th>Pessoas</th><th>Celular do titular</th></tr>'
+      +n.reservasLista.map(function(g){return '<tr><td>'+esc(g.prot)+'</td><td>'+g.nomes.map(esc).join('<br>')+'</td><td>'+esc(g.tel)+'</td></tr>'}).join('')+'</table></details>'}
+    h+='</div>'});
+  h+='</div><h2 class="sec">Últimas movimentações</h2><div class="card"><table><tr><th>Quando</th><th>Origem</th><th>O quê</th></tr>'
+   +(r.atividade.length?r.atividade.map(function(e){return '<tr><td class="n">'+esc(e.quando)+'</td><td>'+esc(e.tipo)+'</td><td>'+esc(e.texto)+'</td></tr>'}).join(''):'<tr><td colspan="3" class="mut">Sem movimentações ainda.</td></tr>')
+   +'</table></div><p class="mut">Regra: teto de '+r.teto+' pessoas por noite (capacidade '+r.capacidade+' + 10%). Convidado sem resposta conta '+(r.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>';
+  $('app').innerHTML=h}
+$('ref').onclick=carregar;carregar();setInterval(carregar,60000);
+</script></body></html>

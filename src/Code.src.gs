@@ -1,137 +1,27 @@
 /**
- * Das Stammhaus Pub — Confirmação de presença (semana de inauguração)
- * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs, Busca.gs, Index.html
+ * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS (semana de inauguração) + métricas.
+ * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs (único) + Index.html + Metricas.html
  */
-var TZ = 'America/Sao_Paulo';
-var TEL_RE = /^\([1-9]\d\) 9\d{4}-\d{4}$/;
-var NOME_RE = /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{3,78}$/;
-var ABA = {CONV: 'Convidados', CONF: 'Confirmacoes', PROG: 'Programacao', CFG: 'Config'};
-var DIAS_SEMANA = ['', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo'];
-
-/* ---------- TIPOLOGIA DE ERROS ----------
- * S01 ABA_AUSENTE       aba da planilha não encontrada (nomes exatos: Convidados, Confirmacoes, Programacao, Config)
- * S02 LISTA_VAZIA       aba Convidados sem linhas
- * S03 DADOS_INVALIDOS   planilha fora do formato esperado (colunas/linhas)
- * S04 CODIGO_INCOMPLETO falta a função de busca (cole o Code.gs completo)
- * S05 RUNTIME_ANTIGO    runtime V8 não ativado (appsscript.json)
- * S06 SISTEMA_OCUPADO   muitos acessos simultâneos (lock)
- * S07 COTA_GOOGLE       limite de uso do Google atingido
- * S08 PERMISSAO         autorização do Google pendente
- * S09 ESCRITA_FALHOU    a gravação na planilha não foi confirmada
- * S99 DESCONHECIDO      qualquer outro erro (veja a aba Erros)
- * (C01-C03 são gerados na página: falha de comunicação, resposta vazia, tempo esgotado)
- */
-var ERROS_TIPOS = {
-  S01: 'Aba da planilha não encontrada',
-  S02: 'Lista de convidados vazia',
-  S03: 'Dados da planilha fora do formato esperado',
-  S04: 'Código incompleto (falta a função de busca)',
-  S05: 'Ambiente do script desatualizado (V8)',
-  S06: 'Muitos acessos ao mesmo tempo',
-  S07: 'Limite de uso do Google atingido',
-  S08: 'Permissão do Google pendente',
-  S09: 'Não foi possível gravar na planilha',
-  S99: 'Erro não classificado'
-};
-
-function classificar_(msg) {
-  var m = String(msg || '');
-  if (/^ABA_AUSENTE/.test(m)) return 'S01';
-  if (/^LISTA_VAZIA/.test(m)) return 'S02';
-  if (/^DADOS/.test(m)) return 'S03';
-  if (/^ESCRITA/.test(m)) return 'S09';
-  if (/is not defined/i.test(m)) return 'S04';
-  if (/normalize/i.test(m)) return 'S05';
-  if (/lock/i.test(m)) return 'S06';
-  if (/too many times|quota|Service invoked|limit exceeded/i.test(m)) return 'S07';
-  if (/authoriz|permission|permiss|access denied/i.test(m)) return 'S08';
-  if (/coordinates or dimensions|range|Cannot read propert|undefined/i.test(m)) return 'S03';
-  return 'S99';
-}
-
-function registrarErro_(ref, fn, cod, e) {
-  try {
-    var ss = ss_(), sh = ss.getSheetByName('Erros') || ss.insertSheet('Erros');
-    if (sh.getLastRow() === 0) sh.appendRow(['data/hora', 'ref', 'função', 'código', 'mensagem', 'detalhe técnico']);
-    sh.appendRow([new Date(), ref, fn, cod, String(e && e.message || e).slice(0, 300), String(e && e.stack || '').slice(0, 600)]);
-  } catch (_) {}
-}
-
-function erro_(fn, e) {
-  var msg = String(e && e.message || e), cod = classificar_(msg);
-  var ref = Utilities.getUuid().replace(/-/g, '').slice(0, 6).toUpperCase();
-  try { console.error('[' + cod + '] ' + fn + ' · ' + msg); } catch (_) {}
-  registrarErro_(ref, fn, cod, e);
-  return {codigo: cod, titulo: ERROS_TIPOS[cod], ref: ref, funcao: fn, detalhe: msg.slice(0, 200)};
-}
-
-function api_(nome, fn, args) {
-  try { return fn.apply(null, args); }
-  catch (e) { return {ok: false, status: 'erro', erro: erro_(nome, e)}; }
-}
-
-function aba_(nome) {
-  var sh = ss_().getSheetByName(nome);
-  if (!sh) throw new Error('ABA_AUSENTE: ' + nome);
-  return sh;
-}
-
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Das Stammhaus Pub · Confirmação de presença')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/* ---------- leitura da planilha ---------- */
 function ss_() {
   var x = SpreadsheetApp.getActiveSpreadsheet();
   if (!x) throw new Error('DADOS: planilha não vinculada ao script (crie o script por Extensões > Apps Script dentro da planilha)');
   return x;
 }
 
-function lerConfig_() {
-  var sh = aba_(ABA.CFG), n = Math.min(Math.max(sh.getLastRow(), 1), 30);
-  return sh.getRange(1, 1, n, 2).getValues();
-}
-
-function cfg_() {
-  var v = lerConfig_(), o = {};
-  v.forEach(function (r) { if (r[0]) o[String(r[0]).trim()] = r[1]; });
-  return {
-    capacidade: Number(o.capacidade_por_noite) || 74,
-    whatsapp: String(o.whatsapp_contato || '').trim(),
-    horario: String(o.horario || '').trim()
-  };
-}
-
-function prog_() {
-  var sh = aba_(ABA.PROG), n = sh.getLastRow(), m = {};
-  if (n < 2) return m;
-  sh.getRange(2, 1, n - 1, 5).getValues().forEach(function (r) {
-    if (!r[0]) return;
-    var d = Object.prototype.toString.call(r[1]) === '[object Date]' ? r[1] : null;
-    var sem = '', dm = '';
-    if (d) {
-      /* a data da célula é um instante à meia-noite no fuso DA PLANILHA; formatar em outro fuso desloca o dia */
-      var tz = TZ; try { tz = ss_().getSpreadsheetTimeZone() || TZ; } catch (e0) {}
-      /* autocorreção: a coluna "dia" (ex.: 18) é a verdade; se o fuso deslocou o dia, testa ±12h */
-      var p = null, cand = [0, 12, -12];
-      for (var k = 0; k < cand.length && !p; k++) {
-        var q = Utilities.formatDate(new Date(d.getTime() + cand[k] * 3600000), tz, 'yyyy-MM-dd').split('-');
-        if (Number(q[2]) === Number(r[0])) p = q;
-      }
-      if (!p) p = Utilities.formatDate(d, tz, 'yyyy-MM-dd').split('-');
-      sem = DIAS_SEMANA[new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay() || 7];
-      dm = p[2] + '/' + p[1];
-    }
-    m[Number(r[0])] = {
-      dia: Number(r[0]),
-      label: d ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
-      atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || '')
-    };
-  });
-  return m;
+/* Página dos convidados (padrão) ou métricas (?p=metricas&k=TOKEN; o token é validado no servidor). */
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.p === 'metricas') {
+    var t = HtmlService.createTemplateFromFile('Metricas');
+    t.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
+    return t.evaluate().setTitle('Métricas · Das Stammhaus Pub')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Das Stammhaus Pub · Confirmação de presença')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function convidados_() {
@@ -143,38 +33,12 @@ function convidados_() {
   });
 }
 
-// Colunas Confirmacoes: A data/hora, B id, C convidado(lista), D dia, E titular, F tel titular,
-// G acompanhante, H tel acomp., I pessoas, J status, K consentimento, L compareceu, M atualizado
-var STATUS_NAO = 'Não vai';
-
-function confs_() {
-  var sh = aba_(ABA.CONF), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 13).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[1]), dia: Number(r[3]), titNome: String(r[4]), titTel: String(r[5]),
-            acNome: String(r[6]), acTel: String(r[7]), pessoas: Number(r[8]) || 0, status: String(r[9])};
-  }).filter(function (c) { return c.id; });
-}
-
 function pub_(c, prog) {
   var p = prog[c.dia] || {};
   return {id: c.id, nome: c.nome, dia: c.dia, diaLabel: p.label || '', atracao: p.atracao || '', acomp: c.acomp};
 }
 
-/* ---------- proteção contra abuso ---------- */
-function limite_(chave, max, seg) {
-  var c = CacheService.getScriptCache(), k = 'rl_' + chave + '_' + Math.floor(Date.now() / (seg * 1000));
-  var n = Number(c.get(k) || 0);
-  if (n >= max) return false;
-  c.put(k, String(n + 1), seg + 10);
-  return true;
-}
-function cli_(s) { return String(s || 'x').replace(/[^A-Za-z0-9]/g, '').slice(0, 40) || 'x'; }
-
 /* ---------- validação ---------- */
-function digitos_(s) { return String(s || '').replace(/\D/g, ''); }
-function limpaNome_(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
-
 function validar_(p, g) {
   var tn = limpaNome_(p.titNome), tt = String(p.titTel || '').trim();
   if (!NOME_RE.test(tn) || tn.split(' ').length < 2) return {campo: 'titNome', msg: 'Informe seu nome completo (nome e sobrenome).'};
@@ -201,19 +65,6 @@ function telEmUso_(tels, confs, ignorarLinha) {
   return tels.filter(Boolean).some(function (t) { return usados[digitos_(t)]; });
 }
 
-function ocupacao_(dia, confs, ignorarLinha) {
-  return confs.filter(function (c) { return c.status === 'Confirmado' && c.dia === dia && c.linha !== ignorarLinha; })
-    .reduce(function (s, c) { return s + c.pessoas; }, 0);
-}
-
-function proximaLinha_(sh) {
-  var max = Math.max(sh.getMaxRows(), 2);
-  var v = sh.getRange(2, 2, max - 1, 1).getValues();
-  for (var i = v.length - 1; i >= 0; i--) { if (String(v[i][0]).trim() !== '') return i + 3; }
-  return 2;
-}
-
-/* ---------- identidade de nomes (mesma pessoa?) ---------- */
 function simId_(x, y) {
   if (x === y) return 1;
   // só a vogal final muda (Juliano/Juliana, Luciano/Luciana): são pessoas diferentes
@@ -348,7 +199,8 @@ function confirmar_(p) {
     if (un) return {ok: false, code: un.code, msg: un.msg};
     var pessoas = d.acNome ? 2 : 1;
     if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
-    if (ocupacao_(g.dia, confs, 0) + pessoas > cfg_().capacidade) return {ok: false, code: 'lotado'};
+    var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);   // a lista já conta o convidado; só barra se a resposta AUMENTA o total
+    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > cfgv.teto) return {ok: false, code: 'lotado'};
     var agora = new Date(), sh = aba_(ABA.CONF), linha = proximaLinha_(sh);
     if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
     sh.getRange(linha, 1, 1, 13).setValues([[agora, g.id, g.nome, g.dia, d.titNome, d.titTel, d.acNome, d.acTel,
@@ -356,6 +208,7 @@ function confirmar_(p) {
     SpreadsheetApp.flush();
     if (String(sh.getRange(linha, 2).getValue()) !== g.id) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     if (antes) sh.getRange(antes.linha, 10).setValue('Substituído');
+    atualizarPainelSeguro_();
     var res = resumo_(g, d, prog_()); res.protocolo = 'C' + linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -377,6 +230,7 @@ function recusar_(p) {
     sh.getRange(linha, 1, 1, 13).setValues([[agora, g.id, g.nome, g.dia, g.nome, tel, '', '', 0, STATUS_NAO, 'Sim (aceite ao registrar)', '', agora]]);
     SpreadsheetApp.flush();
     if (String(sh.getRange(linha, 2).getValue()) !== g.id) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
+    atualizarPainelSeguro_();
     var res = resumo_(g, {titNome: g.nome, titTel: tel, acNome: '', acTel: ''}, prog_()); res.pessoas = 0; res.protocolo = 'C' + linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -415,9 +269,11 @@ function atualizar_(p) {
     if (un) return {ok: false, code: un.code, msg: un.msg};
     var pessoas = d.acNome ? 2 : 1;
     if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
-    if (ocupacao_(g.dia, confs, c.linha) + pessoas > cfg_().capacidade) return {ok: false, code: 'lotado'};
+    var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);
+    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > cfgv.teto) return {ok: false, code: 'lotado'};
     aba_(ABA.CONF).getRange(c.linha, 5, 1, 5).setValues([[d.titNome, d.titTel, d.acNome, d.acTel, pessoas]]);
     aba_(ABA.CONF).getRange(c.linha, 13).setValue(new Date());
+    atualizarPainelSeguro_();
     var res = resumo_(g, d, prog_()); res.protocolo = 'C' + c.linha;
     return {ok: true, resumo: res};
   } finally { lock.releaseLock(); }
@@ -431,6 +287,7 @@ function cancelar_(id, tel) {
     if (!c) return {ok: false, code: 'tel_incorreto'};
     var sh = aba_(ABA.CONF);
     sh.getRange(c.linha, 10).setValue('Cancelado'); sh.getRange(c.linha, 13).setValue(new Date());
+    atualizarPainelSeguro_();
     return {ok: true};
   } finally { lock.releaseLock(); }
 }
@@ -446,7 +303,10 @@ function cancelar(id, tel)  { return api_('cancelar',  cancelar_,  arguments); }
 
 /* ---------- DIAGNÓSTICO (menu "Stammhaus" na planilha) ---------- */
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Stammhaus').addItem('Diagnóstico do sistema', 'diagnostico').addToUi();
+  SpreadsheetApp.getUi().createMenu('Stammhaus').addItem('Diagnóstico do sistema', 'diagnostico')
+    .addItem('Atualizar painel de lotação', 'atualizarPainelMenu')
+    .addItem('Gerar tokens de acesso (métricas)', 'gerarTokens')
+    .addItem('Preparar reservas e métricas (1ª vez)', 'prepararReservas').addToUi();
 }
 
 function diagnostico() {
