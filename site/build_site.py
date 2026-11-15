@@ -117,7 +117,7 @@ section{padding:90px 0}
 .team .m i{display:block;width:70px;height:70px;border-radius:50%;background:rgba(234,231,218,.08);margin:0 auto 14px}
 .tl{border-left:2px solid rgba(180,126,0,.6);margin:34px 0 0 8px;padding-left:28px}
 .tl figure{margin:16px 0 0}.tl figure img{width:100%;border-radius:10px;display:block;filter:sepia(.45) contrast(1.05);border:1px solid rgba(217,166,46,.35)}.tl figcaption{font-size:12px;color:var(--mut,#9fb3a6);margin-top:6px;line-height:1.5}
-.tl .t{position:relative;margin-bottom:34px}.tl .t:before{content:"";position:absolute;left:-37px;top:7px;width:14px;height:14px;border-radius:50%;background:var(--ouro);border:3px solid var(--escuro)}
+.tl .ind{margin:14px 0 0;padding-left:18px}.tl .ind li{margin:6px 0}.tl .ind a{color:var(--ouro2)}.tl .t{position:relative;margin-bottom:34px}.tl .t:before{content:"";position:absolute;left:-37px;top:7px;width:14px;height:14px;border-radius:50%;background:var(--ouro);border:3px solid var(--escuro)}
 .draft{border:1px dashed rgba(217,166,46,.6);border-radius:10px;padding:14px 18px;font-size:14.5px;background:rgba(180,126,0,.1);margin-bottom:34px}
 .cta{background:linear-gradient(135deg,#0D5B1D,#113325);text-align:center;border-top:1px solid rgba(180,126,0,.5);border-bottom:1px solid rgba(180,126,0,.5)}
 .cta .row{justify-content:center}
@@ -172,7 +172,7 @@ def page(cur, title, desc, body, hero_sol=True):
 <meta name="theme-color" content="#113325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site/site.css?v=7"></head><body{'' if cur=='home' else ' data-sol'}>
+<link rel="stylesheet" href="/assets/site/site.css?v=8"></head><body{'' if cur=='home' else ' data-sol'}>
 {nav(cur)}
 {body}
 {FOOT}
@@ -242,7 +242,7 @@ HOME = f'''
 <div class="tz rv">
 <a href="/cardapio/" style="{ph(5858067,900)}"><div><h3>Cardápio</h3><p>Vamos manter o suspense.</p><span class="go">Ver →</span></div></a>
 <a href="/fotos/" style="{ph(9315792,900)}"><div><h3>Fotos</h3><p>As melhores imagens da casa, em breve.</p><span class="go">Ver →</span></div></a>
-<a href="/equipe/" style="{ph(30148777,900)}"><div><h3>Equipe</h3><p>Quem faz a casa acontecer.</p><span class="go">Ver →</span></div></a>
+<a href="/equipe/" style="background-image:url('/assets/site/equipe-card.jpg')"><div><h3>Equipe</h3><p>Quem faz a casa acontecer.</p><span class="go">Ver →</span></div></a>
 </div></div></section>
 
 <section class="cta rv"><div class="wrap"><span class="eb">Honre suas raízes</span><h2>Embriague-se aqui.</h2>
@@ -262,6 +262,18 @@ HIST = f'''
 <figure><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/FON-FON%21_NO_CONTESTADO%21_-_Villa_de_Canoinhas.jpg" alt="Militares na vila de Canoinhas, 1915" loading="lazy"><figcaption>Militares na vila de Canoinhas, revista Fon-Fon!, 9 de janeiro de 1915. Domínio público.</figcaption></figure></div>
 <div class="t"><span class="eb">Depois da guerra</span><h3>A madeira volta a mover a cidade</h3><p>Terminados os combates, as empresas permaneceram e a economia local foi reativada pela erva-mate e pela madeira. A Lumber operou em Três Barras até 1940, quando foi estatizada.</p>
 <figure><img src="/assets/site/canoinhas-antiga.jpg" alt="Canoinhas em foto de arquivo" loading="lazy"><figcaption>Canoinhas em foto de arquivo.</figcaption></figure></div>
+<div class="t"><span class="eb">Modernização</span><h3>Da serraria à indústria: madeira, compensados e papel</h3><p>Nos anos 1940, a madeira de Canoinhas já passava por serrarias e laminadoras: o município somava 62 serrarias e 3 laminadoras em 1940. A Irmãos Procopiak, de 1942, foi a primeira indústria de madeira compensada do sul do Brasil. A Madeireira Zaniolo, de 1924, passou de mil funcionários em 1945 e exportava para a Europa e a África. A Olsen, em Marcílio Dias, tinha mais de 700 funcionários no fim da década. A Fuck, iniciada em 1943 a partir de serrarias da família, chegou a 1.158 empregados em 2007 e a cerca de 70 mil portas por mês.</p>
+<p>Com a exploração intensa das matas nativas, entraram o pinus elliottii e o taeda, estudados para papel e celulose. A Rigesa comprou terras em Três Barras, numa região empobrecida pelo corte sem reposição dos anos 1920, e inaugurou ali, em 1974, a fábrica de papel hoje operada pela Smurfit Westrock, a maior produtora de kraftliner da América Latina. Em 1983, a Cia Canoinhas de Papel assumiu as antigas instalações da Safelca e hoje emprega cerca de 720 pessoas.</p>
+<p><b>Por que isso importa.</b> A madeira foi o eixo da economia regional: em 1962, ela respondia por 62,2% do produto industrial de Santa Catarina. O ciclo continua: em 2021, a Westrock colocou em operação, em Três Barras, um investimento de US$ 345 milhões. No auge das serrarias, a vida social da cidade também se organizou: surgiram a Rádio Canoinhas (1948), o Hospital Santa Cruz (1950) e a Associação Comercial e Industrial (1956). Segundo o município de Três Barras, a economia local é movida pela agricultura e pelas indústrias madeireira e papeleira, e a Smurfit Westrock é a maior empresa de lá.</p>
+<ul class="ind">
+<li><a href="https://www.smurfitkappa.com/newsroom/2024/smurfit-westrocks-tres-barras-mill-celebrates-50-years-of-sustainable-innovation" target="_blank" rel="noopener">Smurfit Westrock (ex-Rigesa)</a>, Três Barras: papel kraftliner, fábrica de 1974.</li>
+<li><a href="https://canoinhas.com.br/nossa-historia/" target="_blank" rel="noopener">Cia Canoinhas de Papel</a>: papéis descartáveis, desde 1983.</li>
+<li><a href="https://www.solutudo.com.br/empresas/sc/canoinhas/artefatos-de-madeira/empresa-industrial-e-comercial-fuck-ltda-9370087" target="_blank" rel="noopener">Empresa Industrial e Comercial Fuck</a>: portas e compensados, desde 1943.</li>
+<li><a href="http://www.lavrasul.com.br" target="_blank" rel="noopener">Compensados e Laminados Lavrasul</a>: compensados e laminados; herdeira da linha de serrarias da família Zugman, de Canoinhas.</li>
+<li><a href="https://panjiva.com/Brasnile-Industrial-Ltda/37616027" target="_blank" rel="noopener">Brasnile Industrial</a>, Três Barras (Rodovia SC-303): produtos de madeira exportados aos Estados Unidos.</li>
+<li><a href="https://www.livrosgratis.com.br/ler-livro-online-101418/desenvolvimento-do-setor-madeireiro-no-municipio-de-canoinhas-sc-periodo-1940-a-2007" target="_blank" rel="noopener">Marcas históricas</a>: Irmãos Procopiak, Zaniolo, Olsen, Lumber, Urano, Dietrich Siems.</li>
+</ul>
+<p class="mut" style="font-size:13px">Lista baseada nas fontes consultadas, não exaustiva. Fontes: dissertação “Desenvolvimento do setor madeireiro no município de Canoinhas (1940 a 2007)”, Cia Canoinhas, Smurfit Westrock, NSC Total e Trellis.</p></div>
 <div class="t"><span class="eb">O casarão</span><h3>Um casarão de dois andares na Rua Getúlio Vargas</h3><p>É dessa herança que o Das Stammhaus tira a madeira nobre, a marcenaria fina e o respeito pelo que dura. O casarão histórico de dois andares, com jardim e um parreiral de mais de 50 anos, foi restaurado para abrigar o pub e preservar o caráter da casa.</p></div>
 <div class="t"><span class="eb">Hoje</span><h3>Um pub europeu no coração de Canoinhas</h3><p>Canoinhas tinha poucas opções de lazer com substância para o público maduro, que muitas vezes viaja para outras cidades ou deixa de sair. O Das Stammhaus nasce para ser o ponto de encontro: chopp Heineken tirado do jeito certo, música ao vivo e um menu pensado para trazer as melhores especialidades alemãs, com eficiência e qualidade. Daí o nome: Stammhaus, a casa-raiz, o lugar de quem se reconhece.</p></div>
 </div>
