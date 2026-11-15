@@ -400,8 +400,8 @@ function buscarNome(consulta, convidados) {
 if (typeof module !== 'undefined') { module.exports = {buscarNome: buscarNome, buscaNormalizar_: buscaNormalizar_, buscaFonetica_: buscaFonetica_}; }
 
 /**
- * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS (semana de inauguração) + métricas.
- * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs (único) + Index.html + Metricas.html
+ * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS (semana de inauguração) + painel.
+ * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs (único) + Index.html + Painel.html
  */
 function ss_() {
   var x = SpreadsheetApp.getActiveSpreadsheet();
@@ -409,20 +409,11 @@ function ss_() {
   return x;
 }
 
-/* Página dos convidados (padrão) ou métricas (?p=metricas&k=TOKEN; o token é validado no servidor). */
+/* Página dos convidados (padrão) ou painel de métricas + gestão (?p=painel; exige login por usuário e senha). */
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  if (p.p === 'metricas') {
-    var t = HtmlService.createTemplateFromFile('Metricas');
-    t.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
-    return t.evaluate().setTitle('Métricas · Das Stammhaus Pub')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-  if (p.p === 'gestao') {
-    var tg = HtmlService.createTemplateFromFile('Gestao');
-    tg.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
-    return tg.evaluate().setTitle('Gestão · Das Stammhaus Pub')
+  if (p.p === 'painel' || p.p === 'gestao' || p.p === 'metricas') {   // página única (login por usuário e senha); gestao/metricas = links antigos
+    return HtmlService.createHtmlOutputFromFile('Painel').setTitle('Painel · Das Stammhaus Pub')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -716,7 +707,6 @@ function cancelar(id, tel)  { return api_('cancelar',  cancelar_,  arguments); }
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Stammhaus').addItem('Diagnóstico do sistema', 'diagnostico')
     .addItem('Atualizar painel de lotação', 'atualizarPainelMenu')
-    .addItem('Gerar tokens de acesso (métricas)', 'gerarTokens')
     .addItem('Preparar reservas e métricas (1ª vez)', 'prepararReservas').addToUi();
 }
 
@@ -748,92 +738,17 @@ function diagnostico() {
   SpreadsheetApp.getUi().alert('Diagnóstico do sistema', L.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-
-/* ================= MÉTRICAS (acesso restrito por token individual) =================
- * Link: <URL do web app dos convidados>?p=metricas&k=TOKEN
- * Quem pode abrir: só quem tem uma linha ATIVA na aba "Acesso" (nome, token, ativo). Para revogar, ponha NÃO em "ativo" ou apague a linha. */
-function acessoValido_(k) {
-  k = String(k || '').replace(/[^A-Za-z0-9_\-]/g, '');
-  if (k.length < 24) return null;
-  var sh = ss_().getSheetByName(ABA.ACESSO), n = sh ? sh.getLastRow() : 0;
-  if (n < 2) return null;
-  var v = sh.getRange(2, 1, n - 1, 5).getValues();
-  for (var i = 0; i < v.length; i++) {
-    var ativo = String(v[i][2]).trim().toUpperCase();
-    if (String(v[i][1]).trim() === k && ativo !== 'NÃO' && ativo !== 'NAO') return {linha: i + 2, nome: String(v[i][0])};
-  }
-  return null;
-}
+/* ================= CONFIGURAÇÃO INICIAL (menu Stammhaus) ================= */
 
 function fmtData_(d) { return Object.prototype.toString.call(d) === '[object Date]' ? Utilities.formatDate(d, TZ, 'dd/MM HH:mm') : ''; }
 
-function metricas_(k) {
-  if (!limite_('mt', 120, 60)) return {ok: false, code: 'limite'};
-  var a = acessoValido_(k);
-  if (!a) { if (!limite_('mtf', 30, 600)) return {ok: false, code: 'limite'}; return {ok: false, code: 'negado'}; }
-  try { aba_(ABA.ACESSO).getRange(a.linha, 5).setValue(new Date()); } catch (e) {}
-  var cfg = cfg_(), L = lotacaoTodas_(), resv = reservas_(), porDia = {};
-  resv.forEach(function (r) {
-    if (r.status !== 'Confirmado') return;
-    var d = porDia[r.dia] = porDia[r.dia] || {}, g = d[r.prot] = d[r.prot] || {prot: r.prot, tel: r.titTel, nomes: []};
-    g.nomes.push(r.nome);
-  });
-  var noites = L.map(function (c) {
-    c.label = c.prog && c.prog.label || ('Dia ' + c.dia); c.atracao = c.prog && c.prog.atracao || ''; delete c.prog;
-    c.receita = c.publico * cfg.valor;
-    c.reservasLista = Object.keys(porDia[c.dia] || {}).map(function (p) { return porDia[c.dia][p]; });
-    return c;
-  });
-  var tot = {lista: 0, publico: 0, total: 0, receita: 0, restantes: 0, reservas: 0};
-  noites.forEach(function (c) { tot.lista += c.lista; tot.publico += c.publico; tot.total += c.total; tot.receita += c.receita; tot.restantes += c.restantes; tot.reservas += c.reservas; });
-  // atividade recente: últimas gravações de convidados e do público
-  var ev = [], shC = aba_(ABA.CONF), nC = shC.getLastRow();
-  if (nC >= 2) shC.getRange(Math.max(2, nC - 14), 1, nC - Math.max(2, nC - 14) + 1, 13).getValues().forEach(function (r) {
-    if (r[1]) ev.push({t: r[12] || r[0], tipo: 'Convidado', texto: (r[4] || r[2]) + ' · ' + r[9] + (r[9] === 'Confirmado' ? ' (' + r[8] + ' pessoa' + (r[8] > 1 ? 's' : '') + ')' : '') + ' · noite ' + r[3]});
-  });
-  var visto = {};
-  resv.slice(-30).forEach(function (r) {
-    if (r.n === 1) ev.push({t: r.ts, tipo: 'Público', texto: r.nome + ' · reserva ' + r.prot + ' · ' + r.status + ' · noite ' + r.dia});
-  });
-  ev.sort(function (x, y) { return (y.t instanceof Date ? y.t.getTime() : 0) - (x.t instanceof Date ? x.t.getTime() : 0); });
-  ev = ev.slice(0, 12).map(function (e) { return {quando: fmtData_(e.t), tipo: e.tipo, texto: e.texto}; });
-  return {ok: true, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
-          valor: cfg.valor, pendAc: cfg.pendAc, noites: noites, totais: tot, atividade: ev};
-}
-function metricas(k) { return api_('metricas', metricas_, arguments); }
 
-/* ---------- configuração inicial (menu Stammhaus > Preparar reservas e métricas) ---------- */
 function garantirAba_(nome, cab) {
   var ss = ss_(), sh = ss.getSheetByName(nome) || ss.insertSheet(nome);
   if (sh.getLastRow() === 0 && cab) { sh.getRange(1, 1, 1, cab.length).setValues([cab]); try { sh.getRange(1, 1, 1, cab.length).setFontWeight('bold'); sh.setFrozenRows(1); } catch (e) {} }
   return sh;
 }
 
-function gerarTokensCore_() {
-  var sh = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)', 'gestão (SIM/NÃO)', 'link da gestão']);
-  sh.getRange(1, 7, 1, 2).setValues([['gestão (SIM/NÃO)', 'link da gestão']]);
-  var n = sh.getLastRow(), base = String(cfg_().urlApp || '').trim();
-  var feitos = [];
-  if (n < 2) return feitos;
-  var v = sh.getRange(2, 1, n - 1, 3).getValues();
-  v.forEach(function (r, i) {
-    if (!String(r[0]).trim()) return;
-    var li = i + 2, tok = String(r[1]).trim();
-    if (!tok) {
-      tok = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 44);
-      sh.getRange(li, 2, 1, 4).setValues([[tok, 'SIM', new Date(), '']]);
-      feitos.push(String(r[0]));
-    }
-    sh.getRange(li, 6).setValue(base ? base + '?p=metricas&k=' + tok : 'PREENCHA url_app_convidados NA ABA Config');
-    var gs = String(sh.getRange(li, 7).getValue()).trim().toUpperCase();
-    sh.getRange(li, 8).setValue(gs === 'SIM' && base ? base + '?p=gestao&k=' + tok : '');
-  });
-  return feitos;
-}
-function gerarTokens() {
-  var f = gerarTokensCore_();
-  SpreadsheetApp.getUi().alert(f.length ? 'Tokens criados para: ' + f.join(', ') + '.\nO link de cada pessoa está na coluna F da aba Acesso.' : 'Nenhuma linha nova: preencha o nome na coluna A (sem token) e rode de novo.');
-}
 function atualizarPainelMenu() { atualizarPainelSeguro_(); }
 
 function prepararReservas() {
@@ -853,24 +768,122 @@ function prepararReservas() {
     try { sc.getRange(l, 2).setBackground('#FFFF00').setFontColor('#0000FF'); } catch (e) {}
   });
   garantirAba_(ABA.RES, ['data/hora', 'protocolo', 'dia', 'nº da pessoa', 'nome', 'celular', 'status', 'celular do titular', 'consentimento', 'compareceu', 'atualizado']);
-  var ac = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)']);
-  if (ac.getLastRow() < 2) { ac.getRange(2, 1).setValue('Felipe'); ac.getRange(2, 7).setValue('SIM'); }
-  gerarTokensCore_();
+  garantirAba_('Usuarios', USR_CAB);
+  garantirAba_('Auditoria', ['data/hora', 'quem', 'ação', 'detalhe']);
   atualizarPainelSeguro_();
   var tem = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'atualizarPainelMenu'; });
   if (!tem) ScriptApp.newTrigger('atualizarPainelMenu').timeBased().everyMinutes(5).create();
 }
 
-/* ---------- PAINEL DE GESTÃO (?p=gestao&k=TOKEN) ----------
- * Acesso: token da aba Acesso COM a coluna "gestão (SIM/NÃO)" = SIM. Toda gravação passa por aqui, sob lock,
- * e fica registrada na aba Auditoria (quem, quando, o quê). Mudanças que estouram o teto de 81 só passam com "forcar". */
+/* ================= ACESSO AO PAINEL: usuário + senha =================
+ * Link único: <URL do web app dos convidados>?p=painel  (abre a tela de login; sem login não há nenhum dado).
+ * Cadastro (aba "Usuarios"): usuario, nome, perfil (GESTAO edita · CONSULTA só vê), ativo (SIM/NÃO), senha inicial.
+ * 1º acesso: entra com a senha inicial e é obrigado a criar a própria senha; a senha inicial é apagada e só o hash fica guardado.
+ * Redefinir: digite uma nova senha inicial na célula — a pessoa será obrigada a trocá-la no próximo acesso.
+ * Bloqueio: 5 senhas erradas seguidas bloqueiam o usuário por 15 min. Sessão: 6 h (expira sozinha), encerra no "Sair". */
+
+var USR_CAB = ['usuario', 'nome', 'perfil (GESTAO/CONSULTA)', 'ativo (SIM/NÃO)', 'senha inicial', 'senha (hash)', 'salt', 'último acesso', 'senha trocada em'];
+var SESSAO_SEG = 21600, MAX_FALHAS = 5, BLOQ_SEG = 900;
+
+function normUsr_(s) { return String(s || '').toLowerCase().replace(/\s+/g, '').trim(); }
+
+function hashSenha_(salt, senha) {
+  var h = String(salt) + '|' + String(senha);
+  for (var i = 0; i < 500; i++) {
+    var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, h + '|' + i, Utilities.Charset.UTF_8);
+    h = b.map(function (x) { return ('0' + ((x < 0 ? x + 256 : x) & 255).toString(16)).slice(-2); }).join('');
+  }
+  return h;
+}
+
+function achaUsuario_(usuario) {
+  var u = normUsr_(usuario); if (!u) return null;
+  var sh = ss_().getSheetByName('Usuarios'), n = sh ? sh.getLastRow() : 0;
+  if (n < 2) return null;
+  var v = sh.getRange(2, 1, n - 1, 9).getValues();
+  for (var i = 0; i < v.length; i++) {
+    if (normUsr_(v[i][0]) !== u) continue;
+    var at = String(v[i][3]).trim().toUpperCase();
+    return {linha: i + 2, usuario: u, nome: String(v[i][1] || v[i][0]).trim(), perfil: String(v[i][2]).trim().toUpperCase() === 'GESTAO' ? 'GESTAO' : 'CONSULTA',
+            ativo: at === 'SIM' || at === 'S', inicial: String(v[i][4] === 0 ? '0' : (v[i][4] || '')), hash: String(v[i][5] || ''), salt: String(v[i][6] || '')};
+  }
+  return null;
+}
+
+function senhaConfere_(u, senha) {
+  senha = String(senha == null ? '' : senha);
+  if (!senha) return false;
+  if (u.inicial !== '') return senha === u.inicial;              // senha inicial (ou redefinida) tem prioridade
+  return !!u.hash && hashSenha_(u.salt, senha) === u.hash;
+}
+
+function entrar_(usuario, senha) {
+  var c = CacheService.getScriptCache(), un = normUsr_(usuario);
+  if (!limite_('lg', 120, 60)) return {ok: false, code: 'limite'};
+  if (!un || un.length > 60) return {ok: false, code: 'credenciais'};
+  var kf = 'lf_' + un.replace(/[^a-z0-9._@-]/g, '').slice(0, 50), falhas = Number(c.get(kf) || 0);
+  if (falhas >= MAX_FALHAS) return {ok: false, code: 'bloqueado'};
+  var u = achaUsuario_(un), ok = !!(u && u.ativo && senhaConfere_(u, senha));
+  if (!ok) { c.put(kf, String(falhas + 1), BLOQ_SEG); return {ok: false, code: falhas + 1 >= MAX_FALHAS ? 'bloqueado' : 'credenciais'}; }
+  c.remove(kf);
+  var tok = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+  c.put('ss_' + tok, u.usuario, SESSAO_SEG);
+  try { aba_('Usuarios').getRange(u.linha, 8).setValue(new Date()); } catch (e) {}
+  return {ok: true, sessao: tok, nome: u.nome, perfil: u.perfil, trocar: u.inicial !== ''};
+}
+
+/* sessão -> usuário (revalida na planilha a cada chamada: desativar ou mudar perfil vale na hora) */
+function sessaoUsuario_(sessao) {
+  var t = String(sessao || '').replace(/[^A-Za-z0-9]/g, '');
+  if (t.length < 40) return null;
+  var un = CacheService.getScriptCache().get('ss_' + t);
+  if (!un) return null;
+  var u = achaUsuario_(un);
+  if (!u || !u.ativo) return null;
+  u.trocar = u.inicial !== ''; u.sessao = t;
+  return u;
+}
+
+function trocarSenha_(sessao, atual, nova) {
+  var u = sessaoUsuario_(sessao); if (!u) return {ok: false, code: 'sessao'};
+  if (!limite_('ts' + u.usuario, 10, 900)) return {ok: false, code: 'limite'};
+  if (!senhaConfere_(u, atual)) return {ok: false, code: 'senha_atual', msg: 'A senha atual não confere.'};
+  nova = String(nova == null ? '' : nova);
+  if (nova.length < 8) return {ok: false, code: 'senha_fraca', msg: 'Use ao menos 8 caracteres.'};
+  if (nova.length > 100) return {ok: false, code: 'senha_fraca', msg: 'Senha longa demais.'};
+  if (nova === String(atual)) return {ok: false, code: 'senha_fraca', msg: 'A nova senha precisa ser diferente da atual.'};
+  if (normUsr_(nova) === u.usuario) return {ok: false, code: 'senha_fraca', msg: 'A senha não pode ser igual ao usuário.'};
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var salt = Utilities.getUuid().replace(/-/g, ''), sh = aba_('Usuarios');
+    sh.getRange(u.linha, 5).setValue('');
+    sh.getRange(u.linha, 6, 1, 2).setValues([[hashSenha_(salt, nova), salt]]);
+    sh.getRange(u.linha, 9).setValue(new Date());
+    SpreadsheetApp.flush();
+    aud_({nome: u.nome}, 'Trocou a própria senha', u.usuario);
+  } finally { lock.releaseLock(); }
+  return {ok: true};
+}
+
+function sair_(sessao) {
+  var t = String(sessao || '').replace(/[^A-Za-z0-9]/g, '');
+  if (t) CacheService.getScriptCache().remove('ss_' + t);
+  return {ok: true};
+}
+
+function entrar(usuario, senha) { return api_('entrar', entrar_, arguments); }
+function trocarSenha(sessao, atual, nova) { return api_('trocarSenha', trocarSenha_, arguments); }
+function sair(sessao) { return api_('sair', sair_, arguments); }
+
+/* ---------- PAINEL ÚNICO (métricas + gestão) ----------
+ * Acesso por usuário e senha (Auth.src.gs). Perfil GESTAO edita; CONSULTA só visualiza (o servidor barra qualquer gravação).
+ * Toda gravação passa por aqui, sob lock, e fica registrada na aba Auditoria (quem, quando, o quê). Mudanças que estouram o teto
+ * de 81 só passam com "forcar". O parâmetro "k" das funções é o token de SESSÃO devolvido pelo login. */
 
 function acessoGestao_(k) {
-  var a = acessoValido_(k);
-  if (!a) return null;
-  var g = String(aba_(ABA.ACESSO).getRange(a.linha, 7).getValue()).trim().toUpperCase();
-  a.gestao = (g === 'SIM');
-  return a;
+  var u = sessaoUsuario_(k);
+  if (!u) return null;
+  return {linha: u.linha, nome: u.nome, usuario: u.usuario, gestao: u.perfil === 'GESTAO', trocar: u.trocar};
 }
 
 function aud_(a, acao, det) {
@@ -891,6 +904,16 @@ function ultConf_(id, confs) {
   var u = null;
   confs.forEach(function (c) { if (c.id === id && c.status !== 'Substituído') u = c; });
   return u;
+}
+
+function atividade_(resv) {
+  var ev = [], shC = aba_(ABA.CONF), nC = shC.getLastRow();
+  if (nC >= 2) shC.getRange(Math.max(2, nC - 14), 1, nC - Math.max(2, nC - 14) + 1, 13).getValues().forEach(function (r) {
+    if (r[1]) ev.push({t: r[12] || r[0], tipo: 'Convidado', texto: (r[4] || r[2]) + ' · ' + r[9] + (r[9] === 'Confirmado' ? ' (' + r[8] + ' pessoa' + (r[8] > 1 ? 's' : '') + ')' : '') + ' · noite ' + r[3]});
+  });
+  resv.slice(-30).forEach(function (r) { if (r.n === 1) ev.push({t: r.ts, tipo: 'Público', texto: r.nome + ' · reserva ' + r.prot + ' · ' + r.status + ' · noite ' + r.dia}); });
+  ev.sort(function (x, y) { return (y.t instanceof Date ? y.t.getTime() : 0) - (x.t instanceof Date ? x.t.getTime() : 0); });
+  return ev.slice(0, 12).map(function (e) { return {quando: fmtData_(e.t), tipo: e.tipo, texto: e.texto}; });
 }
 
 function estadoGestao_(a) {
@@ -927,7 +950,7 @@ function estadoGestao_(a) {
     vw.map(function (r, i) { return {linha: i + 2, origem: String(r[1]), ref: String(r[2]), dia: Number(r[3]), nome: String(r[4]), status: String(r[6]), tent: Number(r[7]) || 0, detalhe: String(r[9])}; })
       .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
   }
-  return {ok: true, whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
+  return {ok: true, perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
           valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
           reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
 }
@@ -935,17 +958,19 @@ function estadoGestao_(a) {
 function gestaoAbrir_(k) {
   if (!limite_('gt', 240, 60)) return {ok: false, code: 'limite'};
   var a = acessoGestao_(k);
-  if (!a) { if (!limite_('gtf', 30, 600)) return {ok: false, code: 'limite'}; return {ok: false, code: 'negado'}; }
-  if (!a.gestao) return {ok: false, code: 'sem_permissao'};
+  if (!a) return {ok: false, code: 'sessao'};
+  if (a.trocar) return {ok: false, code: 'trocar'};
   return estadoGestao_(a);
 }
-function gestao(k) { return api_('gestao', gestaoAbrir_, arguments); }
+function painel(k) { return api_('painel', gestaoAbrir_, arguments); }
 
 /* executa uma alteração: valida acesso, trava, roda fn(a, ctx) e devolve o estado atualizado */
 function gMut_(k, nome, fn) {
   if (!limite_('gm', 90, 60)) return {ok: false, code: 'limite'};
   var a = acessoGestao_(k);
-  if (!a || !a.gestao) return {ok: false, code: a ? 'sem_permissao' : 'negado'};
+  if (!a) return {ok: false, code: 'sessao'};
+  if (a.trocar) return {ok: false, code: 'trocar'};
+  if (!a.gestao) return {ok: false, code: 'sem_permissao'};
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     var r = fn(a);
