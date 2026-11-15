@@ -49,7 +49,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(['Reservas','Lotacao','Acesso'].every(n=>w.sheets[n]),'prepararReservas cria Reservas, Lotacao e Acesso');
  ok(w.sheets.Config.rows.some(r=>r[0]==='teto_por_noite'&&r[1]===81)&&w.sheets.Config.rows.some(r=>r[0]==='valor_ingresso'&&r[1]===40)&&w.sheets.Config.rows.some(r=>r[0]==='reserva_valida_ate'&&r[1]==='20h')&&w.sheets.Config.rows.some(r=>r[0]==='max_pessoas_reserva'&&r[1]===4),'Config recebe teto 81, valor 40, validade 20h, máx. 4');
  const nCfg=w.sheets.Config.rows.length;w.guest.prepararReservas();ok(w.sheets.Config.rows.length===nCfg&&w.sheets.Acesso.rows.length===2,'prepararReservas é idempotente (sem duplicar linhas)');
- const tok=w.sheets.Acesso.rows[1][1];ok(String(tok).length>=40&&String(w.sheets.Acesso.rows[1][5]).includes('?p=metricas&k='+tok),'token gerado para Felipe e link montado na aba Acesso');
+ const tok=w.sheets.Acesso.rows[1][1];ok(String(tok).length>=40&&String(w.sheets.Acesso.rows[1][5]).includes('/exec?p=metricas&k='+tok),'token gerado para Felipe e link montado na aba Acesso');
  let d=R(w.pub.dados());
  ok(d.noites.length===4&&d.noites.every(n=>!n.lotado&&n.vagas===4)&&d.info.valor===40&&d.info.ate==='20h'&&d.info.max===4,'público vê 4 noites disponíveis, valor 40, até 20h, máx. 4');
  ok(JSON.stringify(d).includes('Strack')===false&&!/"nome"/.test(JSON.stringify(d)),'resposta pública não expõe nomes de convidados');

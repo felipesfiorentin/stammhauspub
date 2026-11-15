@@ -92,6 +92,7 @@ function cfg_() {
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
     maxPessoas: Number(o.max_pessoas_reserva) || 4,
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
+    urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
     horario: String(o.horario || '').trim()
@@ -758,16 +759,19 @@ function garantirAba_(nome, cab) {
 
 function gerarTokensCore_() {
   var sh = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)']);
-  var n = sh.getLastRow(), base = ''; try { base = ScriptApp.getService().getUrl(); } catch (e) {}
+  var n = sh.getLastRow(), base = String(cfg_().urlApp || '').trim();
   var feitos = [];
   if (n < 2) return feitos;
   var v = sh.getRange(2, 1, n - 1, 3).getValues();
   v.forEach(function (r, i) {
-    if (!String(r[0]).trim() || String(r[1]).trim()) return;
-    var tok = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 44), li = i + 2;
-    sh.getRange(li, 2, 1, 4).setValues([[tok, 'SIM', new Date(), '']]);
-    sh.getRange(li, 6).setValue((base || 'URL_DO_APP_DOS_CONVIDADOS') + '?p=metricas&k=' + tok);
-    feitos.push(String(r[0]));
+    if (!String(r[0]).trim()) return;
+    var li = i + 2, tok = String(r[1]).trim();
+    if (!tok) {
+      tok = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 44);
+      sh.getRange(li, 2, 1, 4).setValues([[tok, 'SIM', new Date(), '']]);
+      feitos.push(String(r[0]));
+    }
+    sh.getRange(li, 6).setValue(base ? base + '?p=metricas&k=' + tok : 'PREENCHA url_app_convidados NA ABA Config');
   });
   return feitos;
 }
@@ -785,6 +789,7 @@ function prepararReservas() {
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
    ['max_pessoas_reserva', 4, 'Máximo de pessoas por reserva do público.'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
+   ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['pendente_conta_acompanhante', 'SIM', 'SIM: convidado sem resposta conta titular + acompanhante a que tem direito. NAO: conta só o titular.']
   ].forEach(function (x) {
     if (existentes[x[0]]) return;

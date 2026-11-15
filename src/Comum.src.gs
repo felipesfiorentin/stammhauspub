@@ -88,6 +88,7 @@ function cfg_() {
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
     maxPessoas: Number(o.max_pessoas_reserva) || 4,
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
+    urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
     horario: String(o.horario || '').trim()
