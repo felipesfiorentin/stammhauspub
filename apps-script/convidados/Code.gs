@@ -377,6 +377,13 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
+  if (p.p === 'gestao') {
+    var tg = HtmlService.createTemplateFromFile('Gestao');
+    tg.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
+    return tg.evaluate().setTitle('Gestão · Das Stammhaus Pub')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Das Stammhaus Pub · Confirmação de presença')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
@@ -758,7 +765,8 @@ function garantirAba_(nome, cab) {
 }
 
 function gerarTokensCore_() {
-  var sh = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)']);
+  var sh = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)', 'gestão (SIM/NÃO)', 'link da gestão']);
+  sh.getRange(1, 7, 1, 2).setValues([['gestão (SIM/NÃO)', 'link da gestão']]);
   var n = sh.getLastRow(), base = String(cfg_().urlApp || '').trim();
   var feitos = [];
   if (n < 2) return feitos;
@@ -772,6 +780,8 @@ function gerarTokensCore_() {
       feitos.push(String(r[0]));
     }
     sh.getRange(li, 6).setValue(base ? base + '?p=metricas&k=' + tok : 'PREENCHA url_app_convidados NA ABA Config');
+    var gs = String(sh.getRange(li, 7).getValue()).trim().toUpperCase();
+    sh.getRange(li, 8).setValue(gs === 'SIM' && base ? base + '?p=gestao&k=' + tok : '');
   });
   return feitos;
 }
@@ -798,9 +808,308 @@ function prepararReservas() {
   });
   garantirAba_(ABA.RES, ['data/hora', 'protocolo', 'dia', 'nº da pessoa', 'nome', 'celular', 'status', 'celular do titular', 'consentimento', 'compareceu', 'atualizado']);
   var ac = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)']);
-  if (ac.getLastRow() < 2) ac.getRange(2, 1).setValue('Felipe');
+  if (ac.getLastRow() < 2) { ac.getRange(2, 1).setValue('Felipe'); ac.getRange(2, 7).setValue('SIM'); }
   gerarTokensCore_();
   atualizarPainelSeguro_();
   var tem = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'atualizarPainelMenu'; });
   if (!tem) ScriptApp.newTrigger('atualizarPainelMenu').timeBased().everyMinutes(5).create();
+}
+
+/* ---------- PAINEL DE GESTÃO (?p=gestao&k=TOKEN) ----------
+ * Acesso: token da aba Acesso COM a coluna "gestão (SIM/NÃO)" = SIM. Toda gravação passa por aqui, sob lock,
+ * e fica registrada na aba Auditoria (quem, quando, o quê). Mudanças que estouram o teto de 81 só passam com "forcar". */
+
+function acessoGestao_(k) {
+  var a = acessoValido_(k);
+  if (!a) return null;
+  var g = String(aba_(ABA.ACESSO).getRange(a.linha, 7).getValue()).trim().toUpperCase();
+  a.gestao = (g === 'SIM');
+  return a;
+}
+
+function aud_(a, acao, det) {
+  try { garantirAba_('Auditoria', ['data/hora', 'quem', 'ação', 'detalhe']).appendRow([new Date(), a.nome, acao, String(det).slice(0, 400)]); } catch (e) {}
+}
+
+function normG_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+function convFull_() {
+  var sh = aba_(ABA.CONV), n = sh.getLastRow();
+  if (n < 2) return [];
+  return sh.getRange(2, 1, n - 1, 6).getValues().map(function (r, i) {
+    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0};
+  }).filter(function (c) { return c.id; });
+}
+
+function ultConf_(id, confs) {
+  var u = null;
+  confs.forEach(function (c) { if (c.id === id && c.status !== 'Substituído') u = c; });
+  return u;
+}
+
+function estadoGestao_(a) {
+  var cfg = cfg_(), prog = prog_(), conv = convFull_(), confs = confs_(), resv = reservas_();
+  var leve = conv.map(function (c) { return {id: c.id, dia: c.dia, acomp: c.acomp}; });
+  var noites = Object.keys(prog).map(Number).sort().map(function (d) {
+    var c = contagem_(d, cfg, leve, confs, resv);
+    c.label = prog[d].label; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.receita = c.publico * cfg.valor;
+    return c;
+  });
+  var convidados = conv.map(function (c) {
+    var u = ultConf_(c.id, confs), st = !u ? 'Pendente' : (u.status === 'Confirmado' ? 'Confirmado' : 'Não vai');
+    return {id: c.id, nome: c.nome, dia: c.dia, grupo: c.grupo, acomp: c.acomp, status: st, pessoas: u && st === 'Confirmado' ? u.pessoas : 0,
+            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : ''};
+  });
+  var gr = {}, ordem = [];
+  resv.forEach(function (r) {
+    if (r.status !== 'Confirmado') return;
+    var g = gr[r.prot];
+    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, pessoas: []}; ordem.push(r.prot); }
+    g.pessoas.push({linha: r.linha, nome: r.nome, tel: r.tel});
+  });
+  var aud = [], sa = ss_().getSheetByName('Auditoria'), na = sa ? sa.getLastRow() : 0;
+  if (na >= 2) {
+    var ini = Math.max(2, na - 14);
+    sa.getRange(ini, 1, na - ini + 1, 4).getValues().reverse().forEach(function (r) {
+      aud.push({quando: fmtData_(r[0]), quem: String(r[1]), acao: String(r[2]), det: String(r[3])});
+    });
+  }
+  return {ok: true, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
+          valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
+          reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
+}
+
+function gestaoAbrir_(k) {
+  if (!limite_('gt', 240, 60)) return {ok: false, code: 'limite'};
+  var a = acessoGestao_(k);
+  if (!a) { if (!limite_('gtf', 30, 600)) return {ok: false, code: 'limite'}; return {ok: false, code: 'negado'}; }
+  if (!a.gestao) return {ok: false, code: 'sem_permissao'};
+  return estadoGestao_(a);
+}
+function gestao(k) { return api_('gestao', gestaoAbrir_, arguments); }
+
+/* executa uma alteração: valida acesso, trava, roda fn(a, ctx) e devolve o estado atualizado */
+function gMut_(k, nome, fn) {
+  if (!limite_('gm', 90, 60)) return {ok: false, code: 'limite'};
+  var a = acessoGestao_(k);
+  if (!a || !a.gestao) return {ok: false, code: a ? 'sem_permissao' : 'negado'};
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var r = fn(a);
+    if (r && r.ok === false) return r;
+    SpreadsheetApp.flush();
+    atualizarPainelSeguro_();
+    var e = estadoGestao_(a); if (r && r.info) e.info = r.info;
+    return e;
+  } finally { lock.releaseLock(); }
+}
+
+function gDiaValido_(dia) { var p = prog_(); return p[Number(dia)] ? Number(dia) : 0; }
+function gTotalNoite_(dia) { return contagem_(dia, cfg_(), convLeve_(), confs_(), reservas_()).total; }
+function gLotado_(dia, add, forcar) {
+  var t = gTotalNoite_(dia), teto = cfg_().teto;
+  if (add > 0 && t + add > teto && !forcar) return {ok: false, code: 'lotado', total: t, teto: teto, adicional: add};
+  return null;
+}
+function gAppendConf_(sh, vals) {
+  var linha = proximaLinha_(sh);
+  if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
+  sh.getRange(linha, 1, 1, 13).setValues([vals]);
+  return linha;
+}
+function gTelOk_(t, obrig) { t = String(t || '').trim(); return t ? TEL_RE.test(t) : !obrig; }
+
+/* ===== convidados da lista ===== */
+function gMoverConvidado(k, id, dia, forcar) {
+  return api_('gMoverConvidado', function () {
+    return gMut_(k, 'mover', function (a) {
+      dia = gDiaValido_(dia); if (!dia) return {ok: false, code: 'dia_invalido'};
+      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
+      if (!g) return {ok: false, code: 'nao_encontrado'};
+      if (g.dia === dia) return {ok: false, code: 'mesmo_dia'};
+      var cfg = cfg_(), confs = confs_(), contrib = contribConv_({id: g.id, acomp: g.acomp}, confs, cfg);
+      var bl = gLotado_(dia, contrib, forcar); if (bl) return bl;
+      aba_(ABA.CONV).getRange(g.linha, 3).setValue(dia);
+      var sh = aba_(ABA.CONF);
+      confs.forEach(function (c) { if (c.id === g.id) sh.getRange(c.linha, 4).setValue(dia); });
+      aud_(a, 'Moveu convidado', g.nome + ' (' + g.id + '): noite ' + g.dia + ' → ' + dia + (forcar ? ' [acima do teto, forçado]' : ''));
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+function gAddConvidado(k, p, forcar) {
+  return api_('gAddConvidado', function () {
+    return gMut_(k, 'add', function (a) {
+      var nome = limpaNome_(p && p.nome), dia = gDiaValido_(p && p.dia), acomp = Number(p && p.acomp) === 1 ? 1 : 0;
+      if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
+      if (!dia) return {ok: false, code: 'dia_invalido'};
+      var conv = convFull_(), nn = normG_(nome);
+      if (!forcar && conv.some(function (c) { return normG_(c.nome) === nn; })) return {ok: false, code: 'duplicado'};
+      var bl = gLotado_(dia, 1 + (cfg_().pendAc ? acomp : 0), forcar); if (bl) return bl;
+      var max = 0; conv.forEach(function (c) { var m = /^G(\d+)$/.exec(c.id); if (m) max = Math.max(max, Number(m[1])); });
+      var id = 'G' + ('000' + (max + 1)).slice(-3), sh = aba_(ABA.CONV), ult = sh.getLastRow(), nl = ult + 1, pr = prog_()[dia] || {};
+      sh.getRange(nl, 1, 1, 6).setValues([[id, nome, dia, String(p.estilo || pr.estilo || ''), String(p.grupo || 'Gestão').slice(0, 40), acomp]]);
+      try { var f = sh.getRange(ult, 8, 1, 2); if (ult >= 2 && f.getFormulas()[0].some(function (x) { return x; })) f.copyTo(sh.getRange(nl, 8, 1, 2)); } catch (e) {}
+      aud_(a, 'Incluiu convidado', nome + ' (' + id + ') na noite ' + dia + (acomp ? ' · com acompanhante' : '') + (forcar ? ' [forçado]' : ''));
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+function gEditarConvidado(k, id, p) {
+  return api_('gEditarConvidado', function () {
+    return gMut_(k, 'editar', function (a) {
+      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
+      if (!g) return {ok: false, code: 'nao_encontrado'};
+      var nome = limpaNome_(p && p.nome), acomp = Number(p && p.acomp) === 1 ? 1 : 0;
+      if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
+      var u = ultConf_(g.id, confs_());
+      if (!acomp && u && u.status === 'Confirmado' && u.pessoas > 1) return {ok: false, code: 'tem_acompanhante'};
+      var sh = aba_(ABA.CONV);
+      sh.getRange(g.linha, 2).setValue(nome); sh.getRange(g.linha, 6).setValue(acomp);
+      if (p && p.grupo !== undefined) sh.getRange(g.linha, 5).setValue(String(p.grupo).slice(0, 40));
+      aud_(a, 'Editou convidado', g.id + ': "' + g.nome + '" → "' + nome + '", acompanhante ' + g.acomp + ' → ' + acomp);
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* acao: 'pendente' (volta a sem resposta) · 'nao_vai' · 'confirmar' (p: titNome, titTel, acNome, acTel) */
+function gStatusConvidado(k, id, acao, p, forcar) {
+  return api_('gStatusConvidado', function () {
+    return gMut_(k, 'status', function (a) {
+      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
+      if (!g) return {ok: false, code: 'nao_encontrado'};
+      var cfg = cfg_(), confs = confs_(), shC = aba_(ABA.CONF), agora = new Date();
+      var atual = contribConv_({id: g.id, acomp: g.acomp}, confs, cfg), novo, dados = null;
+      if (acao === 'pendente') novo = 1 + (cfg.pendAc ? g.acomp : 0);
+      else if (acao === 'nao_vai') novo = 0;
+      else if (acao === 'confirmar') {
+        var tn = limpaNome_(p && p.titNome) || g.nome, tt = String(p && p.titTel || '').trim(), an = limpaNome_(p && p.acNome), at = String(p && p.acTel || '').trim();
+        if (!NOME_RE.test(tn)) return {ok: false, code: 'invalido', campo: 'titNome', msg: 'Nome do convidado inválido.'};
+        if (!gTelOk_(tt, false)) return {ok: false, code: 'invalido', campo: 'titTel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
+        if (an) {
+          if (!g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite não inclui acompanhante (edite o convidado antes).'};
+          if (!NOME_RE.test(an)) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Nome do acompanhante inválido.'};
+          if (!gTelOk_(at, false)) return {ok: false, code: 'invalido', campo: 'acTel', msg: 'Celular do acompanhante inválido.'};
+        }
+        dados = {titNome: tn, titTel: tt, acNome: an, acTel: an ? at : ''}; novo = an ? 2 : 1;
+      } else return {ok: false, code: 'acao_invalida'};
+      var bl = gLotado_(g.dia, novo - atual, forcar); if (bl) return bl;
+      confs.forEach(function (c) {
+        if (c.id === g.id && c.status !== 'Substituído') { shC.getRange(c.linha, 10).setValue('Substituído'); shC.getRange(c.linha, 13).setValue(agora); }
+      });
+      if (acao === 'nao_vai') gAppendConf_(shC, [agora, g.id, g.nome, g.dia, g.nome, '', '', '', 0, STATUS_NAO, 'Registrado pela gestão (' + a.nome + ')', '', agora]);
+      if (acao === 'confirmar') gAppendConf_(shC, [agora, g.id, g.nome, g.dia, dados.titNome, dados.titTel, dados.acNome, dados.acTel, novo, 'Confirmado',
+        'Registrado pela gestão (' + a.nome + ')', '', agora]);
+      aud_(a, 'Status do convidado', g.nome + ' (' + g.id + ', noite ' + g.dia + '): ' + acao + (acao === 'confirmar' ? ' · ' + novo + ' pessoa(s)' : '') + (forcar ? ' [forçado]' : ''));
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* ===== reservas do público ===== */
+function gReservaLinhas_(prot) {
+  return reservas_().filter(function (r) { return r.prot === String(prot) && r.status === 'Confirmado'; });
+}
+
+function gReservaMover(k, prot, dia, forcar) {
+  return api_('gReservaMover', function () {
+    return gMut_(k, 'rmover', function (a) {
+      dia = gDiaValido_(dia); if (!dia) return {ok: false, code: 'dia_invalido'};
+      var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
+      if (rows[0].dia === dia) return {ok: false, code: 'mesmo_dia'};
+      var bl = gLotado_(dia, rows.length, forcar); if (bl) return bl;
+      var sh = aba_(ABA.RES), agora = new Date();
+      reservas_().forEach(function (r) { if (r.prot === String(prot)) { sh.getRange(r.linha, 3).setValue(dia); sh.getRange(r.linha, 11).setValue(agora); } });
+      aud_(a, 'Moveu reserva', prot + ' (' + rows.length + ' pessoa(s)): noite ' + rows[0].dia + ' → ' + dia + (forcar ? ' [forçado]' : ''));
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+function gReservaCancelar(k, prot) {
+  return api_('gReservaCancelar', function () {
+    return gMut_(k, 'rcancelar', function (a) {
+      var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
+      var sh = aba_(ABA.RES), agora = new Date();
+      rows.forEach(function (r) { sh.getRange(r.linha, 7).setValue('Cancelado'); sh.getRange(r.linha, 11).setValue(agora); });
+      aud_(a, 'Cancelou reserva', prot + ' (' + rows.map(function (r) { return r.nome; }).join(', ') + ')');
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* editar pessoa: linha informada · adicionar pessoa: linha vazia + prot */
+function gReservaPessoa(k, prot, linha, nome, tel, forcar) {
+  return api_('gReservaPessoa', function () {
+    return gMut_(k, 'rpessoa', function (a) {
+      nome = limpaNome_(nome); tel = String(tel || '').trim();
+      if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
+      if (!gTelOk_(tel, true)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999.'};
+      var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
+      var sh = aba_(ABA.RES), agora = new Date();
+      var outros = rows.filter(function (r) { return String(r.linha) !== String(linha); });
+      if (outros.some(function (r) { return digitos_(r.tel) === digitos_(tel); })) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Cada pessoa precisa de um celular próprio.'};
+      if (linha) {
+        var r0 = rows.filter(function (r) { return String(r.linha) === String(linha); })[0]; if (!r0) return {ok: false, code: 'nao_encontrado'};
+        sh.getRange(r0.linha, 5, 1, 2).setValues([[nome, tel]]); sh.getRange(r0.linha, 11).setValue(agora);
+        aud_(a, 'Editou pessoa da reserva', prot + ': "' + r0.nome + '" → "' + nome + '"');
+      } else {
+        if (rows.length >= cfg_().maxPessoas && !forcar) return {ok: false, code: 'max_pessoas', max: cfg_().maxPessoas};
+        var bl = gLotado_(rows[0].dia, 1, forcar); if (bl) return bl;
+        var nl = proximaLinha_(sh); if (nl > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
+        var n = Math.max.apply(null, rows.map(function (r) { return r.n; })) + 1;
+        sh.getRange(nl, 1, 1, 11).setValues([[agora, String(prot), rows[0].dia, n, nome, tel, 'Confirmado', rows[0].titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora]]);
+        aud_(a, 'Incluiu pessoa na reserva', prot + ': ' + nome + (forcar ? ' [forçado]' : ''));
+      }
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+function gReservaRemoverPessoa(k, prot, linha) {
+  return api_('gReservaRemoverPessoa', function () {
+    return gMut_(k, 'rrem', function (a) {
+      var rows = gReservaLinhas_(prot), r0 = rows.filter(function (r) { return String(r.linha) === String(linha); })[0];
+      if (!r0) return {ok: false, code: 'nao_encontrado'};
+      if (rows.length < 2) return {ok: false, code: 'ultima_pessoa'};
+      var sh = aba_(ABA.RES); sh.getRange(r0.linha, 7).setValue('Cancelado'); sh.getRange(r0.linha, 11).setValue(new Date());
+      aud_(a, 'Removeu pessoa da reserva', prot + ': ' + r0.nome);
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* nova reserva feita pela equipe: pessoas = [{nome, tel}] */
+function gReservaNova(k, dia, pessoas, forcar) {
+  return api_('gReservaNova', function () {
+    return gMut_(k, 'rnova', function (a) {
+      dia = gDiaValido_(dia); if (!dia) return {ok: false, code: 'dia_invalido'};
+      pessoas = (pessoas || []).filter(function (x) { return x && (x.nome || x.tel); });
+      var cfg = cfg_();
+      if (!pessoas.length) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe ao menos uma pessoa.'};
+      if (pessoas.length > cfg.maxPessoas && !forcar) return {ok: false, code: 'max_pessoas', max: cfg.maxPessoas};
+      var tels = {}, ativos = {};
+      reservas_().forEach(function (r) { if (r.status === 'Confirmado') ativos[digitos_(r.tel)] = r.prot; });
+      for (var i = 0; i < pessoas.length; i++) {
+        var n = limpaNome_(pessoas[i].nome), t = String(pessoas[i].tel || '').trim();
+        if (!NOME_RE.test(n) || n.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome' + i, msg: 'Pessoa ' + (i + 1) + ': informe nome e sobrenome.'};
+        if (!gTelOk_(t, true)) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Pessoa ' + (i + 1) + ': celular no formato (42) 99999-9999.'};
+        var d = digitos_(t);
+        if (tels[d]) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Cada pessoa precisa de um celular próprio.'};
+        if (ativos[d] && !forcar) return {ok: false, code: 'tel_duplicado', msg: 'O celular da pessoa ' + (i + 1) + ' já está na reserva ' + ativos[d] + '.'};
+        tels[d] = 1; pessoas[i] = {nome: n, tel: t};
+      }
+      var bl = gLotado_(dia, pessoas.length, forcar); if (bl) return bl;
+      var sh = aba_(ABA.RES), agora = new Date(), l0 = proximaLinha_(sh), prot = 'R' + l0, titTel = pessoas[0].tel;
+      if (l0 + pessoas.length > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
+      sh.getRange(l0, 1, pessoas.length, 11).setValues(pessoas.map(function (x, i) {
+        return [agora, prot, dia, i + 1, x.nome, x.tel, 'Confirmado', titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora];
+      }));
+      aud_(a, 'Criou reserva', prot + ' na noite ' + dia + ': ' + pessoas.map(function (x) { return x.nome; }).join(', ') + (forcar ? ' [forçado]' : ''));
+      return {ok: true, info: {protocolo: prot}};
+    });
+  }, arguments);
 }

@@ -60,7 +60,8 @@ function garantirAba_(nome, cab) {
 }
 
 function gerarTokensCore_() {
-  var sh = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)']);
+  var sh = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)', 'gestão (SIM/NÃO)', 'link da gestão']);
+  sh.getRange(1, 7, 1, 2).setValues([['gestão (SIM/NÃO)', 'link da gestão']]);
   var n = sh.getLastRow(), base = String(cfg_().urlApp || '').trim();
   var feitos = [];
   if (n < 2) return feitos;
@@ -74,6 +75,8 @@ function gerarTokensCore_() {
       feitos.push(String(r[0]));
     }
     sh.getRange(li, 6).setValue(base ? base + '?p=metricas&k=' + tok : 'PREENCHA url_app_convidados NA ABA Config');
+    var gs = String(sh.getRange(li, 7).getValue()).trim().toUpperCase();
+    sh.getRange(li, 8).setValue(gs === 'SIM' && base ? base + '?p=gestao&k=' + tok : '');
   });
   return feitos;
 }
@@ -100,7 +103,7 @@ function prepararReservas() {
   });
   garantirAba_(ABA.RES, ['data/hora', 'protocolo', 'dia', 'nº da pessoa', 'nome', 'celular', 'status', 'celular do titular', 'consentimento', 'compareceu', 'atualizado']);
   var ac = garantirAba_(ABA.ACESSO, ['nome', 'token', 'ativo', 'criado em', 'último acesso', 'link (cole no WhatsApp)']);
-  if (ac.getLastRow() < 2) ac.getRange(2, 1).setValue('Felipe');
+  if (ac.getLastRow() < 2) { ac.getRange(2, 1).setValue('Felipe'); ac.getRange(2, 7).setValue('SIM'); }
   gerarTokensCore_();
   atualizarPainelSeguro_();
   var tem = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'atualizarPainelMenu'; });

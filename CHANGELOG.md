@@ -12,3 +12,9 @@
 - Teto de 81 pessoas/noite: convidados da lista são garantidos; "Não vai"/cancelamentos liberam vaga; ao atingir o teto a noite fica LOTADA.
 - Página de métricas no projeto dos convidados (`?p=metricas&k=TOKEN`), acesso por token individual (aba `Acesso`).
 - Código dividido em `Comum` + módulos; `build.py` gera os dois projetos.
+
+## Parte 3 — painel de gestão
+- Nova página `?p=gestao&k=TOKEN` (projeto dos convidados): lotação por noite, confirmados/pendentes/não vão/público, e gestão por noite (mudar convidado ou reserva de dia, incluir convidado excepcional, editar status e nomes, criar/cancelar reserva, incluir/editar/remover pessoa).
+- Acesso: token da aba `Acesso` + coluna G "gestão (SIM/NÃO)"; link em H. Toda gravação sob lock e registrada na aba `Auditoria`.
+- Alterações que passam do teto de 81 exigem confirmação explícita ("Confirmar mesmo assim") e ficam marcadas como [forçado].
+- Texto da home: "chopes artesanais" → "chopp de qualidade".

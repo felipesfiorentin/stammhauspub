@@ -18,6 +18,13 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
+  if (p.p === 'gestao') {
+    var tg = HtmlService.createTemplateFromFile('Gestao');
+    tg.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
+    return tg.evaluate().setTitle('Gestão · Das Stammhaus Pub')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Das Stammhaus Pub · Confirmação de presença')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')

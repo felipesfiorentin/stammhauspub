@@ -20,12 +20,12 @@ for d in (18, 19, 20, 21):
           .replace('__LOGO%d__' % d, uri('cards/logo%d.png' % d, 'image/png')))
 t = t.replace('__PW20__', uri('cards/ph20W.jpg', 'image/jpeg'))
 HDR_G = "/* =====================================================================\n * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS + métricas. ARQUIVO ÚNICO (Code.gs).\n * Ordem: Comum (núcleo/lotação) · Busca · Convidados · Métricas · Preparação.\n * ===================================================================== */\n"
-g = HDR_G + rd('Comum.src.gs') + '\n' + rd('Busca.src.gs') + '\n' + rd('Code.src.gs') + '\n' + rd('Metricas.src.gs')
+g = HDR_G + rd('Comum.src.gs') + '\n' + rd('Busca.src.gs') + '\n' + rd('Code.src.gs') + '\n' + rd('Metricas.src.gs') + '\n' + rd('Gestao.src.gs')
 # ---- público ----
 HDR_P = "/* =====================================================================\n * Das Stammhaus Pub — RESERVAS DO PÚBLICO. ARQUIVO ÚNICO (Code.gs). Projeto separado do dos convidados.\n * ===================================================================== */\n"
 p = HDR_P + rd('Comum.src.gs') + '\n' + rd('Publico.src.gs').replace("'__SHEET_ID__'", "'%s'" % sid)
 pt = rd('Publico.template.html').replace('__LOGO__', logo).replace('__IMGBASE__', IMGBASE).replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())
-for d, name, txt in (('convidados', 'Code.gs', g), ('convidados', 'Index.html', t), ('convidados', 'Metricas.html', rd('Metricas.html').replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())),
+for d, name, txt in (('convidados', 'Code.gs', g), ('convidados', 'Index.html', t), ('convidados', 'Gestao.html', rd('Gestao.html').replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())), ('convidados', 'Metricas.html', rd('Metricas.html').replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())),
                      ('publico', 'Code.gs', p), ('publico', 'Index.html', pt)):
     os.makedirs(os.path.join(out, d), exist_ok=True)
     open(os.path.join(out, d, name), 'w', encoding='utf-8').write(txt)
