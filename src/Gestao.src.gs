@@ -1,13 +1,12 @@
-/* ---------- PAINEL DE GESTÃO (?p=gestao&k=TOKEN) ----------
- * Acesso: token da aba Acesso COM a coluna "gestão (SIM/NÃO)" = SIM. Toda gravação passa por aqui, sob lock,
- * e fica registrada na aba Auditoria (quem, quando, o quê). Mudanças que estouram o teto de 81 só passam com "forcar". */
+/* ---------- PAINEL ÚNICO (métricas + gestão) ----------
+ * Acesso por usuário e senha (Auth.src.gs). Perfil GESTAO edita; CONSULTA só visualiza (o servidor barra qualquer gravação).
+ * Toda gravação passa por aqui, sob lock, e fica registrada na aba Auditoria (quem, quando, o quê). Mudanças que estouram o teto
+ * de 81 só passam com "forcar". O parâmetro "k" das funções é o token de SESSÃO devolvido pelo login. */
 
 function acessoGestao_(k) {
-  var a = acessoValido_(k);
-  if (!a) return null;
-  var g = String(aba_(ABA.ACESSO).getRange(a.linha, 7).getValue()).trim().toUpperCase();
-  a.gestao = (g === 'SIM');
-  return a;
+  var u = sessaoUsuario_(k);
+  if (!u) return null;
+  return {linha: u.linha, nome: u.nome, usuario: u.usuario, gestao: u.perfil === 'GESTAO', trocar: u.trocar};
 }
 
 function aud_(a, acao, det) {
@@ -28,6 +27,16 @@ function ultConf_(id, confs) {
   var u = null;
   confs.forEach(function (c) { if (c.id === id && c.status !== 'Substituído') u = c; });
   return u;
+}
+
+function atividade_(resv) {
+  var ev = [], shC = aba_(ABA.CONF), nC = shC.getLastRow();
+  if (nC >= 2) shC.getRange(Math.max(2, nC - 14), 1, nC - Math.max(2, nC - 14) + 1, 13).getValues().forEach(function (r) {
+    if (r[1]) ev.push({t: r[12] || r[0], tipo: 'Convidado', texto: (r[4] || r[2]) + ' · ' + r[9] + (r[9] === 'Confirmado' ? ' (' + r[8] + ' pessoa' + (r[8] > 1 ? 's' : '') + ')' : '') + ' · noite ' + r[3]});
+  });
+  resv.slice(-30).forEach(function (r) { if (r.n === 1) ev.push({t: r.ts, tipo: 'Público', texto: r.nome + ' · reserva ' + r.prot + ' · ' + r.status + ' · noite ' + r.dia}); });
+  ev.sort(function (x, y) { return (y.t instanceof Date ? y.t.getTime() : 0) - (x.t instanceof Date ? x.t.getTime() : 0); });
+  return ev.slice(0, 12).map(function (e) { return {quando: fmtData_(e.t), tipo: e.tipo, texto: e.texto}; });
 }
 
 function estadoGestao_(a) {
@@ -64,7 +73,7 @@ function estadoGestao_(a) {
     vw.map(function (r, i) { return {linha: i + 2, origem: String(r[1]), ref: String(r[2]), dia: Number(r[3]), nome: String(r[4]), status: String(r[6]), tent: Number(r[7]) || 0, detalhe: String(r[9])}; })
       .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
   }
-  return {ok: true, whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
+  return {ok: true, perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
           valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
           reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
 }
@@ -72,17 +81,19 @@ function estadoGestao_(a) {
 function gestaoAbrir_(k) {
   if (!limite_('gt', 240, 60)) return {ok: false, code: 'limite'};
   var a = acessoGestao_(k);
-  if (!a) { if (!limite_('gtf', 30, 600)) return {ok: false, code: 'limite'}; return {ok: false, code: 'negado'}; }
-  if (!a.gestao) return {ok: false, code: 'sem_permissao'};
+  if (!a) return {ok: false, code: 'sessao'};
+  if (a.trocar) return {ok: false, code: 'trocar'};
   return estadoGestao_(a);
 }
-function gestao(k) { return api_('gestao', gestaoAbrir_, arguments); }
+function painel(k) { return api_('painel', gestaoAbrir_, arguments); }
 
 /* executa uma alteração: valida acesso, trava, roda fn(a, ctx) e devolve o estado atualizado */
 function gMut_(k, nome, fn) {
   if (!limite_('gm', 90, 60)) return {ok: false, code: 'limite'};
   var a = acessoGestao_(k);
-  if (!a || !a.gestao) return {ok: false, code: a ? 'sem_permissao' : 'negado'};
+  if (!a) return {ok: false, code: 'sessao'};
+  if (a.trocar) return {ok: false, code: 'trocar'};
+  if (!a.gestao) return {ok: false, code: 'sem_permissao'};
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     var r = fn(a);

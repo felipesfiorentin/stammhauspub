@@ -12,21 +12,21 @@ function mundo(cfgExtra=[]){
  const cache={};let uu=0;const triggers=[];
  const mkctx=(files)=>{const ctx={console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v}})},
+  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   ScriptApp:{getService:()=>({getUrl:()=>'https://script.google.com/macros/s/TESTE/exec'}),getProjectTriggers:()=>triggers,newTrigger:(f)=>({timeBased:()=>({everyMinutes:()=>({create:()=>triggers.push({getHandlerFunction:()=>f})})})})},
   HtmlService:{},
-  Utilities:{getUuid:()=>'u'+(++uu).toString(16).padStart(8,'0')+'-aaaa-bbbb-cccc-'+Math.random().toString(16).slice(2).padEnd(12,'0').slice(0,12),
+  Utilities:{DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(a,v)=>Array.from(require('crypto').createHash('sha256').update(String(v),'utf8').digest()).map(x=>x>127?x-256:x),getUuid:()=>'u'+(++uu).toString(16).padStart(8,'0')+'-aaaa-bbbb-cccc-'+Math.random().toString(16).slice(2).padEnd(12,'0').slice(0,12),
    formatDate(d,tz,f){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
     if(f==='u')return String(new Date(Date.UTC(+p.year,+p.month-1,+p.day)).getUTCDay()||7);if(f==='yyyy-MM-dd')return p.year+'-'+p.month+'-'+p.day;if(f==='dd/MM')return p.day+'/'+p.month;return p.day+'/'+p.month+' 00:00'}}};
   vm.createContext(ctx);vm.runInContext(files.map(f=>fs.readFileSync(f,'utf8')).join('\n'),ctx);return ctx};
  const ss={getName:()=>'T',getId:()=>'ID',getUrl:()=>'x',getSheetByName:n=>sheets[n],insertSheet:n=>sheets[n]=mkSheet([]),getSpreadsheetTimeZone:()=>'America/Sao_Paulo'};
- return{sheets,guest:mkctx(['../apps-script/convidados/Code.gs']),pub:mkctx(['../apps-script/publico/Code.gs'].map(f=>f))}}
+ return{sheets,guest:mkctx(['/tmp/out/convidados/Code.gs']),pub:mkctx(['/tmp/out/publico/Code.gs'].map(f=>f))}}
 const R=x=>JSON.parse(JSON.stringify(x));
 (async()=>{
  const out=[];const ok=(c,m)=>{out.push((c?'PASS ':'FAIL ')+m);if(!c)process.exitCode=1};
  // público com SHEET_ID de teste
- let pubSrc=fs.readFileSync('../apps-script/publico/Code.gs','utf8').replace("'__SHEET_ID__'","'ID_TESTE'");fs.writeFileSync('/tmp/pub_teste.gs',pubSrc);
+ let pubSrc=fs.readFileSync('/tmp/out/publico/Code.gs','utf8').replace("'__SHEET_ID__'","'ID_TESTE'");fs.writeFileSync('/tmp/pub_teste.gs',pubSrc);
  const novo=(cfg)=>{const w=mundo(cfg);const ss=w.guest.SpreadsheetApp.getActiveSpreadsheet();
   const c=vm.createContext({});return w};
  // monta mundo com público lendo o mesmo ss
@@ -46,10 +46,9 @@ const R=x=>JSON.parse(JSON.stringify(x));
 
  // ---- preparação ----
  let w=W();
- ok(['Reservas','Lotacao','Acesso'].every(n=>w.sheets[n]),'prepararReservas cria Reservas, Lotacao e Acesso');
+ ok(['Reservas','Lotacao','Usuarios','Auditoria'].every(n=>w.sheets[n]),'prepararReservas cria Reservas, Lotacao, Usuarios e Auditoria');
  ok(w.sheets.Config.rows.some(r=>r[0]==='teto_por_noite'&&r[1]===81)&&w.sheets.Config.rows.some(r=>r[0]==='valor_ingresso'&&r[1]===40)&&w.sheets.Config.rows.some(r=>r[0]==='reserva_valida_ate'&&r[1]==='20h')&&w.sheets.Config.rows.some(r=>r[0]==='max_pessoas_reserva'&&r[1]===4),'Config recebe teto 81, valor 40, validade 20h, máx. 4');
- const nCfg=w.sheets.Config.rows.length;w.guest.prepararReservas();ok(w.sheets.Config.rows.length===nCfg&&w.sheets.Acesso.rows.length===2,'prepararReservas é idempotente (sem duplicar linhas)');
- const tok=w.sheets.Acesso.rows[1][1];ok(String(tok).length>=40&&String(w.sheets.Acesso.rows[1][5]).includes('/exec?p=metricas&k='+tok),'token gerado para Felipe e link montado na aba Acesso');
+ const nCfg=w.sheets.Config.rows.length;w.guest.prepararReservas();ok(w.sheets.Config.rows.length===nCfg&&w.sheets.Usuarios.rows.length===1,'prepararReservas é idempotente (sem duplicar linhas)');
  let d=R(w.pub.dados());
  ok(d.noites.length===4&&d.noites.every(n=>!n.lotado&&n.vagas===4)&&d.info.valor===40&&d.info.ate==='20h'&&d.info.max===4,'público vê 4 noites disponíveis, valor 40, até 20h, máx. 4');
  ok(JSON.stringify(d).includes('Strack')===false&&!/"nome"/.test(JSON.stringify(d)),'resposta pública não expõe nomes de convidados');
@@ -107,21 +106,9 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(R(w.pub.reservar({dia:20,pessoas:[P('Joana Silva','(42) 99500-0001')],cli:'j'})).ok,'após cancelar, a mesma pessoa pode reservar de novo');
  // limite de tentativas por cliente
  {let ult;for(let i=0;i<8;i++)ult=R(w.pub.reservar({dia:21,pessoas:[P('Spam Teste','abc')],cli:'spam'}));ok(ult.code==='limite','muitas tentativas do mesmo cliente -> limite')}
- // ---- métricas ----
- w=W();const tk=w.sheets.Acesso.rows[1][1];
- w.pub.reservar({dia:21,pessoas:[P('Cliente Um','(42) 99600-0001'),P('Cliente Dois','(42) 99600-0002'),P('Cliente Tres','(42) 99600-0003')],cli:'k'});
- let m=R(w.guest.metricas(tk));
- ok(m.ok&&m.quem==='Felipe'&&m.noites.length===4&&m.teto===81&&m.totais.publico===3&&m.totais.receita===120,'métricas com token válido: 4 noites, teto 81, público 3, entrada R$ 120');
- const n21=m.noites.find(x=>x.dia===21);ok(n21.total===68&&n21.restantes===13&&n21.lista===65&&n21.reservasLista.length===1&&n21.reservasLista[0].nomes.length===3&&n21.receita===120&&n21.label.includes('21/11'),'métricas noite 21: lista 65 + público 3 = 68, restam 13, reserva listada, label com data');
- ok(m.atividade.length>=1&&m.atividade.some(a=>a.tipo==='Público'),'atividade recente inclui a reserva do público');
- ok(R(w.guest.metricas('x'.repeat(40))).code==='negado'&&R(w.guest.metricas('')).code==='negado'&&R(w.guest.metricas('curto')).code==='negado','token inválido, vazio ou curto: acesso negado');
- w.sheets.Acesso.rows.push(['Regina','R'.repeat(44),'SIM','','','']);ok(R(w.guest.metricas('R'.repeat(44))).ok,'segunda pessoa autorizada acessa');
- w.sheets.Acesso.rows[2][2]='NÃO';ok(R(w.guest.metricas('R'.repeat(44))).code==='negado','acesso revogado (ativo=NÃO) é negado');
- w.sheets.Acesso.rows.push(['Nova Pessoa','','','','','']);w.guest.gerarTokensCore_();ok(String(w.sheets.Acesso.rows[3][1]).length>=40&&w.sheets.Acesso.rows[3][2]==='SIM','gerarTokens cria token só para linhas novas');ok(w.sheets.Acesso.rows[1][1]===tk,'token existente não é alterado');
- ok(w.guest.metricas(tk)&&Object.prototype.toString.call(w.sheets.Acesso.rows[1][4])==='[object Date]','último acesso registrado');
  // ---- páginas (UI) ----
  w=W();
- let pg=await pagina(w.pub,'../apps-script/publico/Index.html');
+ let pg=await pagina(w.pub,'/tmp/out/publico/Index.html');
  await pg.waitForSelector('#noites .noite');
  ok((await pg.$$('#noites .noite')).length===4&&(await pg.textContent('#s-home')).includes('história')&&!(await pg.textContent('#s-home')).includes('comanda'),'home: 4 cards de noite, texto comercial, sem destaque de cobrança');
  await pg.screenshot({path:'shot_pub_home.png',fullPage:true});
@@ -148,40 +135,29 @@ const R=x=>JSON.parse(JSON.stringify(x));
  await pg.close();
  // noite lotada na home + sem_vagas na página
  w=W();enche(w,19,25);
- pg=await pagina(w.pub,'../apps-script/publico/Index.html');await pg.waitForSelector('#noites .noite');
+ pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  ok((await pg.textContent('#noites')).includes('Últimas vagas'),'noite com poucas vagas aparece como "Últimas vagas"');
  await pg.close();
- w=W();enche(w,19,26);pg=await pagina(w.pub,'../apps-script/publico/Index.html');await pg.waitForSelector('#noites .noite');
+ w=W();enche(w,19,26);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  const bs=await pg.$$('#noites .noite');ok(cnt(w,19).lotado&&(await bs[1].isDisabled())&&(await bs[1].textContent()).includes('Lotado')&&!(await bs[0].isDisabled()),'noite lotada aparece "Lotado" e não pode ser selecionada; as demais abrem');
  await pg.screenshot({path:'shot_pub_lotado.png',fullPage:true});
  // corrida: a noite enche enquanto a pessoa preenche o formulário
- w=W();enche(w,18,16);pg=await pagina(w.pub,'../apps-script/publico/Index.html');await pg.waitForSelector('#noites .noite');await pg.click('#noites .noite');await pg.waitForSelector('#s-form:not(.hide)');
+ w=W();enche(w,18,16);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');await pg.click('#noites .noite');await pg.waitForSelector('#s-form:not(.hide)');
  ok((await pg.textContent('#qtd-h')).includes('agilizar o cadastro'),'texto explica que o celular agiliza o cadastro e a experiência');
  if(!enche(w,18,2,100).ok)throw new Error('preparo falhou');
  await pg.click('#qtd button:nth-child(2)');await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','42991000001');await pg.fill('#pn1','Maria Pereira');await pg.type('#pt1','42991000002');await pg.click('#btn-res');await pg.waitForSelector('#s-aviso:not(.hide)',{timeout:4000}).catch(async()=>{console.log('DBG',await pg.evaluate(()=>[...document.querySelectorAll('section')].filter(x=>!x.classList.contains('hide')).map(x=>x.id).join()+' | '+document.getElementById('btn-res').textContent+' | '+document.getElementById('pn0').value+' | '+document.getElementById('pt1').value),await pg.textContent('#e-geral'),await pg.textContent('#e-nome0'),await pg.textContent('#e-tel0'),await pg.textContent('#e-nome1'),await pg.textContent('#e-tel1'))});
  ok((await pg.textContent('#a-titulo')).includes('esgotou'),'noite que lotou durante o preenchimento: aviso claro, nada gravado ('+w.sheets.Reservas.rows.length+' linhas)');
  await pg.close();
  // falha de comunicação / timeout
- w=W();pg=await pagina(w.pub,'../apps-script/publico/Index.html');await pg.waitForSelector('#noites .noite');
+ w=W();pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  await pg.evaluate(()=>{window.__TMO=500;window.google.script.run.withSuccessHandler=()=>({withFailureHandler:()=>new Proxy({},{get:()=>()=>{}})})});
  await pg.click('#noites .noite');await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','42991000001');await pg.click('#btn-res');await pg.waitForFunction(()=>document.getElementById('e-geral').textContent.includes('Código'),null,{timeout:5000});
  ok((await pg.textContent('#e-geral')).includes('C03')&&!(await vis(pg,'s-ok')),'servidor sem resposta -> C03 e não mostra "reservado"');await pg.close();
- // página de métricas
- w=W();w.pub.reservar({dia:18,pessoas:[P('Cliente Um','(42) 99600-0001'),P('Cliente Dois','(42) 99600-0002')],cli:'k'});w.guest.confirmar({id:'G001',titNome:'Adilson Strack',titTel:'(42) 98000-1111',vaiAcomp:false});
- const tkn=w.sheets.Acesso.rows[1][1];
- pg=await pagina(w.guest,'../apps-script/convidados/Metricas.html',h=>h.replace('<?!= JSON.stringify(k) ?>',JSON.stringify(tkn)));
- await pg.waitForSelector('.kpis',{timeout:8000});const mt=await pg.textContent('#app');
- ok(mt.includes('Lista garantida')&&mt.includes('Público reservado')&&mt.includes('Vagas restantes')&&mt.includes('Disponível')&&mt.includes('R$ 80,00')&&mt.includes('Reservas do público (1)')&&mt.includes('Últimas movimentações'),'página de métricas renderiza KPIs, 4 noites, entrada estimada e reservas');
- await pg.screenshot({path:'shot_metricas.png',fullPage:true});await pg.close();
- pg=await pagina(w.guest,'../apps-script/convidados/Metricas.html',h=>h.replace('<?!= JSON.stringify(k) ?>',JSON.stringify('z'.repeat(40))));await pg.waitForSelector('.err');
- ok((await pg.textContent('#app')).includes('Acesso negado')&&!(await pg.textContent('#app')).includes('Lista garantida'),'token errado: "Acesso negado", nenhum dado exibido');await pg.close();
- pg=await pagina(w.guest,'../apps-script/convidados/Metricas.html',h=>h.replace('<?!= JSON.stringify(k) ?>','""'));await pg.waitForSelector('.err');ok((await pg.textContent('#app')).includes('sem chave'),'link sem token: mensagem clara');await pg.close();
  // roteamento doGet
  {const c=w.guest;c.HtmlService={createTemplateFromFile:(n)=>({evaluate(){return{setTitle(){return this},addMetaTag(){return this},setXFrameOptionsMode(){return this},_t:n}}}),createHtmlOutputFromFile:(n)=>({setTitle(){return this},addMetaTag(){return this},setXFrameOptionsMode(){return this},_t:n}),XFrameOptionsMode:{ALLOWALL:1}};
-  ok(c.doGet({parameter:{}})._t==='Index'&&c.doGet({parameter:{p:'metricas',k:'abc'}})._t==='Metricas'&&c.doGet()._t==='Index','doGet: padrão = página dos convidados; ?p=metricas = métricas')}
+  ok(c.doGet({parameter:{}})._t==='Index'&&c.doGet({parameter:{p:'painel'}})._t==='Painel'&&c.doGet({parameter:{p:'gestao'}})._t==='Painel'&&c.doGet({parameter:{p:'metricas'}})._t==='Painel'&&c.doGet()._t==='Index','doGet: padrão = página dos convidados; ?p=painel (e links antigos) = painel único')}
  // separação: o projeto público não contém busca nem lista de convidados
- const ps=fs.readFileSync('../apps-script/publico/Code.gs','utf8'),pi=fs.readFileSync('../apps-script/publico/Index.html','utf8');
+ const ps=fs.readFileSync('/tmp/out/publico/Code.gs','utf8'),pi=fs.readFileSync('/tmp/out/publico/Index.html','utf8');
  ok(!/buscarNome|function buscar|function confirmar_|function metricas|Strack|script\.google\.com\/macros\/s\/AKfy/.test(ps+pi)&&!ps.includes('Strack'),'projeto público não contém busca, confirmação de convidados, métricas, nomes nem a URL dos convidados');
- ok(!/Strack|AKfycb/.test(fs.readFileSync('../apps-script/convidados/Metricas.html','utf8')),'página de métricas sem dados embutidos');
  await br.close();console.log(out.join('\n'));
 })();

@@ -1,6 +1,6 @@
 /**
- * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS (semana de inauguração) + métricas.
- * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs (único) + Index.html + Metricas.html
+ * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS (semana de inauguração) + painel.
+ * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs (único) + Index.html + Painel.html
  */
 function ss_() {
   var x = SpreadsheetApp.getActiveSpreadsheet();
@@ -8,20 +8,11 @@ function ss_() {
   return x;
 }
 
-/* Página dos convidados (padrão) ou métricas (?p=metricas&k=TOKEN; o token é validado no servidor). */
+/* Página dos convidados (padrão) ou painel de métricas + gestão (?p=painel; exige login por usuário e senha). */
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  if (p.p === 'metricas') {
-    var t = HtmlService.createTemplateFromFile('Metricas');
-    t.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
-    return t.evaluate().setTitle('Métricas · Das Stammhaus Pub')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-  if (p.p === 'gestao') {
-    var tg = HtmlService.createTemplateFromFile('Gestao');
-    tg.k = String(p.k || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 80);
-    return tg.evaluate().setTitle('Gestão · Das Stammhaus Pub')
+  if (p.p === 'painel' || p.p === 'gestao' || p.p === 'metricas') {   // página única (login por usuário e senha); gestao/metricas = links antigos
+    return HtmlService.createHtmlOutputFromFile('Painel').setTitle('Painel · Das Stammhaus Pub')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -315,7 +306,6 @@ function cancelar(id, tel)  { return api_('cancelar',  cancelar_,  arguments); }
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Stammhaus').addItem('Diagnóstico do sistema', 'diagnostico')
     .addItem('Atualizar painel de lotação', 'atualizarPainelMenu')
-    .addItem('Gerar tokens de acesso (métricas)', 'gerarTokens')
     .addItem('Preparar reservas e métricas (1ª vez)', 'prepararReservas').addToUi();
 }
 

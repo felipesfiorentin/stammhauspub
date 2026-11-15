@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const SRC=fs.readFileSync('../apps-script/convidados/Code.gs','utf8');
+const SRC=fs.readFileSync('/tmp/out/convidados/Code.gs','utf8');
 function mkSheet(rows){return{rows,getLastRow(){return this.rows.length},getMaxRows(){return Math.max(this.rows.length,1000)},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>x[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
@@ -13,7 +13,7 @@ function build(cap,opt={}){
   Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',cap],['teto_por_noite',cap===74?81:cap],...(opt.cfgExtra||[]),['mesas',19],['whatsapp_contato',''],['horario','']])};
  const cache={};
  const ctx={console,SpreadsheetApp:{getActiveSpreadsheet:()=>({getSheetByName:n=>sheets[n]})},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v}})},
+  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   Utilities:{formatDate(d,tz,f){const p=new Intl.DateTimeFormat('en-CA',{timeZone:tz||'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
    if(f==='u')return String(new Date(Date.UTC(+p.year,+p.month-1,+p.day)).getUTCDay()||7);if(f==='yyyy-MM-dd')return p.year+'-'+p.month+'-'+p.day;return f==='dd/MM'?p.day+'/'+p.month:''}},
@@ -28,7 +28,7 @@ function build(cap,opt={}){
   await pg.exposeFunction('__call',(fn,args)=>JSON.parse(JSON.stringify(env.ctx[fn](...args))));
   await pg.addInitScript(()=>{const mk=(s,f)=>new Proxy({},{get:(_,fn)=>(...a)=>{window.__call(fn,a).then(s,f)}});
    window.google={script:{run:{withSuccessHandler(s){return{withFailureHandler(f){return mk(s,f)}}}}}}});
-  await pg.goto('file://../apps-script/convidados/Index.html');return{pg,env}}
+  await pg.goto('file:///tmp/out/convidados/Index.html');return{pg,env}}
  const vis=async(pg,id)=>!(await pg.$eval('#'+id,e=>e.classList.contains('hide')));
  // 1) fluxo feliz sem acompanhante, nome com erro de digitação
  let {pg,env}=await novaPagina(74);

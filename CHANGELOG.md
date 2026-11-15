@@ -23,3 +23,9 @@
 - Fila `Whats` (Comum), envio no projeto público (`Whats.src.gs`): ingresso em imagem (Slides → PNG), Drive por dia, API da Meta, template com imagem.
 - Ganchos em reserva, confirmação, cancelamento e gestão; cartão "Ingressos por WhatsApp" no painel de gestão (status e Reenviar).
 - Roteiro de ativação em `docs/WHATSAPP.md`.
+
+## Parte 5 — painel único com login
+- Métricas e gestão numa só página: `<url dos convidados>?p=painel` (links antigos `?p=metricas|gestao` abrem a mesma página).
+- Acesso por usuário e senha (aba `Usuarios`: usuario, nome, perfil GESTAO/CONSULTA, ativo SIM/NÃO, senha inicial). No primeiro acesso a pessoa define a própria senha (mín. 8; guardada só como hash com salt). Nova senha inicial na planilha = reset.
+- Sessão de 6 h; 5 erros bloqueiam o usuário por 15 min; ativo=NÃO derruba a sessão na hora. CONSULTA vê tudo e não altera.
+- Removidos: tokens (`Acesso`) e "Gerar tokens". `Metricas.src.gs` → `Setup.src.gs`.

@@ -12,21 +12,21 @@ function mundo(cfgExtra=[]){
  const cache={};let uu=0;const triggers=[];
  const mkctx=(files)=>{const ctx={console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v}})},
+  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   ScriptApp:{getService:()=>({getUrl:()=>'https://script.google.com/macros/s/TESTE/exec'}),getProjectTriggers:()=>triggers,newTrigger:(f)=>({timeBased:()=>({everyMinutes:()=>({create:()=>triggers.push({getHandlerFunction:()=>f})})})})},
   HtmlService:{},
-  Utilities:{getUuid:()=>'u'+(++uu).toString(16).padStart(8,'0')+'-aaaa-bbbb-cccc-'+Math.random().toString(16).slice(2).padEnd(12,'0').slice(0,12),
+  Utilities:{DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(a,v)=>Array.from(require('crypto').createHash('sha256').update(String(v),'utf8').digest()).map(x=>x>127?x-256:x),getUuid:()=>'u'+(++uu).toString(16).padStart(8,'0')+'-aaaa-bbbb-cccc-'+Math.random().toString(16).slice(2).padEnd(12,'0').slice(0,12),
    formatDate(d,tz,f){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
     if(f==='u')return String(new Date(Date.UTC(+p.year,+p.month-1,+p.day)).getUTCDay()||7);if(f==='yyyy-MM-dd')return p.year+'-'+p.month+'-'+p.day;if(f==='dd/MM')return p.day+'/'+p.month;return p.day+'/'+p.month+' 00:00'}}};
   vm.createContext(ctx);vm.runInContext(files.map(f=>fs.readFileSync(f,'utf8')).join('\n'),ctx);return ctx};
  const ss={getName:()=>'T',getId:()=>'ID',getUrl:()=>'x',getSheetByName:n=>sheets[n],insertSheet:n=>sheets[n]=mkSheet([]),getSpreadsheetTimeZone:()=>'America/Sao_Paulo'};
- return{sheets,guest:mkctx(['../apps-script/convidados/Code.gs']),pub:mkctx(['../apps-script/publico/Code.gs'].map(f=>f))}}
+ return{sheets,guest:mkctx(['/tmp/out/convidados/Code.gs']),pub:mkctx(['/tmp/out/publico/Code.gs'].map(f=>f))}}
 const R=x=>JSON.parse(JSON.stringify(x));
 (async()=>{
  const out=[];const ok=(c,m)=>{out.push((c?'PASS ':'FAIL ')+m);if(!c)process.exitCode=1};
  // público com SHEET_ID de teste
- let pubSrc=fs.readFileSync('../apps-script/publico/Code.gs','utf8').replace("'__SHEET_ID__'","'ID_TESTE'");fs.writeFileSync('/tmp/pub_teste.gs',pubSrc);
+ let pubSrc=fs.readFileSync('/tmp/out/publico/Code.gs','utf8').replace("'__SHEET_ID__'","'ID_TESTE'");fs.writeFileSync('/tmp/pub_teste.gs',pubSrc);
  const novo=(cfg)=>{const w=mundo(cfg);const ss=w.guest.SpreadsheetApp.getActiveSpreadsheet();
   const c=vm.createContext({});return w};
  // monta mundo com público lendo o mesmo ss
@@ -44,28 +44,28 @@ const R=x=>JSON.parse(JSON.stringify(x));
  const noite=(w,d)=>R(w.pub.dados()).noites.find(x=>x.dia===d);
  const cnt=(w,d)=>R(w.guest.lotacaoTodas_()).find(x=>x.dia===d);
  const sh=(w,n)=>w.sheets[n].rows;
- let w=W();w.sheets.Acesso.rows[1][6]='SIM';w.sheets.Acesso.rows.push(['Leitor','t'.repeat(44),'SIM','','', '', 'NÃO']);w.guest.gerarTokensCore_();
- const K=w.sheets.Acesso.rows[1][1],KL=w.sheets.Acesso.rows[2][1];
- ok(String(sh(w,'Acesso')[1][7]).includes('?p=gestao&k='+K)&&sh(w,'Acesso')[2][7]==='','link de gestão só para quem tem gestão=SIM');
- let e=R(w.guest.gestao(K));ok(e.ok&&e.noites.length===4&&e.convidados.length===G.length&&e.noites[0].total===63,'gestão abre com dados e lotação 63 na noite 18');
- ok(R(w.guest.gestao('x'.repeat(40))).code==='negado'&&R(w.guest.gestao(KL)).code==='sem_permissao'&&R(w.guest.gMoverConvidado(KL,'G001',19,false)).code==='sem_permissao','token inválido = negado; token sem gestão = sem permissão (nem lê nem grava)');
+ const usr=(w,perfil,usuario,nome)=>{const u=usuario||'felipe';w.sheets.Usuarios.rows.push([u,nome||'Felipe',perfil||'GESTAO','SIM','Inicial@123','','','','']);const e=R(w.guest.entrar(u,'Inicial@123'));w.guest.trocarSenha(e.sessao,'Inicial@123','Senha@Nova1');return e.sessao};
+ let w=W();
+ const K=usr(w,'GESTAO'),KL=usr(w,'CONSULTA','leitor','Leitor');
+ let e=R(w.guest.painel(K));ok(e.ok&&e.noites.length===4&&e.convidados.length===G.length&&e.noites[0].total===63,'gestão abre com dados e lotação 63 na noite 18');
+ ok(R(w.guest.painel('x'.repeat(40))).code==='sessao'&&R(w.guest.painel(KL)).perfil==='CONSULTA'&&R(w.guest.gMoverConvidado(KL,'G001',19,false)).code==='sem_permissao','sessão inválida = sessao; consulta lê (perfil CONSULTA) mas não grava');
  // mover convidado
  const g1=G.find(g=>g.dia===18);let before18=cnt(w,18).total,before19=cnt(w,19).total,c1=1+g1.acomp;
  e=R(w.guest.gMoverConvidado(K,g1.id,19,false));ok(e.ok&&cnt(w,18).total===before18-c1&&cnt(w,19).total===before19+c1&&sh(w,'Convidados').find(r=>r[0]===g1.id)[2]===19,'mover convidado: lotação sai de 18 e entra em 19');
  ok(R(w.guest.gMoverConvidado(K,g1.id,19,false)).code==='mesmo_dia'&&R(w.guest.gMoverConvidado(K,g1.id,99,false)).code==='dia_invalido','mover: mesmo dia / dia inválido');
- ok(sh(w,'Auditoria').length>=2&&String(sh(w,'Auditoria')[1][2]).includes('Moveu'),'ação registrada na Auditoria');
+ ok(sh(w,'Auditoria').some(r=>String(r[2]).includes('Moveu')),'ação registrada na Auditoria');
  // confirmado muda de dia junto com a confirmação
  w.guest.confirmar({id:'G002',titNome:G.find(g=>g.id==='G002').nome,titTel:'(42) 98111-0001',vaiAcomp:false});
  const g2=G.find(g=>g.id==='G002');e=R(w.guest.gMoverConvidado(K,'G002',20,false));
  ok(e.convidados.find(c=>c.id==='G002').dia===20&&sh(w,'Confirmacoes').filter(r=>r[1]==='G002').every(r=>r[3]===20),'confirmação acompanha o convidado para a nova noite');
  // teto: bloqueia e permite forçar
- w=W();w.sheets.Acesso.rows[1][6]='SIM';const K2=w.sheets.Acesso.rows[1][1];
+ w=W();const K2=usr(w);
  const falta=81-cnt(w,18).total;for(let i=0;i<falta;i++)w.pub.reservar({dia:18,pessoas:[P('Cliente '+'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i%26]+' Teste','(42) 9'+String(7000000+i).padStart(8,'0').replace(/(\d{4})(\d{4})/,'$1-$2'))],cli:'q'+i});
  const gm=G.find(g=>g.dia===19);ok(cnt(w,18).lotado,'preparo: noite 18 lotada ('+cnt(w,18).total+')');
  e=R(w.guest.gMoverConvidado(K2,gm.id,18,false));ok(e.code==='lotado'&&sh(w,'Convidados').find(r=>r[0]===gm.id)[2]===19,'mover para noite lotada: bloqueia sem alterar');
  e=R(w.guest.gMoverConvidado(K2,gm.id,18,true));ok(e.ok&&cnt(w,18).total>81&&String(sh(w,'Auditoria').slice(-1)[0][3]).includes('forçado'),'forçar passa do teto e registra "forçado"');
  // incluir convidado
- w=W();w.sheets.Acesso.rows[1][6]='SIM';const K3=w.sheets.Acesso.rows[1][1];
+ w=W();const K3=usr(w);
  let tot=cnt(w,20).total;e=R(w.guest.gAddConvidado(K3,{nome:'Extra Convidado Silva',dia:20,acomp:1},false));
  ok(e.ok&&cnt(w,20).total===tot+2&&e.convidados.some(c=>c.nome==='Extra Convidado Silva'&&c.id===('G'+('000'+(G.length+1)).slice(-3))),'incluir convidado com acompanhante: novo id, +2 na lotação');
  ok(R(w.guest.gAddConvidado(K3,{nome:'Extra Convidado Silva',dia:20,acomp:0},false)).code==='duplicado'&&R(w.guest.gAddConvidado(K3,{nome:'X',dia:20},false)).code==='invalido','incluir: duplicado e nome inválido barrados');
@@ -78,11 +78,11 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // editar
  e=R(w.guest.gEditarConvidado(K3,gn.id,{nome:'Nome Corrigido Silva',acomp:0}));ok(e.ok&&e.convidados.find(c=>c.id===gn.id).nome==='Nome Corrigido Silva','editar nome do convidado');
  // reservas
- let rr=R(w.pub.reservar({dia:18,pessoas:[P('Joao Pereira','(42) 99100-0001'),P('Maria Pereira','(42) 99100-0002')],cli:'a'}));const prot=rr.protocolo||R(w.guest.gestao(K3)).reservas[0].prot;
+ let rr=R(w.pub.reservar({dia:18,pessoas:[P('Joao Pereira','(42) 99100-0001'),P('Maria Pereira','(42) 99100-0002')],cli:'a'}));const prot=rr.protocolo||R(w.guest.painel(K3)).reservas[0].prot;
  tot=cnt(w,19).total;e=R(w.guest.gReservaMover(K3,prot,19,false));ok(e.ok&&cnt(w,19).total===tot+2&&e.reservas.find(x=>x.prot===prot).dia===19,'mover reserva inteira de noite');
  e=R(w.guest.gReservaPessoa(K3,prot,'','Terceiro Convidado Lima','(42) 99100-0003',false));ok(e.ok&&e.reservas.find(x=>x.prot===prot).pessoas.length===3,'incluir pessoa na reserva');
  e=R(w.guest.gReservaPessoa(K3,prot,'','Quarto Convidado Lima','(42) 99100-0003',false));ok(e.code==='invalido','celular repetido na reserva barrado');
- const ln=e.ok?0:R(w.guest.gestao(K3)).reservas.find(x=>x.prot===prot).pessoas[2].linha;
+ const ln=e.ok?0:R(w.guest.painel(K3)).reservas.find(x=>x.prot===prot).pessoas[2].linha;
  e=R(w.guest.gReservaPessoa(K3,prot,ln,'Terceiro Editado Lima','(42) 99100-0009',false));ok(e.ok&&e.reservas.find(x=>x.prot===prot).pessoas[2].nome==='Terceiro Editado Lima','editar pessoa da reserva');
  e=R(w.guest.gReservaRemoverPessoa(K3,prot,ln));ok(e.ok&&e.reservas.find(x=>x.prot===prot).pessoas.length===2,'remover pessoa da reserva');
  e=R(w.guest.gReservaNova(K3,20,[P('Equipe Um Silva','(42) 99300-0001'),P('Equipe Dois Silva','(42) 99300-0002')],false));ok(e.ok&&e.info.protocolo&&e.reservas.some(x=>x.prot===e.info.protocolo&&x.dia===20),'nova reserva criada pela equipe');
@@ -90,16 +90,15 @@ const R=x=>JSON.parse(JSON.stringify(x));
  tot=cnt(w,19).total;e=R(w.guest.gReservaCancelar(K3,prot));ok(e.ok&&cnt(w,19).total===tot-2&&!e.reservas.some(x=>x.prot===prot),'cancelar reserva libera vagas');
  ok(R(w.guest.gReservaCancelar(K3,prot)).code==='nao_encontrado','cancelar de novo: não encontrada');
  // página
- w=W();w.sheets.Acesso.rows[1][6]='SIM';const K4=w.sheets.Acesso.rows[1][1];w.pub.reservar({dia:18,pessoas:[P('Cliente Um','(42) 99600-0001')],cli:'k'});
- let pg=await pagina(w.guest,'../apps-script/convidados/Gestao.html',h=>h.replace('<?!= JSON.stringify(k) ?>',JSON.stringify(K4)));
- await pg.waitForSelector('.noites .n',{timeout:8000});ok((await pg.$$('.noites .n')).length===4&&(await pg.textContent('#app')).includes('64'),'página: 4 cards de noite com lotação');
+ w=W();const K4=usr(w);w.pub.reservar({dia:18,pessoas:[P('Cliente Um','(42) 99600-0001')],cli:'k'});
+ let pg=await pagina(w.guest,'/tmp/out/convidados/Painel.html',h=>h.replace("try{SES=sessionStorage.getItem('sh_ses')}catch(e){}","SES="+JSON.stringify(K4)+";"));
+ await pg.waitForSelector('.grid .nc',{timeout:8000});ok((await pg.$$('.grid .nc')).length===4&&(await pg.textContent('#app')).includes('64'),'página: 4 cards de noite com lotação');
  await pg.fill('#busca',g1.nome.split(' ')[0]);await pg.waitForTimeout(150);ok((await pg.$$('.tb tr')).length>1,'página: busca de convidado');
  await pg.fill('#busca','');await pg.click('button[data-a=mc] >> nth=0');await pg.selectOption('#f1',{index:0});await pg.click('#mOk');await pg.waitForSelector('.toast');ok(sh(w,'Auditoria').length>=2,'página: mover convidado grava e atualiza');
  await pg.click('[data-tab=res]');ok((await pg.textContent('#app')).includes('Cliente Um'),'página: aba de reservas lista o público');
  await pg.screenshot({path:'shot_gestao.png',fullPage:true});await pg.close();
- pg=await pagina(w.guest,'../apps-script/convidados/Gestao.html',h=>h.replace('<?!= JSON.stringify(k) ?>',JSON.stringify('z'.repeat(40))));await pg.waitForSelector('.err');ok((await pg.textContent('#app')).includes('Acesso negado'),'página: token errado = negado');await pg.close();
  {const c=w.guest;c.HtmlService={XFrameOptionsMode:{ALLOWALL:1},createTemplateFromFile:(n)=>({evaluate(){return{setTitle(){return this},addMetaTag(){return this},setXFrameOptionsMode(){return this},_t:n}}}),createHtmlOutputFromFile:(n)=>({setTitle(){return this},addMetaTag(){return this},setXFrameOptionsMode(){return this},_t:n})};
-  ok(c.doGet({parameter:{p:'gestao',k:'abc'}})._t==='Gestao','doGet: ?p=gestao abre a gestão')}
- ok(!/Strack|AKfycb/.test(fs.readFileSync('../apps-script/convidados/Gestao.html','utf8')),'Gestao.html sem dados embutidos');
+  ok(c.doGet({parameter:{p:'painel'}})._t==='Painel','doGet: ?p=painel abre o painel')}
+ ok(!/Strack|AKfycb/.test(fs.readFileSync('/tmp/out/convidados/Painel.html','utf8')),'Painel.html sem dados embutidos');
  await br.close();console.log(out.join('\n'));
 })();
