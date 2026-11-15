@@ -91,6 +91,24 @@ input[type=text],input[type=search],input[type=password],select{background:#0a20
 .lotx{color:#ffb59f;font-weight:700}
 .cons{background:#3a3a1a;border-radius:8px;padding:6px 10px;font-size:12.5px;margin:8px 0}
 .err{background:rgba(7,28,18,.6);border:1px solid var(--laranja);border-radius:12px;padding:16px;text-align:center;margin:12px 0}
+
+.lay{display:block}
+@media(min-width:1024px){
+.wrap{max-width:1480px;padding:28px 32px 56px}
+h1{font-size:30px}
+.top{position:sticky;top:0;z-index:5;background:linear-gradient(#113325 70%,rgba(17,51,37,0));padding:10px 0 14px;margin:-10px 0 0}
+.kpis{grid-template-columns:repeat(5,1fr);gap:14px}.kpi b{font-size:32px}
+.grid{grid-template-columns:repeat(2,1fr);gap:18px}
+.lay{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(340px,1fr);gap:20px;align-items:start;margin-top:4px}
+.rc{position:sticky;top:78px;max-height:calc(100vh - 96px);overflow:auto;padding-right:2px}
+.rc .sec{margin-top:0;font-size:18px}.rc .sec~.sec{margin-top:20px}
+.tb tr:hover td{background:rgba(234,231,218,.06)}
+td,th{padding:7px 6px}
+.mod{max-width:520px}
+button:hover{border-color:var(--ouro);background:rgba(180,126,0,.15)}button.p:hover{background:#c98d06}
+.nc:hover .tk{transform:translateY(-2px)}.nc .tk{transition:transform .15s}
+}
+@media(min-width:1500px){.grid{grid-template-columns:repeat(4,1fr)}.wrap{max-width:1680px}}
 </style></head><body><div class="wrap">
 <div id="login" style="display:none"></div>
 <div id="main" style="display:none">
@@ -152,11 +170,11 @@ function render(){
   +'<tr><td>Vagas restantes</td><td class="n">'+n.restantes+'</td></tr><tr><td>Convidados confirmados (pessoas)</td><td class="n">'+n.confirmadosPessoas+'</td></tr>'
   +'<tr><td>Sem resposta (pessoas contadas · convites)</td><td class="n">'+n.pendentesPessoas+' · '+n.pendentesConvites+'</td></tr><tr><td>Convidados que não vão (convites)</td><td class="n">'+n.naoVaiConvites+'</td></tr>'
   +'<tr><td>Público: reservas · pessoas</td><td class="n">'+n.reservas+' · '+n.publico+'</td></tr><tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table></div></div>'});
- h+='</div>';if(SEL!=null)h+=detalhe(noite(SEL));
- h+=whatsCard();
+ h+='</div><div class="lay"><div class="lc">';if(SEL!=null)h+=detalhe(noite(SEL));
+ h+='</div><div class="rc">'+whatsCard();
  h+='<h2 class="sec">Últimas movimentações</h2><div class="card"><table><tr><th>Quando</th><th>Origem</th><th>O quê</th></tr>'+(S.atividade.length?S.atividade.map(function(e){return'<tr><td class="n">'+esc(e.quando)+'</td><td>'+esc(e.tipo)+'</td><td>'+esc(e.texto)+'</td></tr>'}).join(''):'<tr><td colspan="3" class="mut">Sem movimentações ainda.</td></tr>')+'</table></div>';
  h+='<h2 class="sec">Alterações da gestão</h2><div class="card"><div class="aud">'+(S.auditoria.length?S.auditoria.map(function(a){return'<div>'+esc(a.quando)+' · <b>'+esc(a.quem)+'</b> · '+esc(a.acao)+' — '+esc(a.det)+'</div>'}).join(''):'<div>Nenhuma alteração registrada.</div>')+'</div></div>';
- h+='<p class="mut">Regra: teto de '+S.teto+' pessoas por noite (capacidade '+S.capacidade+' + 10%). Convidado sem resposta conta '+(S.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>';
+ h+='</div></div><p class="mut">Regra: teto de '+S.teto+' pessoas por noite (capacidade '+S.capacidade+' + 10%). Convidado sem resposta conta '+(S.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>';
  $('app').innerHTML=h}
 function detalhe(n){var ed=podeEditar();var h='<div class="card" style="margin-top:14px"><div class="row sp"><h2>Noite '+n.dia+' · '+esc(n.label)+' — pessoas</h2><div class="tabs"><button class="'+(TAB==='conv'?'on':'')+'" data-tab="conv">Convidados</button><button class="'+(TAB==='res'?'on':'')+'" data-tab="res">Reservas do público</button></div></div>'+(ed?'':'<div class="cons">Perfil de consulta: você pode ver tudo, mas não alterar.</div>');
  if(TAB==='conv'){var L=S.convidados.filter(function(c){return c.dia===n.dia});var q=norm(BUSCA);if(q)L=L.filter(function(c){return norm(c.nome+' '+c.titNome+' '+c.acNome).indexOf(q)>=0});if(FIL!=='todos')L=L.filter(function(c){return c.status===FIL});

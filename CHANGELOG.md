@@ -29,3 +29,4 @@
 - Acesso por usuário e senha (aba `Usuarios`: usuario, nome, perfil GESTAO/CONSULTA, ativo SIM/NÃO, senha inicial). No primeiro acesso a pessoa define a própria senha (mín. 8; guardada só como hash com salt). Nova senha inicial na planilha = reset.
 - Sessão de 6 h; 5 erros bloqueiam o usuário por 15 min; ativo=NÃO derruba a sessão na hora. CONSULTA vê tudo e não altera.
 - Removidos: tokens (`Acesso`) e "Gerar tokens". `Metricas.src.gs` → `Setup.src.gs`.
+- Painel: layout de computador (≥1024 px) com KPIs em 5 colunas, noites em grade (2 colunas; 4 em telas ≥1500 px), lista de pessoas ao lado de WhatsApp/movimentações/auditoria (coluna lateral fixa), cabeçalho fixo e hover; celular inalterado.
