@@ -68,8 +68,15 @@ button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;border:0;p
 .tk-hr div+div{border-left:1px solid rgba(22,36,27,.4)}
 .tk-hr small{display:block;font:700 9px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#4c5a4f}
 .tk-hr b{display:block;font:800 19px/1.1 'Playfair Display',Georgia,serif;margin-top:5px;color:#16241b}
-.tk.wide .tk-ph{display:none}.tk.wide .tk-in{grid-template-columns:1fr 84px;grid-template-rows:auto 118px;min-height:0}.tk.wide .tk-main{grid-column:1;grid-row:1;padding:16px 8px 8px 14px}.tk.wide .tk-stub{grid-column:2;grid-row:1}.tk.wide .tk-logo{padding:6px 0}.tk.wide .tk-logo img{max-height:50px}
-.tk-wp{display:none;grid-column:1/-1;grid-row:2;background-size:cover;background-position:center;mix-blend-mode:multiply;border-top:1.5px solid rgba(22,36,27,.55);-webkit-mask-image:linear-gradient(180deg,#0000,#000 22%);mask-image:linear-gradient(180deg,#0000,#000 22%)}.tk.wide .tk-wp{display:block}
+.tk.wide .tk-ph{display:none}.tk.wide .tk-in{grid-template-columns:1fr 84px;grid-template-rows:auto auto;min-height:0}.tk.wide .tk-main{grid-column:1;grid-row:1;padding:16px 8px 8px 14px}.tk.wide .tk-stub{grid-column:2;grid-row:1}.tk.wide .tk-logo{padding:6px 0}.tk.wide .tk-logo img{max-height:50px}
+.tk-wp{display:none;grid-column:1/-1;grid-row:2;aspect-ratio:3/1;background-size:100% 100%;mix-blend-mode:multiply;border-top:1.5px solid rgba(22,36,27,.55)}.tk.wide .tk-wp{display:block}
+.tk-pub{width:54px;height:auto;display:block;margin:0 auto 9px;opacity:.9}
+.noite.tkc{padding:0;background:none;border:0;border-radius:8px;margin:0 0 14px;cursor:pointer;display:block;-webkit-tap-highlight-color:transparent}
+.noite.tkc .tk{margin:0}.noite.tkc[disabled]{opacity:1}.noite.tkc[disabled] .tk{filter:grayscale(.85) brightness(.82)}
+.noite.tkc .tk-hr b{padding:0;margin-top:5px}.noite.tkc .tk-hr small{color:#4c5a4f;font:700 9px/1 Inter,sans-serif;margin:0}
+.tkc .tk-hr .st{font:800 15px/1.1 'Playfair Display',Georgia,serif;margin-top:5px;white-space:nowrap}
+.tkc .st.d{color:#1f6b2c}.tkc .st.p{color:#8a5d00}.tkc .st.l{color:#b03a18}
+.tkc .tk-cta{position:absolute;left:0;right:0;z-index:3}
 .tk-note{font-size:12.5px;color:#b9b5a6;text-align:center;margin:-6px 0 14px;font-style:italic}
 .toggle{display:flex;gap:10px;margin-top:6px}.toggle button{margin:0;padding:12px}
 .toggle .on{background:var(--ouro);color:#0a2016;border-color:var(--ouro)}.toggle .on.nao{background:#EAE7DA;color:#0a2016;border-color:#EAE7DA}.vai{margin:14px 0 4px}.vai label{font-family:'Playfair Display',Georgia,serif;font-size:18px;margin:0 0 8px}.vai .toggle button{font-weight:600}.btn.neutro{background:#EAE7DA;color:#0a2016}
@@ -113,15 +120,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
 
   <section id="s-form" class="hide">
     <h1>Reserve o seu lugar na história</h1>
-    <div class="tk" id="tk" role="img" aria-label="Ingresso da noite">
-      <div class="tk-ph l" id="tk-pl"></div><div class="tk-ph r" id="tk-pr"></div>
-      <div class="tk-in">
-        <div class="tk-main"><div class="tk-top">Semana de Inauguração</div><div class="tk-logo"><img id="tk-logo" alt=""></div><div class="tk-eb hide" id="tk-eb">e banda</div><div class="tk-gen" id="tk-gen"></div></div>
-        <div class="tk-stub"><span class="dw" id="tk-dw"></span><span class="dd" id="tk-dd"></span><span class="dm" id="tk-dm"></span></div>
-        <div class="tk-wp" id="tk-wp"></div>
-      </div>
-      <div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b id="tk-show"></b></div><div class="pv"><small>Entrada</small><b>R$ <span class="vl">40</span></b></div></div>
-    </div>
+    <div class="tk" id="tk" role="img" aria-label="Ingresso da noite"></div>
     <p class="tk-note">Entrada de R$ <span class="vl">40,00</span> por pessoa, acertada junto à comanda na noite.</p>
     <div class="who"><b id="f-dia"></b><span id="f-at"></span></div>
     <div class="card">
@@ -217,9 +216,10 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   function listar(){
     var L=$('noites');L.innerHTML='';
     NOITES.forEach(function(n){
-      var b=document.createElement('button');b.className='noite';b.type='button';
-      var st=n.lotado?'<span class="bd l">Lotado</span>':(n.vagas<INFO.max?'<span class="bd p">Últimas vagas</span>':'<span class="bd d">Disponível</span>');
-      b.innerHTML='<b>'+esc(n.label)+'</b><small>'+esc(n.atracao||'')+'</small>'+st;
+      var b=document.createElement('button');b.className='noite tkc';b.type='button';
+      var v=n.lotado?['l','Lotado']:(n.vagas<INFO.max?['p','Últimas vagas']:['d','Disponível']);
+      b.setAttribute('aria-label',n.label+' · '+v[1]);
+      b.innerHTML='<div class="tk'+(BANDAS[n.dia]&&BANDAS[n.dia].w?' wide':'')+'">'+tkHTML(n,v)+'</div>';
       if(n.lotado){b.disabled=true}else b.onclick=function(){abrir(n)};
       L.appendChild(b)});
     if(!NOITES.length)L.innerHTML='<p class="hint">Nenhuma noite disponível no momento.'+contato()+'</p>'}
@@ -228,14 +228,20 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   /* ---- INGRESSO ---- */
   var BANDAS={18:{l:'ph18L.jpg',r:'ph18R.jpg',logo:'logo18.png',show:'21h'},19:{l:'ph19L.jpg',r:'ph19R.jpg',logo:'logo19.png',show:'22h'},20:{l:'ph20L.jpg',r:'ph20R.jpg',w:'ph20W.jpg',logo:'logo20.png',show:'22h'},21:{l:'ph21L.jpg',r:'ph21R.jpg',logo:'logo21.png',show:'22h'}};
   var MESES=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  var LOGOD='data:image/png;base64,__LOGOD__';
+  function tkHTML(n,vagas){
+    var b=BANDAS[n&&n.dia];if(!b)return '';
+    var m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·');
+    var cel=vagas?'<div><small>Vagas</small><b class="st '+vagas[0]+'">'+vagas[1]+'</b></div>':'<div class="pv"><small>Entrada</small><b>R$ <span class="vl">'+esc(brl(INFO.valor||40))+'</span></b></div>';
+    return (b.w?'':'<div class="tk-ph l" style="background-image:url('+IMG+b.l+')"></div><div class="tk-ph r" style="background-image:url('+IMG+b.r+')"></div>')
+     +'<div class="tk-in"><div class="tk-main"><div class="tk-top">Semana de Inauguração</div><div class="tk-logo"><img src="'+IMG+b.logo+'" alt="'+esc(at[0].trim())+'"></div>'
+     +(String(n.dia)==='21'?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+esc(at[1]?at[1].trim():'')+'</div></div>'
+     +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt="Das Stammhaus Pub"><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div>'
+     +(b.w?'<div class="tk-wp" style="background-image:url('+IMG+b.w+')"></div>':'')+'</div>'
+     +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+b.show+'</b></div>'+cel+'</div>'}
   function ticket(){
     var b=BANDAS[N&&N.dia],t=$('tk');if(!b){t.classList.add('hide');return}
-    var m=String(N.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/);
-    t.classList.toggle('wide',!!b.w);if(b.w)$('tk-wp').style.backgroundImage='url('+IMG+b.w+')';
-    $('tk-pl').style.backgroundImage='url('+IMG+b.l+')';$('tk-pr').style.backgroundImage='url('+IMG+b.r+')';$('tk-logo').src=IMG+b.logo;$('tk-logo').alt=String(N.atracao||'').split('·')[0].trim();
-    $('tk-eb').classList.toggle('hide',String(N.dia)!=='21');$('tk-gen').textContent=String(N.atracao||'').split('·')[1]?String(N.atracao).split('·')[1].trim():'';
-    $('tk-dw').textContent=m?m[1].replace('-feira','').toUpperCase():'';$('tk-dd').textContent=m?m[2]:'';$('tk-dm').textContent=m?MESES[+m[3]]||'':'';
-    $('tk-show').textContent=b.show;t.classList.remove('hide')}
+    t.classList.toggle('wide',!!b.w);t.innerHTML=tkHTML(N);t.classList.remove('hide')}
 
   /* ---- FORMULÁRIO ---- */
   function abrir(n){

@@ -126,7 +126,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok((await pg.$$('#noites .noite')).length===4&&(await pg.textContent('#s-home')).includes('história')&&!(await pg.textContent('#s-home')).includes('comanda'),'home: 4 cards de noite, texto comercial, sem destaque de cobrança');
  await pg.screenshot({path:'shot_pub_home.png',fullPage:true});
  await pg.click('#noites .noite');await pg.waitForSelector('#s-form:not(.hide)');
- ok((await pg.textContent('.tk-hr')).includes('R$ 40')&&(await pg.textContent('.tk-note')).includes('R$ 40,00')&&(await pg.textContent('.tk-note')).includes('comanda')&&(await pg.$$('.tk-pr')).length===0,'ingresso: valor na faixa dos horários + pequeno comentário (R$ 40,00 na comanda)');
+ ok((await pg.textContent('#tk .tk-hr')).includes('R$ 40')&&(await pg.textContent('.tk-note')).includes('R$ 40,00')&&(await pg.textContent('.tk-note')).includes('comanda')&&(await pg.$$('.tk-pr')).length===0,'ingresso: valor na faixa dos horários + pequeno comentário (R$ 40,00 na comanda)');
  ok((await pg.$$('#qtd button')).length===4&&(await pg.$$('#pessoas .pess')).length===1,'seletor de 1 a 4 pessoas; começa com 1');
  await pg.screenshot({path:'shot_pub_form1.png',fullPage:true});
  await pg.click('#qtd button:nth-child(3)');ok((await pg.$$('#pessoas .pess')).length===3,'escolher 3 pessoas abre 3 blocos nome+celular');

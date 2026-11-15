@@ -24,7 +24,7 @@ g = HDR_G + rd('Comum.src.gs') + '\n' + rd('Busca.src.gs') + '\n' + rd('Code.src
 # ---- público ----
 HDR_P = "/* =====================================================================\n * Das Stammhaus Pub — RESERVAS DO PÚBLICO. ARQUIVO ÚNICO (Code.gs). Projeto separado do dos convidados.\n * ===================================================================== */\n"
 p = HDR_P + rd('Comum.src.gs') + '\n' + rd('Publico.src.gs').replace("'__SHEET_ID__'", "'%s'" % sid)
-pt = rd('Publico.template.html').replace('__LOGO__', logo).replace('__IMGBASE__', IMGBASE)
+pt = rd('Publico.template.html').replace('__LOGO__', logo).replace('__IMGBASE__', IMGBASE).replace('__LOGOD__', base64.b64encode(rd('logo_dark.png','rb')).decode())
 for d, name, txt in (('convidados', 'Code.gs', g), ('convidados', 'Index.html', t), ('convidados', 'Metricas.html', rd('Metricas.html')),
                      ('publico', 'Code.gs', p), ('publico', 'Index.html', pt)):
     os.makedirs(os.path.join(out, d), exist_ok=True)
