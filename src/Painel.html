@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Painel · Das Stammhaus Pub</title>
+<title>Agenda · Das Stammhaus Pub</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--verde:#113325;--ouro:#B47E00;--laranja:#E04E27;--off:#EAE7DA;--escuro:#0a2016}
@@ -85,12 +85,32 @@ input[type=text],input[type=search],input[type=password],select{background:#0a20
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ouro);color:#fff;padding:9px 16px;border-radius:10px;font-weight:600;z-index:10}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button.on{background:var(--off);color:var(--verde);border-color:var(--off)}
 .lg{max-width:380px;margin:60px auto 0;background:rgba(7,28,18,.6);border:1px solid rgba(180,126,0,.5);border-radius:14px;padding:22px}
-.lg img{height:38px;display:block;margin:0 auto 14px}.lg h1{text-align:center;font-size:22px}.lg .sub{text-align:center}
+.lg img{height:84px;width:auto;display:block;margin:0 auto 12px}.rest{text-align:center;color:#d9a62e;font:700 11px Inter,sans-serif;letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px}.lg h1{text-align:center;font-size:22px}.lg .sub{text-align:center}
 .lg button.p{width:100%;margin-top:16px}
 .nc.sel .tk{outline:2px solid var(--ouro);outline-offset:2px}.nc{cursor:pointer}
 .lotx{color:#ffb59f;font-weight:700}
 .cons{background:#3a3a1a;border-radius:8px;padding:6px 10px;font-size:12.5px;margin:8px 0}
 .err{background:rgba(7,28,18,.6);border:1px solid var(--laranja);border-radius:12px;padding:16px;text-align:center;margin:12px 0}
+
+.cal-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 10px;flex-wrap:wrap}
+.cal-h h2{font-family:'Playfair Display',Georgia,serif;font-size:24px;margin:0}
+.cal-w,.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal-w div{font:700 11px Inter;letter-spacing:.12em;text-transform:uppercase;color:#b9b5a6;text-align:center;padding:2px 0}
+.dc{min-height:88px;border-radius:10px;border:1px solid rgba(234,231,218,.14);background:rgba(7,28,18,.35);padding:6px 7px;display:flex;flex-direction:column;gap:3px;text-align:left;cursor:default;color:var(--off);font-weight:400;overflow:hidden}
+.dc.out{visibility:hidden}.dc.pas{opacity:.35}
+.dc .dn{font:700 15px 'Playfair Display',Georgia,serif;display:flex;justify-content:space-between;align-items:center}
+.dc.hj .dn span:first-child{background:var(--ouro);color:#fff;border-radius:99px;padding:0 7px}
+.dc.ev{cursor:pointer;border-color:rgba(180,126,0,.7);background:rgba(7,28,18,.7)}.dc.ev:hover{border-color:var(--ouro);transform:translateY(-2px);transition:transform .12s}
+.dc .at{font-size:12px;font-weight:600;line-height:1.2;color:#f1d58a;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.dc .kv{font-size:11.5px;color:#cfcabb;margin-top:auto}.dc .kv b{color:var(--off)}
+.dc .mb{height:5px;border-radius:9px;background:rgba(234,231,218,.15);overflow:hidden}.dc .mb i{display:block;height:100%;background:#2f7a3b}.dc .mb i.f{background:var(--laranja)}
+.dc .lt{font-size:10px;font-weight:800;color:#fff;background:var(--laranja);border-radius:9px;padding:0 6px}
+.dc .add{margin:auto 0 0;font-size:12px;color:#d9a62e;font-weight:600}
+.dc.emp{cursor:default}.dc.emp.gx{cursor:pointer}.dc.emp.gx:hover{border-color:rgba(180,126,0,.6)}
+@media(max-width:700px){.cal-g,.cal-w{gap:3px}.dc{min-height:78px;padding:4px}.dc .at{font-size:10px;-webkit-line-clamp:1}.dc .kv{font-size:10px}.dc .dn{font-size:13px}.dc .lt{display:none}.dc .ad{display:none}}
+.bk{margin:6px 0 4px}
+.dh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0 10px}
+.dh h2{font-family:'Playfair Display',Georgia,serif;font-size:24px;margin:0}
 
 .lay{display:block}
 @media(min-width:1024px){
@@ -112,11 +132,11 @@ button:hover{border-color:var(--ouro);background:rgba(180,126,0,.15)}button.p:ho
 </style></head><body><div class="wrap">
 <div id="login" style="display:none"></div>
 <div id="main" style="display:none">
-<div class="top"><div><h1>Painel da Semana de Inauguração</h1><p class="sub" id="sub">Carregando…</p></div>
+<div class="top"><div><h1>Agenda · Das Stammhaus Pub</h1><p class="sub" id="sub">Carregando…</p></div>
 <div class="row"><button id="ref">Atualizar</button><button id="btrocar">Alterar senha</button><button id="bsair">Sair</button></div></div>
 <div id="app"></div></div></div>
 <script>
-var SES=null,S=null,SEL=null,TAB='conv',BUSCA='',FIL='todos',busy=false,USER={};
+var SES=null,S=null,SEL=null,VIEW='cal',MES=null,TAB='conv',BUSCA='',FIL='todos',busy=false,USER={};
 try{SES=sessionStorage.getItem('sh_ses')}catch(e){}
 function guarda(s){SES=s;try{s?sessionStorage.setItem('sh_ses',s):sessionStorage.removeItem('sh_ses')}catch(e){}}
 function $(i){return document.getElementById(i)}
@@ -124,7 +144,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return
 function brl(v){return 'R$ '+Number(v).toFixed(2).replace('.',',')}
 function toast(t){var d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(function(){d.remove()},3200)}
 function run(fn,args,ok){var g=google.script.run.withSuccessHandler(ok).withFailureHandler(function(e){busy=false;toast('Falha: '+(e&&e.message||e))});g[fn].apply(g,args)}
-var IMG='https://stammhauspub.github.io/assets/cards/',LOGOD='data:image/png;base64,__LOGOD__',MESES=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+var IMG='https://stammhauspub.github.io/assets/cards/',LOGOD='data:image/png;base64,__LOGOD__',LOGOL='data:image/png;base64,__LOGOL__',MESES=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 var BANDAS={18:{l:'ph18L.jpg',r:'ph18R.jpg',logo:'logo18.png',show:'21h'},19:{l:'ph19L.jpg',r:'ph19R.jpg',logo:'logo19.png',show:'22h'},20:{l:'ph20L.jpg',r:'ph20R.jpg',w:'ph20W.jpg',logo:'logo20.png',show:'22h'},21:{l:'ph21L.jpg',r:'ph21R.jpg',logo:'logo21.png',show:'22h'}};
 function tk(n,r){
   var b=BANDAS[n.dia],m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·'),pct=String(n.pct).replace('.',',');
@@ -141,12 +161,12 @@ function msgErro(r){var c=r&&r.code;return c==='sem_permissao'?'Seu perfil é de
 function podeEditar(){return S&&S.perfil==='GESTAO'}
 /* ===== login / troca de senha ===== */
 function mostra(v){['login','main'].forEach(function(i){$(i).style.display=i===v?'':'none'})}
-function telaLogin(msg){mostra('login');$('login').innerHTML='<div class="lg"><img alt="" src="'+LOGOD+'"><h1>Painel de gestão</h1><p class="sub">Acesso restrito à equipe do Das Stammhaus Pub.</p>'+(msg?'<div class="bad" id="lgErr">'+esc(msg)+'</div>':'<div class="bad" id="lgErr"></div>')+'<label>Usuário</label><input type="text" id="lgU" autocomplete="username" autocapitalize="none"><label>Senha</label><input type="password" id="lgS" autocomplete="current-password"><button class="p" id="lgB">Entrar</button></div>';
+function telaLogin(msg){mostra('login');$('login').innerHTML='<div class="lg"><img alt="Das Stammhaus Pub" src="'+LOGOL+'"><div class="rest">Área restrita</div><h1>Painel de gestão</h1><p class="sub">Acesso exclusivo à equipe do Das Stammhaus Pub. Entre com seu usuário e senha.</p>'+(msg?'<div class="bad" id="lgErr">'+esc(msg)+'</div>':'<div class="bad" id="lgErr"></div>')+'<label>Usuário</label><input type="text" id="lgU" autocomplete="username" autocapitalize="none"><label>Senha</label><input type="password" id="lgS" autocomplete="current-password"><button class="p" id="lgB">Entrar</button></div>';
  var go=function(){if(busy)return;var u=$('lgU').value,s=$('lgS').value;if(!u||!s){$('lgErr').textContent='Informe usuário e senha.';return}busy=true;$('lgB').disabled=true;
   run('entrar',[u,s],function(r){busy=false;$('lgB').disabled=false;if(r&&r.ok){guarda(r.sessao);USER={nome:r.nome,perfil:r.perfil};r.trocar?telaTrocar(true):carregar();return}
    $('lgErr').textContent=r&&r.code==='bloqueado'?'Muitas tentativas erradas. Tente novamente em 15 minutos.':r&&r.code==='limite'?'Muitas tentativas. Aguarde alguns minutos.':r&&r.erro?'Erro '+r.erro.codigo+' · ref '+r.erro.ref:'Usuário ou senha incorretos.';$('lgS').value=''})};
  $('lgB').onclick=go;$('lgS').onkeydown=function(e){if(e.key==='Enter')go()};$('lgU').onkeydown=function(e){if(e.key==='Enter')$('lgS').focus()};$('lgU').focus()}
-function telaTrocar(forcado){mostra('login');$('login').innerHTML='<div class="lg"><img alt="" src="'+LOGOD+'"><h1>'+(forcado?'Crie sua senha':'Alterar senha')+'</h1><p class="sub">'+(forcado?'Primeiro acesso: escolha uma senha só sua para continuar.':'Informe a senha atual e a nova.')+'</p><div class="bad" id="tgErr"></div><label>'+(forcado?'Senha inicial (a que lhe foi passada)':'Senha atual')+'</label><input type="password" id="tgA" autocomplete="current-password"><label>Nova senha (mínimo 8 caracteres)</label><input type="password" id="tgN" autocomplete="new-password"><label>Repita a nova senha</label><input type="password" id="tgR" autocomplete="new-password"><button class="p" id="tgB">Salvar senha</button>'+(forcado?'':'<button id="tgC" style="width:100%;margin-top:8px">Cancelar</button>')+'</div>';
+function telaTrocar(forcado){mostra('login');$('login').innerHTML='<div class="lg"><img alt="Das Stammhaus Pub" src="'+LOGOL+'"><h1>'+(forcado?'Crie sua senha':'Alterar senha')+'</h1><p class="sub">'+(forcado?'Primeiro acesso: escolha uma senha só sua para continuar.':'Informe a senha atual e a nova.')+'</p><div class="bad" id="tgErr"></div><label>'+(forcado?'Senha inicial (a que lhe foi passada)':'Senha atual')+'</label><input type="password" id="tgA" autocomplete="current-password"><label>Nova senha (mínimo 8 caracteres)</label><input type="password" id="tgN" autocomplete="new-password"><label>Repita a nova senha</label><input type="password" id="tgR" autocomplete="new-password"><button class="p" id="tgB">Salvar senha</button>'+(forcado?'':'<button id="tgC" style="width:100%;margin-top:8px">Cancelar</button>')+'</div>';
  if($('tgC'))$('tgC').onclick=function(){mostra('main')};
  $('tgB').onclick=function(){if(busy)return;var a=$('tgA').value,n=$('tgN').value,r2=$('tgR').value;if(n!==r2){$('tgErr').textContent='As senhas novas não são iguais.';return}busy=true;$('tgB').disabled=true;
   run('trocarSenha',[SES,a,n],function(r){busy=false;$('tgB').disabled=false;if(r&&r.code==='sessao'){guarda(null);telaLogin('Sessão expirada. Entre novamente.');return}
@@ -157,26 +177,70 @@ function carregar(){if(!SES){telaLogin('');return}run('painel',[SES],draw)}
 function sessaoExpirou(r){if(r&&r.code==='sessao'){guarda(null);S=null;var m=document.querySelector('.mask');if(m)m.remove();telaLogin('Sessão expirada. Entre novamente.');return true}if(r&&r.code==='trocar'){telaTrocar(true);return true}return false}
 function draw(r){busy=false;if(sessaoExpirou(r))return;
  if(!r||r.ok===false||r.erro){mostra('main');$('app').innerHTML='<div class="err">'+(r&&r.code==='limite'?'Muitas tentativas. Aguarde alguns minutos.':'Não foi possível carregar'+(r&&r.erro?' (código '+esc(r.erro.codigo)+', ref '+esc(r.erro.ref)+')':'')+'.')+'</div>';$('sub').textContent='';return}
- S=r;if(SEL==null||!S.noites.some(function(n){return n.dia===SEL}))SEL=S.noites.length?S.noites[0].dia:null;
- mostra('main');$('sub').textContent='Olá, '+r.quem+' · perfil '+(r.perfil==='GESTAO'?'gestão':'consulta')+' · atualizado em '+r.geradoEm+' · atualiza sozinho a cada minuto';render()}
+ S=r;if(SEL!=null&&!noite(SEL)){SEL=null;VIEW='cal'}if(!MES)MES=S.hoje.slice(0,7);
+ mostra('main');var sb='Olá, '+r.quem+' · perfil '+(r.perfil==='GESTAO'?'gestão':'consulta')+' · atualizado em '+r.geradoEm+' · atualiza sozinho a cada minuto';$('sub').setAttribute('data-s',sb);$('sub').textContent=sb;render()}
 function noite(d){return S.noites.filter(function(n){return n.dia===d})[0]}
-function render(){
- var t={total:0,lista:0,publico:0,restantes:0,receita:0};S.noites.forEach(function(n){t.total+=n.total;t.lista+=n.lista;t.publico+=n.publico;t.restantes+=n.restantes;t.receita+=n.receita});
- var h='<div class="kpis"><div class="kpi"><small>Pessoas comprometidas</small><b>'+t.total+'</b></div><div class="kpi"><small>Lista garantida</small><b>'+t.lista+'</b></div><div class="kpi"><small>Público reservado</small><b>'+t.publico+'</b></div><div class="kpi"><small>Vagas restantes (4 noites)</small><b>'+t.restantes+'</b></div><div class="kpi"><small>Entrada estimada (público)</small><b>'+brl(t.receita)+'</b></div></div><div class="grid">';
- S.noites.forEach(function(n){var w1=n.confirmadosPessoas/S.teto*100,w2=n.pendentesPessoas/S.teto*100,w3=n.publico/S.teto*100;
-  h+='<div class="nc'+(n.dia===SEL?' sel':'')+'" data-d="'+n.dia+'">'+tk(n,S)+'<div class="card"><div class="bar" title="'+n.total+' de '+S.teto+'"><i class="b1" style="width:'+w1+'%"></i><i class="b2" style="width:'+w2+'%"></i><i class="b3" style="width:'+w3+'%"></i></div>'
+var MN=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],DS=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+function nomeMes(ym){var m=MN[+ym.slice(5,7)-1];return m.charAt(0).toUpperCase()+m.slice(1)+' de '+ym.slice(0,4)}
+function addMes(ym,k){var y=+ym.slice(0,4),m=+ym.slice(5,7)-1+k;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+('0'+(m+1)).slice(-2)}
+function render(){if(VIEW==='dia'&&SEL!=null&&noite(SEL))return renderDia(noite(SEL));VIEW='cal';renderCal()}
+function resto(){var h='<div class="rc" style="margin-top:20px">'+whatsCard();
+ h+='<h2 class="sec">Últimas movimentações</h2><div class="card"><table><tr><th>Quando</th><th>Origem</th><th>O quê</th></tr>'+(S.atividade.length?S.atividade.map(function(e){return'<tr><td class="n">'+esc(e.quando)+'</td><td>'+esc(e.tipo)+'</td><td>'+esc(e.texto)+'</td></tr>'}).join(''):'<tr><td colspan="3" class="mut">Sem movimentações.</td></tr>')+'</table></div>';
+ h+='<h2 class="sec">Alterações da gestão</h2><div class="card"><div class="aud">'+(S.auditoria.length?S.auditoria.map(function(a){return'<div>'+esc(a.quando)+' · <b>'+esc(a.quem)+'</b> · '+esc(a.acao)+' — '+esc(a.det)+'</div>'}).join(''):'<div>Nenhuma alteração registrada.</div>')+'</div></div></div>';
+ return h+'<p class="mut">Regra: teto de '+S.teto+' pessoas por noite (capacidade '+S.capacidade+' + 10%). Convidado sem resposta conta '+(S.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>'}
+function renderCal(){
+ if(!MES)MES=S.hoje.slice(0,7);var ed=podeEditar(),mapa={};S.noites.forEach(function(n){if(n.iso)mapa[n.iso]=n});
+ var t={n:0,total:0,lista:0,publico:0,receita:0};S.noites.forEach(function(n){if(n.iso.slice(0,7)===MES&&n.iso>=S.hoje){t.n++;t.total+=n.total;t.lista+=n.lista;t.publico+=n.publico;t.receita+=n.receita}});
+ var ehMesAtual=MES===S.hoje.slice(0,7);
+ var h='<div class="cal-h"><h2>'+nomeMes(MES)+'</h2><div class="row"><button class="s" data-nav="-1"'+(ehMesAtual?' disabled':'')+'>‹ Mês anterior</button><button class="s" data-nav="0">Hoje</button><button class="s" data-nav="1">Próximo mês ›</button></div></div>';
+ h+='<div class="kpis"><div class="kpi"><small>Dias com programação'+(ehMesAtual?' (de hoje em diante)':'')+'</small><b>'+t.n+'</b></div><div class="kpi"><small>Pessoas comprometidas</small><b>'+t.total+'</b></div><div class="kpi"><small>Lista garantida</small><b>'+t.lista+'</b></div><div class="kpi"><small>Público reservado</small><b>'+t.publico+'</b></div><div class="kpi"><small>Entrada estimada (público)</small><b>'+brl(t.receita)+'</b></div></div>';
+ h+='<div class="cal-w">'+DS.map(function(d){return'<div>'+d+'</div>'}).join('')+'</div><div class="cal-g">';
+ var y=+MES.slice(0,4),m=+MES.slice(5,7),off=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7,nd=new Date(Date.UTC(y,m,0)).getUTCDate();
+ for(var i=0;i<off;i++)h+='<div class="dc out"></div>';
+ for(var d=1;d<=nd;d++){var iso=MES+'-'+('0'+d).slice(-2),n=mapa[iso],pas=iso<S.hoje,hj=iso===S.hoje;
+  var cls='dc'+(pas?' pas':'')+(hj?' hj':'');
+  if(n){var pc=Math.min(100,n.total/S.teto*100);
+   h+='<div class="'+cls+' ev" data-d="'+n.dia+'"><div class="dn"><span>'+d+'</span>'+(n.lotado?'<span class="lt">LOTADO</span>':'')+'</div><div class="at">'+esc(n.atracao||'Sem atração definida')+'</div><div class="mb"><i'+(n.lotado?' class="f"':'')+' style="width:'+pc+'%"></i></div><div class="kv"><b>'+n.total+'</b>/'+S.teto+' · lista '+n.lista+' · público '+n.publico+'</div></div>'}
+  else if(ed&&!pas)h+='<div class="'+cls+' emp gx" data-novo="'+iso+'"><div class="dn"><span>'+d+'</span></div><div class="add">+<span class="ad"> abrir dia</span></div></div>';
+  else h+='<div class="'+cls+' emp"><div class="dn"><span>'+d+'</span></div></div>'}
+ h+='</div>'+resto();$('app').innerHTML=h;$('sub').textContent=$('sub').getAttribute('data-s')||''}
+function cardNoite(n){var w1=n.confirmadosPessoas/S.teto*100,w2=n.pendentesPessoas/S.teto*100,w3=n.publico/S.teto*100;
+ return'<div class="nc">'+tk(n,S)+'<div class="card"><div class="bar" title="'+n.total+' de '+S.teto+'"><i class="b1" style="width:'+w1+'%"></i><i class="b2" style="width:'+w2+'%"></i><i class="b3" style="width:'+w3+'%"></i></div>'
   +'<div class="leg"><span style="--c:#2f7a3b">convidados confirmados</span><span style="--c:#8a6a1a">convidados sem resposta</span><span style="--c:#B47E00">público</span></div>'
   +'<table><tr><td>Total comprometido</td><td class="n"><b>'+n.total+' / '+S.teto+'</b> ('+String(n.pct).replace('.',',')+'%)'+(n.total>S.teto?' <span class="lotx">+'+(n.total-S.teto)+' acima</span>':'')+'</td></tr>'
   +'<tr><td>Vagas restantes</td><td class="n">'+n.restantes+'</td></tr><tr><td>Convidados confirmados (pessoas)</td><td class="n">'+n.confirmadosPessoas+'</td></tr>'
   +'<tr><td>Sem resposta (pessoas contadas · convites)</td><td class="n">'+n.pendentesPessoas+' · '+n.pendentesConvites+'</td></tr><tr><td>Convidados que não vão (convites)</td><td class="n">'+n.naoVaiConvites+'</td></tr>'
-  +'<tr><td>Público: reservas · pessoas</td><td class="n">'+n.reservas+' · '+n.publico+'</td></tr><tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table></div></div>'});
- h+='</div><div class="lay"><div class="lc">';if(SEL!=null)h+=detalhe(noite(SEL));
- h+='</div><div class="rc">'+whatsCard();
- h+='<h2 class="sec">Últimas movimentações</h2><div class="card"><table><tr><th>Quando</th><th>Origem</th><th>O quê</th></tr>'+(S.atividade.length?S.atividade.map(function(e){return'<tr><td class="n">'+esc(e.quando)+'</td><td>'+esc(e.tipo)+'</td><td>'+esc(e.texto)+'</td></tr>'}).join(''):'<tr><td colspan="3" class="mut">Sem movimentações ainda.</td></tr>')+'</table></div>';
- h+='<h2 class="sec">Alterações da gestão</h2><div class="card"><div class="aud">'+(S.auditoria.length?S.auditoria.map(function(a){return'<div>'+esc(a.quando)+' · <b>'+esc(a.quem)+'</b> · '+esc(a.acao)+' — '+esc(a.det)+'</div>'}).join(''):'<div>Nenhuma alteração registrada.</div>')+'</div></div>';
- h+='</div></div><p class="mut">Regra: teto de '+S.teto+' pessoas por noite (capacidade '+S.capacidade+' + 10%). Convidado sem resposta conta '+(S.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>';
- $('app').innerHTML=h}
-function detalhe(n){var ed=podeEditar();var h='<div class="card" style="margin-top:14px"><div class="row sp"><h2>Noite '+n.dia+' · '+esc(n.label)+' — pessoas</h2><div class="tabs"><button class="'+(TAB==='conv'?'on':'')+'" data-tab="conv">Convidados</button><button class="'+(TAB==='res'?'on':'')+'" data-tab="res">Reservas do público</button></div></div>'+(ed?'':'<div class="cons">Perfil de consulta: você pode ver tudo, mas não alterar.</div>');
+  +'<tr><td>Público: reservas · pessoas</td><td class="n">'+n.reservas+' · '+n.publico+'</td></tr><tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table></div></div>'}
+function renderDia(n){var ed=podeEditar();
+ var h='<div class="dh"><div><button class="s bk" data-back="1">‹ Voltar ao calendário</button><h2>'+esc(n.label)+'</h2><div class="mut">'+esc(n.atracao||'Sem atração definida')+(n.estilo?' · '+esc(n.estilo):'')+' · reservas do público '+(n.pub?'abertas':'fechadas')+'</div></div>'
+  +'<div class="row"><button class="p" id="pdf">Exportar lista (PDF)</button><button id="prt">Imprimir lista</button>'+(ed?'<button id="edd">Editar programação</button>':'')+'</div></div>'
+  +'<div class="lay"><div class="lc">'+cardNoite(n)+detalhe(n)+'</div><div class="rc">'+whatsCard()+'</div></div>';
+ $('app').innerHTML=h;window.scrollTo(0,0)}
+/* ===== lista de portaria (PDF) ===== */
+function listaPortaria(n){var R=[],pend=0;
+ S.convidados.forEach(function(c){if(c.dia!==n.dia||c.status==='Não vai')return;
+  if(c.status==='Confirmado'){R.push({nome:c.titNome||c.nome,org:'Lista',obs:c.acNome?'Convite de '+c.nome:''});if(c.acNome)R.push({nome:c.acNome,org:'Lista',obs:'Acompanhante de '+(c.titNome||c.nome)})}
+  else{R.push({nome:c.nome,org:'Lista',obs:'Sem resposta'+(c.acomp&&S.pendAc?' · direito a +1 acompanhante':'')});if(c.acomp&&S.pendAc)pend++}});
+ S.reservas.forEach(function(r){if(r.dia!==n.dia)return;r.pessoas.forEach(function(p){R.push({nome:p.nome,org:'Reserva '+r.prot,obs:p.tel?'Cel. '+p.tel:''})})});
+ R.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});return{R:R,pend:pend}}
+function htmlLista(n){var L=listaPortaria(n),R=L.R,nl=R.filter(function(x){return x.org==='Lista'}).length,nr=R.length-nl;
+ var h='<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:2px 0 8px;font-weight:normal}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:4px 5px;text-align:left}th{background:#ddd}td.c{width:22px}.m{color:#444}</style></head><body>'
+ +'<h1>Das Stammhaus Pub · Lista de portaria</h1><h2>'+esc(n.label)+(n.atracao?' · '+esc(n.atracao):'')+'</h2>'
+ +'<p class="m">Nomes na lista: <b>'+nl+'</b> · nomes em reservas do público: <b>'+nr+'</b>'+(L.pend?' · acompanhantes sem nome (convites sem resposta): <b>'+L.pend+'</b>':'')+' · pessoas esperadas: <b>'+n.total+'</b> de '+S.teto+'. Gerado em '+esc(S.geradoEm)+'.</p>'
+ +'<table><tr><th>#</th><th>Nome</th><th>Origem</th><th>Observação</th><th>OK</th></tr>';
+ R.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.org)+'</td><td>'+esc(x.obs)+'</td><td class="c">&nbsp;</td></tr>'});
+ if(!R.length)h+='<tr><td colspan="5">Nenhum nome nesta noite.</td></tr>';
+ return h+'</table></body></html>'}
+function nomeArq(n){return'lista-portaria-'+(n.iso||n.dia)}
+function baixaPdf(b64,nome){var bin=atob(b64),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+ var url=URL.createObjectURL(new Blob([u],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=nome;document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(url)},4000)}
+function exportarPdf(){var n=noite(SEL);if(!n||busy)return;busy=true;var b=$('pdf');if(b){b.disabled=true;b.textContent='Gerando PDF…'}
+ run('gListaPdf',[SES,htmlLista(n),nomeArq(n)],function(r){busy=false;if(b){b.disabled=false;b.textContent='Exportar lista (PDF)'}if(sessaoExpirou(r))return;
+  if(r&&r.ok&&r.b64){baixaPdf(r.b64,r.nome);toast('PDF gerado');return}toast(msgErro(r)||'Não foi possível gerar o PDF')})}
+function imprimirLista(){var n=noite(SEL);if(!n)return;var w=window.open('','_blank');if(!w){toast('O navegador bloqueou a janela. Use "Exportar lista (PDF)".');return}
+ w.document.write(htmlLista(n).replace('</body>','<script>window.onload=function(){window.print()}<\/script></body>'));w.document.close()}
+function modalDia(iso,n){var ed=n||{};modal(n?'Editar programação':'Abrir dia',(n?'<p class="mut">'+esc(n.label)+'</p>':'<p class="mut">'+esc(iso.split('-').reverse().join('/'))+'</p>')+'<label>Atração</label><input type="text" id="f1" maxlength="120" value="'+esc(ed.atracao||'')+'" placeholder="Ex.: Banda X · Rock"><label>Estilo</label><input type="text" id="f2" maxlength="80" value="'+esc(ed.estilo||'')+'"><label>Reservas do público</label><select id="f3"><option value="1"'+(ed.pub===false?'':' selected')+'>Abertas</option><option value="0"'+(ed.pub===false?' selected':'')+'>Fechadas</option></select>','Salvar',function(f,cb){run('gDiaSalvar',[SES,iso,val('f1'),val('f2'),val('f3')==='1'],cb)})}
+function detalhe(n){var ed=podeEditar();var h='<div class="card" style="margin-top:14px"><div class="row sp"><h2>'+esc(n.label)+' — pessoas</h2><div class="tabs"><button class="'+(TAB==='conv'?'on':'')+'" data-tab="conv">Convidados</button><button class="'+(TAB==='res'?'on':'')+'" data-tab="res">Reservas do público</button></div></div>'+(ed?'':'<div class="cons">Perfil de consulta: você pode ver tudo, mas não alterar.</div>');
  if(TAB==='conv'){var L=S.convidados.filter(function(c){return c.dia===n.dia});var q=norm(BUSCA);if(q)L=L.filter(function(c){return norm(c.nome+' '+c.titNome+' '+c.acNome).indexOf(q)>=0});if(FIL!=='todos')L=L.filter(function(c){return c.status===FIL});
   h+='<div class="row" style="margin:10px 0"><input type="search" id="busca" placeholder="Buscar nome…" value="'+esc(BUSCA)+'"><select id="fil">'+['todos','Confirmado','Pendente','Não vai'].map(function(f){return'<option'+(f===FIL?' selected':'')+'>'+f+'</option>'}).join('')+'</select>'+(ed?'<button class="p s" id="addc">+ Incluir convidado</button>':'')+'</div>';
   h+='<table class="tb"><tr><th>Convidado</th><th>Status</th><th class="n">Pessoas</th><th>Contato</th><th></th></tr>';
@@ -192,7 +256,7 @@ function whatsCard(){var w=S.whats;if(!w)return'';var c=w.contagem||{};var h='<h
  if(w.pendencias.length){h+='<table class="tb" style="margin-top:8px"><tr><th>Pessoa</th><th>Noite</th><th>Status</th><th></th></tr>'+w.pendencias.map(function(x){return'<tr><td>'+esc(x.nome)+'<br><small>'+esc(x.ref)+(x.detalhe?' · '+esc(x.detalhe):'')+'</small></td><td>'+x.dia+'</td><td>'+esc(x.status)+(x.tent?' ('+x.tent+')':'')+'</td><td>'+(podeEditar()&&(x.status==='FALHOU'||x.status==='SEM_NUMERO')?'<button class="s" data-a="wr" data-l="'+x.linha+'">Reenviar</button>':'')+'</td></tr>'}).join('')+'</table>'}
  return h+'</div>'}
 function norm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim()}
-function opcoesDia(sel,sem){return S.noites.filter(function(n){return n.dia!==sem}).map(function(n){return'<option value="'+n.dia+'"'+(n.dia===sel?' selected':'')+'>Noite '+n.dia+' · '+esc(n.label)+' ('+n.total+'/'+S.teto+')</option>'}).join('')}
+function opcoesDia(sel,sem){return S.noites.filter(function(n){return n.dia!==sem&&n.iso>=S.hoje}).map(function(n){return'<option value="'+n.dia+'"'+(n.dia===sel?' selected':'')+'>'+esc(n.label)+' ('+n.total+'/'+S.teto+')</option>'}).join('')}
 function modal(titulo,corpo,botao,envia){var m=document.createElement('div');m.className='mask';m.innerHTML='<div class="mod"><h2>'+titulo+'</h2>'+corpo+'<div class="bad" id="mErr"></div><div class="row" style="margin-top:14px;justify-content:flex-end"><button id="mX">Fechar</button><button class="p" id="mOk">'+botao+'</button></div></div>';document.body.appendChild(m);
  var forcar=false;$('mX').onclick=function(){m.remove()};
  $('mOk').onclick=function(){if(busy)return;busy=true;$('mOk').disabled=true;$('mErr').textContent='';
@@ -201,7 +265,11 @@ function modal(titulo,corpo,botao,envia){var m=document.createElement('div');m.c
    m.remove();S=r;if(r.info&&r.info.protocolo)toast('Reserva criada: '+r.info.protocolo);else toast('Alteração salva');render()})}}
 function val(id){return $(id).value}
 document.addEventListener('click',function(e){var t=e.target;
- var n=t.closest&&t.closest('.nc');if(n&&!t.closest('button')&&S){SEL=Number(n.getAttribute('data-d'));render();return}
+ var dc=t.closest&&t.closest('.dc.ev');if(dc&&S){SEL=Number(dc.getAttribute('data-d'));VIEW='dia';render();return}
+ var gx=t.closest&&t.closest('.dc.gx');if(gx&&S){modalDia(gx.getAttribute('data-novo'),null);return}
+ var bn=t.closest&&t.closest('[data-nav]');if(bn&&S){var k=Number(bn.getAttribute('data-nav'));MES=k===0?S.hoje.slice(0,7):addMes(MES,k);render();return}
+ if(t.closest&&t.closest('[data-back]')){VIEW='cal';render();return}
+ if(t.id==='pdf')return exportarPdf();if(t.id==='prt')return imprimirLista();if(t.id==='edd'){modalDia(noite(SEL).iso,noite(SEL));return}
  if(t.getAttribute&&t.getAttribute('data-tab')){TAB=t.getAttribute('data-tab');render();return}
  if(t.id==='addc')return novoConv();if(t.id==='addr')return novaRes();
  var a=t.getAttribute&&t.getAttribute('data-a');if(!a||!S)return;var id=t.getAttribute('data-id'),l=t.getAttribute('data-l');
@@ -222,7 +290,7 @@ function novoConv(){modal('Incluir convidado (exceção)','<label>Nome completo<
 function statusConv(c){modal('Status de '+esc(c.nome),'<label>Novo status</label><select id="f1"><option value="confirmar">Confirmado</option><option value="nao_vai">Não vai</option><option value="pendente">Sem resposta (pendente)</option></select><div id="cf"><label>Nome do titular</label><input type="text" id="f2" value="'+esc(c.titNome||c.nome)+'"><label>Celular do titular (opcional)</label><input type="text" id="f3" value="'+esc(c.titTel)+'">'+(c.acomp?'<label>Acompanhante (deixe em branco se vai sozinho)</label><input type="text" id="f4" value="'+esc(c.acNome)+'"><label>Celular do acompanhante (opcional)</label><input type="text" id="f5" value="'+esc(c.acTel)+'">':'')+'</div>','Salvar',function(f,cb){var a=val('f1');run('gStatusConvidado',[SES,c.id,a,a==='confirmar'?{titNome:val('f2'),titTel:val('f3'),acNome:c.acomp?val('f4'):'',acTel:c.acomp?val('f5'):''}:{},f],cb)});
  var m=$('f1');m.onchange=function(){$('cf').style.display=m.value==='confirmar'?'':'none'}}
 function novaRes(){var campos='';for(var i=0;i<4;i++)campos+='<label>Pessoa '+(i+1)+(i?' (opcional)':'')+'</label><input type="text" id="n'+i+'" placeholder="Nome completo"><input type="text" id="t'+i+'" placeholder="(42) 99999-9999" style="margin-top:4px">';
- modal('Nova reserva (equipe)','<label>Noite</label><select id="f1">'+opcoesDia(SEL,0)+'</select>'+campos,'Criar reserva',function(f,cb){var p=[];for(var i=0;i<4;i++)p.push({nome:val('n'+i),tel:val('t'+i)});run('gReservaNova',[SES,Number(val('f1')),p,f],cb)})}
+ modal('Nova reserva (equipe)','<label>Dia</label><select id="f1">'+opcoesDia(SEL,0)+'</select>'+campos,'Criar reserva',function(f,cb){var p=[];for(var i=0;i<4;i++)p.push({nome:val('n'+i),tel:val('t'+i)});run('gReservaNova',[SES,Number(val('f1')),p,f],cb)})}
 $('ref').onclick=carregar;$('btrocar').onclick=function(){telaTrocar(false)};$('bsair').onclick=sair;
 if(SES)carregar();else telaLogin('');
 setInterval(function(){if(SES&&S&&!document.querySelector('.mask')&&!busy&&$('main').style.display!=='none')carregar()},60000);

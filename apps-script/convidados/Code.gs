@@ -160,7 +160,7 @@ function contagem_(dia, cfg, conv, confs, resv) {
 
 function lotacaoTodas_() {
   var cfg = cfg_(), prog = prog_(), conv = convLeve_(), confs = confs_(), resv = reservas_();
-  return Object.keys(prog).map(Number).sort().map(function (d) { var c = contagem_(d, cfg, conv, confs, resv); c.prog = prog[d]; return c; });
+  return ordemDias_(prog).map(function (d) { var c = contagem_(d, cfg, conv, confs, resv); c.prog = prog[d]; return c; });
 }
 
 /* ---------- aba "Lotacao": monitoramento na planilha (atualizada a cada gravação e por gatilho) ---------- */
@@ -185,31 +185,42 @@ function atualizarPainel_() {
 }
 function atualizarPainelSeguro_() { try { atualizarPainel_(); } catch (e) { try { console.error('painel: ' + e.message); } catch (_) {} } }
 
+/* Programacao: A dia (chave) · B data · C atração · D estilo · E instagram · F reservas do público (SIM/NÃO; vazio = SIM).
+ * Chave "dia": nas 4 noites da inauguração é o dia do mês (18 a 21); para qualquer outra data é AAAAMMDD (ex.: 20261205). */
+function ordemDias_(prog) {
+  return Object.keys(prog).map(Number).sort(function (a, b) { var x = prog[a].iso || '', y = prog[b].iso || ''; return x < y ? -1 : x > y ? 1 : a - b; });
+}
+function chaveDeIso_(iso, prog) {
+  var p = prog || prog_();
+  for (var d in p) { if (p[d].iso === iso) return Number(d); }
+  return Number(String(iso).replace(/-/g, ''));
+}
 function prog_() {
   var sh = aba_(ABA.PROG), n = sh.getLastRow(), m = {};
   if (n < 2) return m;
-  sh.getRange(2, 1, n - 1, 5).getValues().forEach(function (r) {
+  var tz = TZ; try { tz = ss_().getSpreadsheetTimeZone() || TZ; } catch (e0) {}
+  sh.getRange(2, 1, n - 1, 6).getValues().forEach(function (r, ix) {
     if (!r[0]) return;
-    var d = Object.prototype.toString.call(r[1]) === '[object Date]' ? r[1] : null;
-    var sem = '', dm = '';
-    if (d) {
-      /* a data da célula é um instante à meia-noite no fuso DA PLANILHA; formatar em outro fuso desloca o dia */
-      var tz = TZ; try { tz = ss_().getSpreadsheetTimeZone() || TZ; } catch (e0) {}
-      /* autocorreção: a coluna "dia" (ex.: 18) é a verdade; se o fuso deslocou o dia, testa ±12h */
-      var p = null, cand = [0, 12, -12];
+    var key = Number(r[0]), v = r[1], p = null;
+    if (Object.prototype.toString.call(v) === '[object Date]') {
+      /* a data da célula é um instante à meia-noite no fuso DA PLANILHA; formatar em outro fuso desloca o dia.
+         autocorrição: a chave (dia do mês ou AAAAMMDD) é a verdade; se o fuso deslocou o dia, testa ±12h */
+      var cand = [0, 12, -12];
       for (var k = 0; k < cand.length && !p; k++) {
-        var q = Utilities.formatDate(new Date(d.getTime() + cand[k] * 3600000), tz, 'yyyy-MM-dd').split('-');
-        if (Number(q[2]) === Number(r[0])) p = q;
+        var q = Utilities.formatDate(new Date(v.getTime() + cand[k] * 3600000), tz, 'yyyy-MM-dd').split('-');
+        if (key >= 10000000 ? Number(q.join('')) === key : Number(q[2]) === key) p = q;
       }
-      if (!p) p = Utilities.formatDate(d, tz, 'yyyy-MM-dd').split('-');
-      sem = DIAS_SEMANA[new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay() || 7];
-      dm = p[2] + '/' + p[1];
-    }
-    m[Number(r[0])] = {
-      dia: Number(r[0]),
-      label: d ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
-      iso: d ? p[0] + '-' + p[1] + '-' + p[2] : '',
-      atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || '')
+      if (!p) p = Utilities.formatDate(v, tz, 'yyyy-MM-dd').split('-');
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(String(v).trim())) p = String(v).trim().split('-');
+    else if (key >= 10000000) { var ks = String(key); p = [ks.slice(0, 4), ks.slice(4, 6), ks.slice(6, 8)]; }
+    var sem = '', dm = '';
+    if (p) { sem = DIAS_SEMANA[new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay() || 7]; dm = p[2] + '/' + p[1]; }
+    m[key] = {
+      dia: key, linha: ix + 2,
+      label: p ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
+      iso: p ? p[0] + '-' + p[1] + '-' + p[2] : '',
+      atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || ''),
+      pub: !/^N/i.test(String(r[5] || '').trim())
     };
   });
   return m;
@@ -768,6 +779,7 @@ function prepararReservas() {
     try { sc.getRange(l, 2).setBackground('#FFFF00').setFontColor('#0000FF'); } catch (e) {}
   });
   garantirAba_(ABA.RES, ['data/hora', 'protocolo', 'dia', 'nº da pessoa', 'nome', 'celular', 'status', 'celular do titular', 'consentimento', 'compareceu', 'atualizado']);
+  try { var sp = aba_(ABA.PROG); if (!String(sp.getRange(1, 6).getValue() || '')) sp.getRange(1, 6).setValue('reservas do público (SIM/NÃO)'); } catch (e) {}
   garantirAba_('Usuarios', USR_CAB);
   garantirAba_('Auditoria', ['data/hora', 'quem', 'ação', 'detalhe']);
   atualizarPainelSeguro_();
@@ -919,9 +931,9 @@ function atividade_(resv) {
 function estadoGestao_(a) {
   var cfg = cfg_(), prog = prog_(), conv = convFull_(), confs = confs_(), resv = reservas_();
   var leve = conv.map(function (c) { return {id: c.id, dia: c.dia, acomp: c.acomp}; });
-  var noites = Object.keys(prog).map(Number).sort().map(function (d) {
+  var noites = ordemDias_(prog).map(function (d) {
     var c = contagem_(d, cfg, leve, confs, resv);
-    c.label = prog[d].label; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.receita = c.publico * cfg.valor;
+    c.label = prog[d].label; c.iso = prog[d].iso; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.pub = prog[d].pub; c.receita = c.publico * cfg.valor;
     return c;
   });
   var convidados = conv.map(function (c) {
@@ -950,7 +962,7 @@ function estadoGestao_(a) {
     vw.map(function (r, i) { return {linha: i + 2, origem: String(r[1]), ref: String(r[2]), dia: Number(r[3]), nome: String(r[4]), status: String(r[6]), tent: Number(r[7]) || 0, detalhe: String(r[9])}; })
       .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
   }
-  return {ok: true, perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
+  return {ok: true, hoje: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
           valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
           reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
 }
@@ -1214,5 +1226,48 @@ function gWhatsReenviar(k, linha) {
       aud_(a, 'Reenviar ingresso', r[4] + ' (' + r[2] + ')');
       return {ok: true};
     });
+  }, arguments);
+}
+
+
+/* ===== agenda perpétua: abrir/editar um dia (qualquer data) =====
+ * Cria (ou atualiza) a linha da Programacao. Reservas do público só aparecem na página pública se pub = SIM. */
+function gDiaSalvar(k, iso, atracao, estilo, pub) {
+  return api_('gDiaSalvar', function () {
+    return gMut_(k, 'dia', function (a) {
+      iso = String(iso || '').trim();
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+      if (!m) return {ok: false, code: 'invalido', campo: 'data', msg: 'Data inválida.'};
+      var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+      if (dt.getUTCFullYear() !== +m[1] || dt.getUTCMonth() !== +m[2] - 1 || dt.getUTCDate() !== +m[3]) return {ok: false, code: 'invalido', campo: 'data', msg: 'Data inválida.'};
+      atracao = String(atracao || '').replace(/\s+/g, ' ').trim().slice(0, 120); estilo = String(estilo || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      var prog = prog_(), key = chaveDeIso_(iso, prog), sh = aba_(ABA.PROG), pubv = pub ? 'SIM' : 'NÃO', ex = prog[key];
+      if (ex) {
+        sh.getRange(ex.linha, 3, 1, 2).setValues([[atracao, estilo]]); sh.getRange(ex.linha, 6).setValue(pubv);
+        aud_(a, 'Editou programação', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv);
+      } else {
+        var nl = Math.max(sh.getLastRow(), 1) + 1;
+        sh.getRange(nl, 2).setNumberFormat('@');
+        sh.getRange(nl, 1, 1, 6).setValues([[key, iso, atracao, estilo, '', pubv]]);
+        aud_(a, 'Abriu dia', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv);
+      }
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* PDF da lista de portaria: o HTML é montado na página (mesmos dados da tela); aqui só converte, exigindo sessão válida */
+function gListaPdf(k, html, nome) {
+  return api_('gListaPdf', function () {
+    if (!limite_('pdf', 30, 60)) return {ok: false, code: 'limite'};
+    var a = acessoGestao_(k);
+    if (!a) return {ok: false, code: 'sessao'};
+    if (a.trocar) return {ok: false, code: 'trocar'};
+    html = String(html || '');
+    if (html.length < 50 || html.length > 900000) return {ok: false, code: 'invalido', msg: 'Lista inválida.'};
+    var nm = String(nome || 'lista-portaria').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 60);
+    var blob = Utilities.newBlob(html, 'text/html', nm + '.html').getAs('application/pdf');
+    aud_(a, 'Exportou lista de portaria', nm);
+    return {ok: true, nome: nm + '.pdf', b64: Utilities.base64Encode(blob.getBytes())};
   }, arguments);
 }

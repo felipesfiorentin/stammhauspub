@@ -42,9 +42,9 @@ function atividade_(resv) {
 function estadoGestao_(a) {
   var cfg = cfg_(), prog = prog_(), conv = convFull_(), confs = confs_(), resv = reservas_();
   var leve = conv.map(function (c) { return {id: c.id, dia: c.dia, acomp: c.acomp}; });
-  var noites = Object.keys(prog).map(Number).sort().map(function (d) {
+  var noites = ordemDias_(prog).map(function (d) {
     var c = contagem_(d, cfg, leve, confs, resv);
-    c.label = prog[d].label; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.receita = c.publico * cfg.valor;
+    c.label = prog[d].label; c.iso = prog[d].iso; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.pub = prog[d].pub; c.receita = c.publico * cfg.valor;
     return c;
   });
   var convidados = conv.map(function (c) {
@@ -73,7 +73,7 @@ function estadoGestao_(a) {
     vw.map(function (r, i) { return {linha: i + 2, origem: String(r[1]), ref: String(r[2]), dia: Number(r[3]), nome: String(r[4]), status: String(r[6]), tent: Number(r[7]) || 0, detalhe: String(r[9])}; })
       .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
   }
-  return {ok: true, perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
+  return {ok: true, hoje: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
           valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
           reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
 }
@@ -337,5 +337,48 @@ function gWhatsReenviar(k, linha) {
       aud_(a, 'Reenviar ingresso', r[4] + ' (' + r[2] + ')');
       return {ok: true};
     });
+  }, arguments);
+}
+
+
+/* ===== agenda perpétua: abrir/editar um dia (qualquer data) =====
+ * Cria (ou atualiza) a linha da Programacao. Reservas do público só aparecem na página pública se pub = SIM. */
+function gDiaSalvar(k, iso, atracao, estilo, pub) {
+  return api_('gDiaSalvar', function () {
+    return gMut_(k, 'dia', function (a) {
+      iso = String(iso || '').trim();
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+      if (!m) return {ok: false, code: 'invalido', campo: 'data', msg: 'Data inválida.'};
+      var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+      if (dt.getUTCFullYear() !== +m[1] || dt.getUTCMonth() !== +m[2] - 1 || dt.getUTCDate() !== +m[3]) return {ok: false, code: 'invalido', campo: 'data', msg: 'Data inválida.'};
+      atracao = String(atracao || '').replace(/\s+/g, ' ').trim().slice(0, 120); estilo = String(estilo || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      var prog = prog_(), key = chaveDeIso_(iso, prog), sh = aba_(ABA.PROG), pubv = pub ? 'SIM' : 'NÃO', ex = prog[key];
+      if (ex) {
+        sh.getRange(ex.linha, 3, 1, 2).setValues([[atracao, estilo]]); sh.getRange(ex.linha, 6).setValue(pubv);
+        aud_(a, 'Editou programação', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv);
+      } else {
+        var nl = Math.max(sh.getLastRow(), 1) + 1;
+        sh.getRange(nl, 2).setNumberFormat('@');
+        sh.getRange(nl, 1, 1, 6).setValues([[key, iso, atracao, estilo, '', pubv]]);
+        aud_(a, 'Abriu dia', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv);
+      }
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* PDF da lista de portaria: o HTML é montado na página (mesmos dados da tela); aqui só converte, exigindo sessão válida */
+function gListaPdf(k, html, nome) {
+  return api_('gListaPdf', function () {
+    if (!limite_('pdf', 30, 60)) return {ok: false, code: 'limite'};
+    var a = acessoGestao_(k);
+    if (!a) return {ok: false, code: 'sessao'};
+    if (a.trocar) return {ok: false, code: 'trocar'};
+    html = String(html || '');
+    if (html.length < 50 || html.length > 900000) return {ok: false, code: 'invalido', msg: 'Lista inválida.'};
+    var nm = String(nome || 'lista-portaria').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 60);
+    var blob = Utilities.newBlob(html, 'text/html', nm + '.html').getAs('application/pdf');
+    aud_(a, 'Exportou lista de portaria', nm);
+    return {ok: true, nome: nm + '.pdf', b64: Utilities.base64Encode(blob.getBytes())};
   }, arguments);
 }

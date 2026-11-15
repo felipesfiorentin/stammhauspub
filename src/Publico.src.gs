@@ -28,7 +28,7 @@ function pubInfo_(cfg) {
 /* Noites, com situação (Disponível/Lotado). Não expõe contagens: só "vagas" até o máximo por reserva. */
 function dados_() {
   var cfg = cfg_(), prog = prog_(), conv = convLeve_(), confs = confs_(), resv = reservas_();
-  var noites = Object.keys(prog).map(Number).sort().map(function (d) {
+  var noites = ordemDias_(prog).filter(function (d) { return prog[d].pub && prog[d].iso >= Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }).map(function (d) {
     var c = contagem_(d, cfg, conv, confs, resv), p = prog[d];
     return {dia: d, label: p.label, atracao: p.atracao, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
   });
@@ -37,7 +37,7 @@ function dados_() {
 
 function validarReserva_(p, cfg, prog) {
   var dia = Number(p.dia);
-  if (!prog[dia]) return {campo: 'geral', msg: 'Noite inválida. Escolha uma das noites da programação.'};
+  if (!prog[dia] || !prog[dia].pub) return {campo: 'geral', msg: 'Noite inválida. Escolha uma das noites da programação.'};
   var ps = Array.isArray(p.pessoas) ? p.pessoas : [];
   if (ps.length < 1 || ps.length > cfg.maxPessoas) return {campo: 'qtd', msg: 'Cada reserva é de 1 a ' + cfg.maxPessoas + ' pessoas.'};
   var out = [], tels = {}, nomes = {};

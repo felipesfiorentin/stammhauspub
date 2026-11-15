@@ -92,7 +92,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // página
  w=W();const K4=usr(w);w.pub.reservar({dia:18,pessoas:[P('Cliente Um','(42) 99600-0001')],cli:'k'});
  let pg=await pagina(w.guest,'/tmp/out/convidados/Painel.html',h=>h.replace("try{SES=sessionStorage.getItem('sh_ses')}catch(e){}","SES="+JSON.stringify(K4)+";"));
- await pg.waitForSelector('.grid .nc',{timeout:8000});ok((await pg.$$('.grid .nc')).length===4&&(await pg.textContent('#app')).includes('64'),'página: 4 cards de noite com lotação');
+ await pg.waitForSelector('.dc.ev',{timeout:8000});ok((await pg.$$('.dc.ev')).length===4&&(await pg.textContent('#app')).includes('64'),'página: calendário com 4 dias programados e lotação');await pg.click('.dc.ev[data-d="18"]');await pg.waitForSelector('#busca');
  await pg.fill('#busca',g1.nome.split(' ')[0]);await pg.waitForTimeout(150);ok((await pg.$$('.tb tr')).length>1,'página: busca de convidado');
  await pg.fill('#busca','');await pg.click('button[data-a=mc] >> nth=0');await pg.selectOption('#f1',{index:0});await pg.click('#mOk');await pg.waitForSelector('.toast');ok(sh(w,'Auditoria').length>=2,'página: mover convidado grava e atualiza');
  await pg.click('[data-tab=res]');ok((await pg.textContent('#app')).includes('Cliente Um'),'página: aba de reservas lista o público');

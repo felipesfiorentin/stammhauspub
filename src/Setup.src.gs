@@ -28,6 +28,7 @@ function prepararReservas() {
     try { sc.getRange(l, 2).setBackground('#FFFF00').setFontColor('#0000FF'); } catch (e) {}
   });
   garantirAba_(ABA.RES, ['data/hora', 'protocolo', 'dia', 'nº da pessoa', 'nome', 'celular', 'status', 'celular do titular', 'consentimento', 'compareceu', 'atualizado']);
+  try { var sp = aba_(ABA.PROG); if (!String(sp.getRange(1, 6).getValue() || '')) sp.getRange(1, 6).setValue('reservas do público (SIM/NÃO)'); } catch (e) {}
   garantirAba_('Usuarios', USR_CAB);
   garantirAba_('Auditoria', ['data/hora', 'quem', 'ação', 'detalhe']);
   atualizarPainelSeguro_();

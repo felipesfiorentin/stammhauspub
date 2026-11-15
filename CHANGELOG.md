@@ -30,3 +30,10 @@
 - Sessão de 6 h; 5 erros bloqueiam o usuário por 15 min; ativo=NÃO derruba a sessão na hora. CONSULTA vê tudo e não altera.
 - Removidos: tokens (`Acesso`) e "Gerar tokens". `Metricas.src.gs` → `Setup.src.gs`.
 - Painel: layout de computador (≥1024 px) com KPIs em 5 colunas, noites em grade (2 colunas; 4 em telas ≥1500 px), lista de pessoas ao lado de WhatsApp/movimentações/auditoria (coluna lateral fixa), cabeçalho fixo e hover; celular inalterado.
+
+## Parte 6 — Agenda perpétua
+- Painel vira calendário mensal (de hoje em diante, sem limite): cada dia mostra atração, lotação/teto, lista e público; clique abre o detalhe do dia (ingresso, KPIs, convidados, reservas, WhatsApp).
+- Dias novos: "+ abrir dia" (GESTAO) grava na aba Programacao (chave AAAAMMDD; as 4 noites da inauguração mantêm a chave 18–21). Coluna F "reservas do público" (SIM/NÃO; vazio = SIM) controla se o dia aparece na página pública. Página pública lista só dias abertos e futuros.
+- Exportar lista de portaria: PDF (gListaPdf, qualquer usuário logado) e "Imprimir lista"; nomes da lista + reservas, ordem alfabética, coluna OK.
+- Login do painel com a logo padrão branco e dourado e "Área restrita"; /painel/ no site abre o login direto (iframe).
+- Testes: e2e6.js (23 verificações).
