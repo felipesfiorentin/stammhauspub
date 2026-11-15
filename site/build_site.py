@@ -31,11 +31,11 @@ header.nav.sol{background:rgba(11,34,23,.96);box-shadow:0 2px 18px rgba(0,0,0,.4
 .nv a.l{display:block;padding:10px 12px;text-decoration:none;font:600 13px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
 .nv a.l:hover,.nv a.l.on{color:var(--ouro2);opacity:1}
 .nv a.int{border:1px solid rgba(234,231,218,.35);border-radius:8px;font-size:12px}
-.logo img{height:22px;width:auto;display:block}
+.logo img{height:28px;width:auto;display:block}
 .burger{display:none;background:none;border:0;color:var(--off);width:44px;height:44px;cursor:pointer;justify-self:end}
 .burger span{display:block;width:26px;height:2px;background:currentColor;margin:6px auto;transition:.2s}
 @media(max-width:940px){
- .nv{grid-template-columns:auto 1fr;height:68px}.logo img{height:18px}
+ .nv{grid-template-columns:auto 1fr;height:68px}.logo img{height:20px}
  .nv ul{display:none}.burger{display:block}
  header.nav.open{background:rgba(11,34,23,.98)}
  header.nav.open .menu{display:flex}
@@ -160,7 +160,7 @@ def page(cur, title, desc, body, hero_sol=True):
 <meta name="theme-color" content="#113325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site/site.css?v=3"></head><body{'' if cur=='home' else ' data-sol'}>
+<link rel="stylesheet" href="/assets/site/site.css?v=4"></head><body{'' if cur=='home' else ' data-sol'}>
 {nav(cur)}
 {body}
 {FOOT}
