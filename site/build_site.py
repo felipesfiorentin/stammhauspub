@@ -74,6 +74,17 @@ section{padding:90px 0}
 .card h3{margin-bottom:.4em}
 .parc{border-top:1px solid rgba(180,126,0,.5);border-bottom:1px solid rgba(180,126,0,.5);padding:46px 0;text-align:center;background:linear-gradient(90deg,transparent,rgba(180,126,0,.12),transparent)}
 .parc h2{margin-bottom:.3em}
+.parc{text-align:left}.pgrid{display:grid;grid-template-columns:.8fr 1.2fr;gap:48px;align-items:center}
+.pbadge{background:#eae7da;border-radius:16px;padding:48px 30px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.45);border:1px solid rgba(180,126,0,.6)}
+.pbadge img{width:100%;max-width:340px;height:auto;display:block;margin:0 auto 16px}
+.pbadge span{font:700 12px/1 Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#8a5f00}
+.pl{list-style:none;margin:18px 0 0;padding:0}.pl li{padding:11px 0 11px 28px;position:relative;border-top:1px solid rgba(234,231,218,.12)}
+.pl li:before{content:"★";position:absolute;left:0;top:11px;color:#e04e27}
+@media(max-width:860px){.pgrid{grid-template-columns:1fr;gap:26px}}
+.wab{display:inline-flex;align-items:center;gap:12px;background:#25d366;color:#06301a!important;font-weight:700;padding:13px 22px;border-radius:12px;text-decoration:none;opacity:1!important;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+.wab img{height:30px!important;width:30px!important;margin:0!important}.wab small{display:block;font-weight:600;font-size:12px;opacity:.8}
+.wafl{position:fixed;right:18px;bottom:18px;z-index:60;width:58px;height:58px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.wafl img{width:34px;height:34px}
 /* programação */
 .days{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:40px}
 .day{background:#efe8d4;color:#16241b;border-radius:10px;padding:0;overflow:hidden;position:relative;box-shadow:0 10px 26px rgba(0,0,0,.45)}
@@ -151,7 +162,7 @@ def nav(cur):
 FOOT = '''<footer><div class="wrap"><div class="ft">
 <div><img src="/assets/site/logo-padrao.png" alt="Das Stammhaus Pub"><p class="mut">Um pub europeu no coração de Canoinhas - SC</p><p style="font-style:italic;font-family:'Playfair Display',serif;color:#d9a62e">O que é bom resiste ao tempo.</p></div>
 <div><h4>A casa</h4><ul><li><a href="/historia/">História e fundadores</a></li><li><a href="/equipe/">Equipe</a></li><li><a href="/cardapio/">Cardápio</a></li><li><a href="/fotos/">Fotos</a></li></ul></div>
-<div><h4>Visite</h4><ul><li>Rua Getúlio Vargas, 839<br>Canoinhas · SC</li><li><a href="https://www.google.com/maps/dir/?api=1&destination=Rua+Get%C3%BAlio+Vargas+839+Canoinhas+SC" target="_blank" rel="noopener">Como chegar? →</a></li><li><a href="https://wa.me/5547992505290" target="_blank" rel="noopener">WhatsApp: (47) 99250-5290</a></li><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
+<div><h4>Visite</h4><ul><li>Rua Getúlio Vargas, 839<br>Canoinhas · SC</li><li><a href="https://www.google.com/maps/dir/?api=1&destination=Rua+Get%C3%BAlio+Vargas+839+Canoinhas+SC" target="_blank" rel="noopener">Como chegar? →</a></li><li style="margin-top:14px"><a class="wab" href="https://wa.me/5547992505290" target="_blank" rel="noopener"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt=""><span>Fale conosco no WhatsApp<small>(47) 99250-5290</small></span></a></li><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
 </div><div class="copy"><span>© 2026 Das Stammhaus Pub · Canoinhas, SC</span><span>Imagens ilustrativas de banco de imagens (Pexels) · fotos reais em breve</span></div></div></footer>'''
 
 def page(cur, title, desc, body, hero_sol=True):
@@ -161,10 +172,11 @@ def page(cur, title, desc, body, hero_sol=True):
 <meta name="theme-color" content="#113325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site/site.css?v=5"></head><body{'' if cur=='home' else ' data-sol'}>
+<link rel="stylesheet" href="/assets/site/site.css?v=6"></head><body{'' if cur=='home' else ' data-sol'}>
 {nav(cur)}
 {body}
 {FOOT}
+<a class="wafl" href="https://wa.me/5547992505290" target="_blank" rel="noopener" aria-label="Falar no WhatsApp"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt=""></a>
 <script src="/assets/site/site.js"></script></body></html>'''
 
 def ph(i, w=1200): return f"background-image:url('{PX(i,w)}')"
@@ -204,8 +216,11 @@ HOME = f'''
 <p class="lead">Um jardim com parreiral de mais de 50 anos, lounge com firepit, sofás e palco acústico, ligado ao casarão. À tarde, o Kaffee/Garten com cafés e encontros leves. À noite, o Pub.</p>
 <p class="mut">Horários de funcionamento serão divulgados em breve.</p></div></div></section>
 
-<section class="parc rv"><div class="wrap"><span class="eb">Parceria</span><h2>Chopp Heineken, com exclusividade</h2>
-<p class="lead" style="margin:0 auto">O Das Stammhaus Pub conta com parceria exclusiva com a Heineken: o chopp que você toma aqui é Heineken, tirado do jeito certo.</p></div></section>
+<section class="parc rv"><div class="wrap"><div class="pgrid">
+<div class="pbadge"><img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Heineken_logo.svg" alt="Heineken" loading="lazy"><span>Parceria exclusiva</span></div>
+<div class="ptxt"><span class="eb">Parceria</span><h2>Chopp Heineken, com exclusividade</h2>
+<p class="lead">O Das Stammhaus Pub conta com parceria exclusiva com a Heineken: o chopp que você toma aqui é Heineken, tirado do jeito certo.</p>
+<ul class="pl"><li><b>A cervejaria mais internacional do mundo</b> no balcão de um casarão de arquitetura europeia.</li><li><b>Chopp trincando</b>, na torneira principal, com alta rotatividade.</li><li><b>A estrela vermelha em destaque</b> no balcão principal.</li><li><b>Canecas com a marca</b>, no padrão internacional premium.</li></ul></div></div></div></section>
 
 <section><div class="wrap split">
 <div class="rv"><span class="eb">Para quem recebemos</span><h2>Para quem valoriza uma boa conversa</h2>
