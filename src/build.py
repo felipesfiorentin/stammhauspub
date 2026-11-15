@@ -20,7 +20,7 @@ for d in (18, 19, 20, 21):
           .replace('__LOGO%d__' % d, uri('cards/logo%d.png' % d, 'image/png')))
 t = t.replace('__PW20__', uri('cards/ph20W.jpg', 'image/jpeg'))
 HDR_G = "/* =====================================================================\n * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS + métricas. ARQUIVO ÚNICO (Code.gs).\n * Ordem: Comum (núcleo/lotação) · Busca · Convidados · Métricas · Preparação.\n * ===================================================================== */\n"
-g = HDR_G + rd('Comum.src.gs') + '\n' + rd('Busca.src.gs') + '\n' + rd('Code.src.gs') + '\n' + rd('Setup.src.gs') + '\n' + rd('Auth.src.gs') + '\n' + rd('Gestao.src.gs')
+g = HDR_G + rd('Comum.src.gs') + '\n' + rd('Busca.src.gs') + '\n' + rd('Code.src.gs') + '\n' + rd('Setup.src.gs') + '\n' + rd('Auth.src.gs') + '\n' + rd('Gestao.src.gs') + '\n' + rd('Lista.src.gs')
 # ---- público ----
 HDR_P = "/* =====================================================================\n * Das Stammhaus Pub — RESERVAS DO PÚBLICO. ARQUIVO ÚNICO (Code.gs). Projeto separado do dos convidados.\n * ===================================================================== */\n"
 p = HDR_P + rd('Comum.src.gs') + '\n' + rd('Publico.src.gs').replace("'__SHEET_ID__'", "'%s'" % sid) + '\n' + rd('Whats.src.gs')

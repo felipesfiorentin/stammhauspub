@@ -133,9 +133,10 @@ button:hover{border-color:var(--ouro);background:rgba(180,126,0,.15)}button.p:ho
 <div id="login" style="display:none"></div>
 <div id="main" style="display:none">
 <div class="top"><div><h1>Agenda · Das Stammhaus Pub</h1><p class="sub" id="sub">Carregando…</p></div>
-<div class="row"><button id="ref">Atualizar</button><button id="btrocar">Alterar senha</button><button id="bsair">Sair</button></div></div>
+<div class="row"><button id="bconv" class="p">Convites WhatsApp</button><button id="ref">Atualizar</button><button id="btrocar">Alterar senha</button><button id="bsair">Sair</button></div></div>
 <div id="app"></div></div></div>
 <script>
+var CVF='falta',CVD='todos',CVQ='';
 var SES=null,S=null,SEL=null,VIEW='cal',MES=null,TAB='conv',BUSCA='',FIL='todos',busy=false,USER={};
 try{SES=sessionStorage.getItem('sh_ses')}catch(e){}
 function guarda(s){SES=s;try{s?sessionStorage.setItem('sh_ses',s):sessionStorage.removeItem('sh_ses')}catch(e){}}
@@ -183,7 +184,7 @@ function noite(d){return S.noites.filter(function(n){return n.dia===d})[0]}
 var MN=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],DS=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
 function nomeMes(ym){var m=MN[+ym.slice(5,7)-1];return m.charAt(0).toUpperCase()+m.slice(1)+' de '+ym.slice(0,4)}
 function addMes(ym,k){var y=+ym.slice(0,4),m=+ym.slice(5,7)-1+k;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+('0'+(m+1)).slice(-2)}
-function render(){if(VIEW==='dia'&&SEL!=null&&noite(SEL))return renderDia(noite(SEL));VIEW='cal';renderCal()}
+function render(){if(VIEW==='conv')return renderConv();if(VIEW==='dia'&&SEL!=null&&noite(SEL))return renderDia(noite(SEL));VIEW='cal';renderCal()}
 function resto(){var h='<div class="rc" style="margin-top:20px">'+whatsCard();
  h+='<h2 class="sec">Últimas movimentações</h2><div class="card"><table><tr><th>Quando</th><th>Origem</th><th>O quê</th></tr>'+(S.atividade.length?S.atividade.map(function(e){return'<tr><td class="n">'+esc(e.quando)+'</td><td>'+esc(e.tipo)+'</td><td>'+esc(e.texto)+'</td></tr>'}).join(''):'<tr><td colspan="3" class="mut">Sem movimentações.</td></tr>')+'</table></div>';
  h+='<h2 class="sec">Alterações da gestão</h2><div class="card"><div class="aud">'+(S.auditoria.length?S.auditoria.map(function(a){return'<div>'+esc(a.quando)+' · <b>'+esc(a.quem)+'</b> · '+esc(a.acao)+' — '+esc(a.det)+'</div>'}).join(''):'<div>Nenhuma alteração registrada.</div>')+'</div></div></div>';
@@ -223,6 +224,37 @@ function zapTexto(nome,n,prot,pub){var pn=String(nome||'').trim().split(/\s+/)[0
  +n.label+(n.atracao?' · '+n.atracao:'')+'\nProtocolo: '+prot+'\n'+(pub?'Reserva válida até as 20h. Entrada R$ '+S.valor.toFixed(2).replace('.',',')+', paga na comanda.\n':'')
  +'Apresente seu nome ou o protocolo na entrada.\nRua Getúlio Vargas, 839 · Canoinhas, SC\n\nO QUE É BOM RESISTE AO TEMPO.'}
 function zapBtn(nome,tel,n,prot,pub){var z=zapNum(tel);if(!z)return'';return'<a class="s zap" target="_blank" rel="noopener" href="https://wa.me/'+z+'?text='+encodeURIComponent(zapTexto(nome,n,prot,pub))+'">WhatsApp</a>'}
+/* ===== convites por WhatsApp (semi-automático: a equipe toca em enviar) ===== */
+var LINK_CONVITE='https://stammhauspub.github.io/convidados/';
+function horaShow(dia){return dia===18?'21h':(dia>=19&&dia<=21?'22h':'')}
+function msgConvite(c){var n=noite(c.dia)||{label:'',atracao:''},pn=String(c.nome||'').trim().split(/\s+/)[0],hs=horaShow(c.dia);
+ return'Olá, '+pn+'!\n\nO Das Stammhaus Pub vai abrir as portas em Canoinhas, e você está entre as pessoas que queremos ter por perto na nossa semana de inauguração. Preparamos esta casa com muito carinho, num casarão histórico restaurado, e será uma alegria receber você.\n\n'
+ +'Seu convite é para '+n.label+(n.atracao?' · '+n.atracao:'')+'. A casa abre às 18h'+(hs?' e o show começa às '+hs:'')+'.'+(c.acomp?' Seu convite inclui um acompanhante.':'')+'\n\n'
+ +'Para confirmar sua presença, é só tocar no link (leva menos de um minuto):\n'+LINK_CONVITE+'\n\nRua Getúlio Vargas, 839 · Canoinhas, SC\n\nO QUE É BOM RESISTE AO TEMPO.'}
+function cvTel(c){return c.tel||c.titTel||''}
+function cvLista(){var q=norm(CVQ);return S.convidados.filter(function(c){
+ if(CVD!=='todos'&&String(c.dia)!==CVD)return false;if(q&&norm(c.nome).indexOf(q)<0)return false;
+ var tel=!!zapNum(cvTel(c));if(CVF==='falta')return tel&&!c.env;if(CVF==='env')return !!c.env;if(CVF==='semtel')return !tel;return true})}
+function renderConv(){var ed=podeEditar(),T=S.convidados,tel=function(c){return !!zapNum(cvTel(c))};
+ var nT=T.length,nTel=T.filter(tel).length,nEnv=T.filter(function(c){return c.env}).length,nFalta=T.filter(function(c){return tel(c)&&!c.env}).length;
+ var L=cvLista();
+ var h='<div class="dh"><div><button class="s bk" data-back="1">‹ Voltar ao calendário</button><h2>Convites por WhatsApp</h2><div class="mut">Toque em “Enviar convite”: o WhatsApp do pub abre com o telefone e a mensagem prontos; depois é só enviar. O envio fica registrado.</div></div>'
+ +'<div class="row">'+(ed?'<button id="bsync">Sincronizar com a lista da equipe</button>':'')+'</div></div>'
+ +'<div class="kpis"><div class="kpi"><small>Convidados</small><b>'+nT+'</b></div><div class="kpi"><small>Com telefone</small><b>'+nTel+'</b></div><div class="kpi"><small>Convites enviados</small><b>'+nEnv+'</b></div><div class="kpi"><small>Faltam enviar (com telefone)</small><b>'+nFalta+'</b></div><div class="kpi"><small>Sem telefone</small><b>'+(nT-nTel)+'</b></div></div>'
+ +'<div class="card" style="margin-top:14px"><div class="row" style="margin-bottom:10px"><input type="search" id="cvq" placeholder="Buscar nome…" value="'+esc(CVQ)+'"><select id="cvd"><option value="todos">Todas as noites</option>'+S.noites.map(function(n){return'<option value="'+n.dia+'"'+(String(n.dia)===CVD?' selected':'')+'>'+esc(n.label)+'</option>'}).join('')+'</select>'
+ +'<select id="cvf">'+[['falta','Faltam enviar'],['env','Já enviados'],['semtel','Sem telefone'],['todos','Todos']].map(function(o){return'<option value="'+o[0]+'"'+(o[0]===CVF?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select><span class="mut">'+L.length+' na lista</span></div>'
+ +'<table class="tb"><tr><th>Convidado</th><th>Noite</th><th>Convite</th><th>Telefone</th><th>Resposta</th><th>Enviado</th><th></th></tr>';
+ L.forEach(function(c){var tg=c.status==='Confirmado'?'t-c':c.status==='Pendente'?'t-p':'t-n',t=cvTel(c),z=zapNum(t);
+  var btn=z?'<a class="s zap cvz" target="_blank" rel="noopener" data-id="'+esc(c.id)+'" href="https://wa.me/'+z+'?text='+encodeURIComponent(msgConvite(c))+'">Enviar convite</a>':'<small class="mut">sem telefone</small>';
+  var mk=ed?(c.env?' <button class="s" data-cu="'+esc(c.id)+'">Desfazer</button>':(z?' <button class="s" data-cz="'+esc(c.id)+'">Marcar enviado</button>':'')):'';
+  h+='<tr><td>'+esc(c.nome)+(c.acomp?' <small>(+1)</small>':'')+'</td><td><small>'+esc((noite(c.dia)||{}).label||c.dia)+'</small></td><td><small>'+esc(c.tipo||'-')+'</small></td><td><small>'+esc(t)+'</small></td><td><span class="tag '+tg+'">'+c.status+'</span></td><td><small>'+esc(c.env||'')+'</small></td><td>'+btn+mk+'</td></tr>'});
+ if(!L.length)h+='<tr><td colspan="7">Nenhum convidado neste filtro.</td></tr>';
+ h+='</table></div>';$('app').innerHTML=h;window.scrollTo(0,0)}
+function marcaConvite(id,v,quiet){run('gConviteMarcar',[SES,id,v],function(r){if(sessaoExpirou(r))return;if(r&&r.ok!==false){S=r;if(!quiet){toast(v?'Marcado como enviado':'Marcação removida');render()}}else if(!quiet)toast(msgErro(r)||'Não foi possível registrar')})}
+function sincronizarLista(){if(busy)return;busy=true;var b=$('bsync');if(b){b.disabled=true;b.textContent='Sincronizando…'}
+ run('gSincronizarLista',[SES],function(r){busy=false;if(sessaoExpirou(r))return;
+  if(r&&r.ok!==false){S=r;var o=(r.info&&r.info.sync)||{};toast('Telefones: '+o.telefones+' · incluídos: '+o.incluidos+' · pendências: '+o.pendencias+' (aba Harmonizacao)');render()}
+  else{if(b){b.disabled=false;b.textContent='Sincronizar com a lista da equipe'}toast(msgErro(r)||'Não foi possível sincronizar. Autorize o acesso à planilha rodando "Sincronizar lista" no editor.')}})}
 /* ===== lista de portaria (PDF) ===== */
 function listaPortaria(n){var R=[],pend=0;
  S.convidados.forEach(function(c){if(c.dia!==n.dia||c.status==='Não vai')return;
@@ -276,6 +308,9 @@ document.addEventListener('click',function(e){var t=e.target;
  var gx=t.closest&&t.closest('.dc.gx');if(gx&&S){modalDia(gx.getAttribute('data-novo'),null);return}
  var bn=t.closest&&t.closest('[data-nav]');if(bn&&S){var k=Number(bn.getAttribute('data-nav'));MES=k===0?S.hoje.slice(0,7):addMes(MES,k);render();return}
  if(t.closest&&t.closest('[data-back]')){VIEW='cal';render();return}
+ if(t.id==='bconv'){VIEW='conv';render();return}if(t.id==='bsync')return sincronizarLista();
+ var cz=t.closest&&t.closest('[data-cz]');if(cz&&S){marcaConvite(cz.getAttribute('data-cz'),true);return}var cu=t.closest&&t.closest('[data-cu]');if(cu&&S){marcaConvite(cu.getAttribute('data-cu'),false);return}
+ var zz=t.closest&&t.closest('a.cvz');if(zz&&S){marcaConvite(zz.getAttribute('data-id'),true,true);zz.parentNode.parentNode.style.opacity='.55';return}
  if(t.id==='pdf')return exportarPdf();if(t.id==='prt')return imprimirLista();if(t.id==='edd'){modalDia(noite(SEL).iso,noite(SEL));return}
  if(t.getAttribute&&t.getAttribute('data-tab')){TAB=t.getAttribute('data-tab');render();return}
  if(t.id==='addc')return novoConv();if(t.id==='addr')return novaRes();
@@ -284,15 +319,15 @@ document.addEventListener('click',function(e){var t=e.target;
  if(a==='wr'){if(busy)return;busy=true;run('gWhatsReenviar',[SES,Number(l)],function(r){busy=false;if(sessaoExpirou(r))return;if(r&&r.ok===false){toast(msgErro(r));return}S=r;toast('Reenvio na fila');render()});return}
  if(a==='mc')modal('Mudar '+esc(c.nome)+' de noite','<label>Nova noite</label><select id="f1">'+opcoesDia(0,c.dia)+'</select>','Mover',function(f,cb){run('gMoverConvidado',[SES,id,Number(val('f1')),f],cb)});
  if(a==='ec')statusConv(c);
- if(a==='ed')modal('Editar convidado','<label>Nome no convite</label><input type="text" id="f1" value="'+esc(c.nome)+'"><label>Direito a acompanhante</label><select id="f2"><option value="0"'+(c.acomp?'':' selected')+'>Não</option><option value="1"'+(c.acomp?' selected':'')+'>Sim</option></select>','Salvar',function(f,cb){run('gEditarConvidado',[SES,id,{nome:val('f1'),acomp:Number(val('f2'))}],cb)});
+ if(a==='ed')modal('Editar convidado','<label>Nome no convite</label><input type="text" id="f1" value="'+esc(c.nome)+'"><label>Direito a acompanhante</label><select id="f2"><option value="0"'+(c.acomp?'':' selected')+'>Não</option><option value="1"'+(c.acomp?' selected':'')+'>Sim</option></select><label>Celular (WhatsApp)</label><input type="text" id="f3" value="'+esc(c.tel||'')+'" placeholder="(47) 99999-9999">','Salvar',function(f,cb){run('gEditarConvidado',[SES,id,{nome:val('f1'),acomp:Number(val('f2')),tel:val('f3')}],cb)});
  if(a==='rm')modal('Mudar reserva '+esc(r.prot)+' de noite','<label>Nova noite</label><select id="f1">'+opcoesDia(0,r.dia)+'</select>','Mover',function(f,cb){run('gReservaMover',[SES,id,Number(val('f1')),f],cb)});
  if(a==='rc')modal('Cancelar reserva '+esc(r.prot),'<p>'+r.pessoas.map(function(p){return esc(p.nome)}).join(', ')+'</p><p class="sub">A vaga é liberada na hora.</p>','Cancelar reserva',function(f,cb){run('gReservaCancelar',[SES,id],cb)});
  if(a==='rap')modal('Incluir pessoa na reserva '+esc(r.prot),'<label>Nome completo</label><input type="text" id="f1"><label>Celular</label><input type="text" id="f2" placeholder="(42) 99999-9999">','Incluir',function(f,cb){run('gReservaPessoa',[SES,id,'',val('f1'),val('f2'),f],cb)});
  if(a==='rep'){var p=r.pessoas.filter(function(x){return String(x.linha)===l})[0];modal('Editar pessoa','<label>Nome completo</label><input type="text" id="f1" value="'+esc(p.nome)+'"><label>Celular</label><input type="text" id="f2" value="'+esc(p.tel)+'">','Salvar',function(f,cb){run('gReservaPessoa',[SES,id,Number(l),val('f1'),val('f2'),f],cb)})}
  if(a==='rrp')modal('Remover pessoa da reserva','<p>Remover esta pessoa de '+esc(r.prot)+'?</p>','Remover',function(f,cb){run('gReservaRemoverPessoa',[SES,id,Number(l)],cb)});
 });
-document.addEventListener('input',function(e){if(e.target.id==='busca'){BUSCA=e.target.value;var p=e.target.selectionStart;render();var b=$('busca');b.focus();b.setSelectionRange(p,p)}});
-document.addEventListener('change',function(e){if(e.target.id==='fil'){FIL=e.target.value;render()}});
+document.addEventListener('input',function(e){if(e.target.id==='cvq'){CVQ=e.target.value;var q=e.target.selectionStart;render();var b2=$('cvq');b2.focus();b2.setSelectionRange(q,q);return}if(e.target.id==='busca'){BUSCA=e.target.value;var p=e.target.selectionStart;render();var b=$('busca');b.focus();b.setSelectionRange(p,p)}});
+document.addEventListener('change',function(e){if(e.target.id==='fil'){FIL=e.target.value;render()}if(e.target.id==='cvd'){CVD=e.target.value;render()}if(e.target.id==='cvf'){CVF=e.target.value;render()}});
 function novoConv(){modal('Incluir convidado (exceção)','<label>Nome completo</label><input type="text" id="f1"><label>Noite</label><select id="f2">'+opcoesDia(SEL,0)+'</select><label>Direito a acompanhante</label><select id="f3"><option value="0">Não</option><option value="1">Sim</option></select>','Incluir',function(f,cb){run('gAddConvidado',[SES,{nome:val('f1'),dia:Number(val('f2')),acomp:Number(val('f3'))},f],cb)})}
 function statusConv(c){modal('Status de '+esc(c.nome),'<label>Novo status</label><select id="f1"><option value="confirmar">Confirmado</option><option value="nao_vai">Não vai</option><option value="pendente">Sem resposta (pendente)</option></select><div id="cf"><label>Nome do titular</label><input type="text" id="f2" value="'+esc(c.titNome||c.nome)+'"><label>Celular do titular (opcional)</label><input type="text" id="f3" value="'+esc(c.titTel)+'">'+(c.acomp?'<label>Acompanhante (deixe em branco se vai sozinho)</label><input type="text" id="f4" value="'+esc(c.acNome)+'"><label>Celular do acompanhante (opcional)</label><input type="text" id="f5" value="'+esc(c.acTel)+'">':'')+'</div>','Salvar',function(f,cb){var a=val('f1');run('gStatusConvidado',[SES,c.id,a,a==='confirmar'?{titNome:val('f2'),titTel:val('f3'),acNome:c.acomp?val('f4'):'',acTel:c.acomp?val('f5'):''}:{},f],cb)});
  var m=$('f1');m.onchange=function(){$('cf').style.display=m.value==='confirmar'?'':'none'}}

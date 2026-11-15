@@ -18,8 +18,12 @@ function normG_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g,
 function convFull_() {
   var sh = aba_(ABA.CONV), n = sh.getLastRow();
   if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 6).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0};
+  var nc = Math.min(sh.getMaxColumns(), LISTA_COL.ENV);
+  return sh.getRange(2, 1, n - 1, nc).getValues().map(function (r, i) {
+    var env = r[LISTA_COL.ENV - 1];
+    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0,
+            tel: String(r[LISTA_COL.TEL - 1] || '').trim(), tipo: String(r[LISTA_COL.TIPO - 1] || ''),
+            env: env instanceof Date ? Utilities.formatDate(env, TZ, 'dd/MM HH:mm') : String(env || '')};
   }).filter(function (c) { return c.id; });
 }
 
@@ -50,7 +54,7 @@ function estadoGestao_(a) {
   var convidados = conv.map(function (c) {
     var u = ultConf_(c.id, confs), st = !u ? 'Pendente' : (u.status === 'Confirmado' ? 'Confirmado' : 'Não vai');
     return {id: c.id, nome: c.nome, dia: c.dia, grupo: c.grupo, acomp: c.acomp, status: st, pessoas: u && st === 'Confirmado' ? u.pessoas : 0,
-            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : ''};
+            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : '', tel: c.tel, tipo: c.tipo, env: c.env};
   });
   var gr = {}, ordem = [];
   resv.forEach(function (r) {
@@ -173,8 +177,38 @@ function gEditarConvidado(k, id, p) {
       var sh = aba_(ABA.CONV);
       sh.getRange(g.linha, 2).setValue(nome); sh.getRange(g.linha, 6).setValue(acomp);
       if (p && p.grupo !== undefined) sh.getRange(g.linha, 5).setValue(String(p.grupo).slice(0, 40));
+      if (p && p.tel !== undefined) {
+        var tel = String(p.tel || '').trim();
+        if (!gTelOk_(tel, false)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
+        lnGarantirColunas_(sh); sh.getRange(g.linha, LISTA_COL.TEL).setNumberFormat('@').setValue(tel);
+      }
       aud_(a, 'Editou convidado', g.id + ': "' + g.nome + '" → "' + nome + '", acompanhante ' + g.acomp + ' → ' + acomp);
       return {ok: true};
+    });
+  }, arguments);
+}
+
+/* marca (ou desmarca) que o convite por WhatsApp foi enviado a este convidado */
+function gConviteMarcar(k, id, enviado) {
+  return api_('gConviteMarcar', function () {
+    return gMut_(k, 'convite', function (a) {
+      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
+      if (!g) return {ok: false, code: 'nao_encontrado'};
+      var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
+      sh.getRange(g.linha, LISTA_COL.ENV).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
+      aud_(a, enviado ? 'Convite WhatsApp enviado' : 'Desmarcou convite enviado', g.id + ' ' + g.nome);
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* lê a planilha de trabalho "Lista de convidados" e harmoniza com o banco (telefones, pessoas novas); ver Lista.src.gs */
+function gSincronizarLista(k) {
+  return api_('gSincronizarLista', function () {
+    return gMut_(k, 'sync', function (a) {
+      var o = sincronizarLista_(a.nome);
+      aud_(a, 'Sincronizou lista de convidados', 'telefones ' + o.telefones + ' · incluídos ' + o.incluidos + ' · +1 ajustados ' + o.acZerados + ' · pendências ' + o.pendencias);
+      return {ok: true, info: {sync: o}};
     });
   }, arguments);
 }

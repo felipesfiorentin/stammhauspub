@@ -305,6 +305,7 @@ function cancelar(id, tel)  { return api_('cancelar',  cancelar_,  arguments); }
 /* ---------- DIAGNÓSTICO (menu "Stammhaus" na planilha) ---------- */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Stammhaus').addItem('Diagnóstico do sistema', 'diagnostico')
+    .addItem('Sincronizar lista de convidados (telefones)', 'sincronizarListaMenu')
     .addItem('Atualizar painel de lotação', 'atualizarPainelMenu')
     .addItem('Preparar reservas e métricas (1ª vez)', 'prepararReservas').addToUi();
 }

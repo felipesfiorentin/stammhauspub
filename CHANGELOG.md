@@ -42,3 +42,10 @@
 - Painel, detalhe do dia: botão "WhatsApp" por pessoa (convidados: titular e acompanhante; reservas do público: cada pessoa). Abre o WhatsApp do pub com o número e a mensagem prontos (noite, atração, protocolo; reserva traz validade e valor); a equipe só toca em enviar.
 - `estadoGestao_` passa a devolver `prot` (C+linha) do convidado confirmado.
 - Teste novo: `tests/e2e7.js`.
+
+## Parte 8 — lista da equipe → banco oficial, telefones e convites por WhatsApp
+- `src/Lista.src.gs`: harmonização da planilha de trabalho "Lista de convidados" com a aba Convidados (telefone em J, tipo do convite em K, envio em L). Aplica só o seguro (telefones válidos, pessoas novas com noite definida, "+1" que ganhou nome) e escreve o resto na aba `Harmonizacao`. Idempotente. Menu Stammhaus > Sincronizar lista de convidados; botão no painel.
+- Painel: tela "Convites WhatsApp" (filtros, KPIs, botão por pessoa com mensagem pronta, registro de envio, desfazer). Editar convidado ganha celular.
+- `gConviteMarcar`, `gSincronizarLista`; `estadoGestao_` devolve tel, tipo, env.
+- Dados de pessoas (telefones) NÃO ficam no repositório: a lista é lida da planilha na hora.
+
