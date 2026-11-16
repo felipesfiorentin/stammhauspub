@@ -90,7 +90,7 @@ function cfg_() {
     capacidade: Number(o.capacidade_por_noite) || 74,
     teto: Number(o.teto_por_noite) || 81,               // 74 + 10% de overbooking
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
-    maxPessoas: Number(o.max_pessoas_reserva) || 4,
+    maxPessoas: Math.min(Number(o.max_pessoas_reserva) || 2, 2),   // regra: no máximo 2 pessoas por reserva do público
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
@@ -769,7 +769,7 @@ function prepararReservas() {
   var existentes = {}; lerConfig_().forEach(function (r) { if (r[0]) existentes[String(r[0]).trim()] = 1; });
   [['teto_por_noite', 81, 'Teto de pessoas por noite: 74 + 10%. Lista garantida + reservas do público; ao chegar nesse número a noite aparece como LOTADA.'],
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
-   ['max_pessoas_reserva', 4, 'Máximo de pessoas por reserva do público.'],
+   ['max_pessoas_reserva', 2, 'Máximo de pessoas por reserva do público (teto fixo de 2 no código).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],
