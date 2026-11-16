@@ -57,3 +57,4 @@
 - Site: página inicial enxuta (sem parreiral/Kaffee, Heineken resumida, sem último box); nova aba Programação lê as noites da planilha via ?p=programacao do projeto do público.
 
 Atenção (deploy do projeto do público): apps-script/publico/Code.gs vem com o marcador __SHEET_ID__; antes de colar no editor, troque pelo ID real da planilha (build.py --sheet-id) ou o projeto perde o acesso à planilha.
+- Painel > Convites WhatsApp: botão 'Exportar todos (PDF)' (convidados por noite com status, celular, pessoas, titular/acompanhante e envio). Teste: tests/e2e13.js.

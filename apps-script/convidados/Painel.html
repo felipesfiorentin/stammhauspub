@@ -240,7 +240,7 @@ function renderConv(){var ed=podeEditar(),T=S.convidados,tel=function(c){return 
  var nT=T.length,nTel=T.filter(tel).length,nEnv=T.filter(function(c){return c.env}).length,nFalta=T.filter(function(c){return tel(c)&&!c.env}).length;
  var L=cvLista();
  var h='<div class="dh"><div><button class="s bk" data-back="1">‹ Voltar ao calendário</button><h2>Convites por WhatsApp</h2><div class="mut">Toque em “Enviar convite”: o WhatsApp do pub abre com o telefone e a mensagem prontos; depois é só enviar. O envio fica registrado.</div></div>'
- +'<div class="row">'+(ed?'<button id="bsync">Sincronizar com a lista da equipe</button>':'')+'</div></div>'
+ +'<div class="row"><button class="p" id="bpdfall">Exportar todos (PDF)</button>'+(ed?'<button id="bsync">Sincronizar com a lista da equipe</button>':'')+'</div></div>'
  +'<div class="kpis"><div class="kpi"><small>Convidados</small><b>'+nT+'</b></div><div class="kpi"><small>Com telefone</small><b>'+nTel+'</b></div><div class="kpi"><small>Convites enviados</small><b>'+nEnv+'</b></div><div class="kpi"><small>Faltam enviar (com telefone)</small><b>'+nFalta+'</b></div><div class="kpi"><small>Sem telefone</small><b>'+(nT-nTel)+'</b></div></div>'
  +'<div class="card" style="margin-top:14px"><div class="row" style="margin-bottom:10px"><input type="search" id="cvq" placeholder="Buscar nome…" value="'+esc(CVQ)+'"><select id="cvd"><option value="todos">Todas as noites</option>'+S.noites.map(function(n){return'<option value="'+n.dia+'"'+(String(n.dia)===CVD?' selected':'')+'>'+esc(n.label)+'</option>'}).join('')+'</select>'
  +'<select id="cvf">'+[['falta','Faltam enviar'],['env','Já enviados'],['semtel','Sem telefone'],['todos','Todos']].map(function(o){return'<option value="'+o[0]+'"'+(o[0]===CVF?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select><span class="mut">'+L.length+' na lista</span></div>'
@@ -277,6 +277,23 @@ function baixaPdf(b64,nome){var bin=atob(b64),u=new Uint8Array(bin.length);for(v
 function exportarPdf(){var n=noite(SEL);if(!n||busy)return;busy=true;var b=$('pdf');if(b){b.disabled=true;b.textContent='Gerando PDF…'}
  run('gListaPdf',[SES,htmlLista(n),nomeArq(n)],function(r){busy=false;if(b){b.disabled=false;b.textContent='Exportar lista (PDF)'}if(sessaoExpirou(r))return;
   if(r&&r.ok&&r.b64){baixaPdf(r.b64,r.nome);toast('PDF gerado');return}toast(msgErro(r)||'Não foi possível gerar o PDF')})}
+
+/* ===== exportação geral: todos os convidados por noite, com status e dados (PDF) ===== */
+function htmlTodos(){var h='<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:8.5px}h1{font-size:16px;margin:0}h2{font-size:12px;margin:0 0 3px}p{margin:2px 0 6px;color:#333}table{border-collapse:collapse;width:100%;margin-bottom:6px}th,td{border:1px solid #888;padding:2px 3px;text-align:left;vertical-align:top}th{background:#ddd}.pg{page-break-before:always}</style></head><body>'
+ +'<h1>Das Stammhaus Pub · Lista de convidados por noite</h1><p>Gerado em '+esc(S.geradoEm)+'. Pessoas confirmadas = titular + acompanhante que confirmaram; "sem resposta" ainda não respondeu.</p>';
+ S.noites.forEach(function(n,ix){var L=S.convidados.filter(function(c){return c.dia===n.dia}).sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});
+  var nc=L.filter(function(c){return c.status==='Confirmado'}).length,np=L.filter(function(c){return c.status==='Pendente'}).length,nn=L.filter(function(c){return c.status==='Não vai'}).length,pl=0,pc=0;
+  L.forEach(function(c){pl+=1+(c.acomp?1:0);pc+=c.pessoas});
+  h+='<div'+(ix?' class="pg"':'')+'><h2>'+esc(n.label)+(n.atracao?' · '+esc(n.atracao):'')+'</h2><p>Convites: <b>'+L.length+'</b> (pessoas listadas '+pl+') · confirmados <b>'+nc+'</b> ('+pc+' pessoas) · sem resposta <b>'+np+'</b> · não vão <b>'+nn+'</b></p>'
+  +'<table><tr><th>#</th><th>Convidado</th><th>Tipo</th><th>Celular</th><th>Status</th><th>Pessoas</th><th>Titular / acompanhante (confirmação)</th><th>Convite enviado</th></tr>';
+  L.forEach(function(c,i){var conf=c.status==='Confirmado'?esc(c.titNome||c.nome)+(c.titTel?' · '+esc(c.titTel):'')+(c.acNome?'<br>+ '+esc(c.acNome)+(c.acTel?' · '+esc(c.acTel):''):''):'';
+   h+='<tr><td>'+(i+1)+'</td><td>'+esc(c.nome)+(c.acomp?' (+1)':'')+(c.grupo?'<br><small>'+esc(c.grupo)+'</small>':'')+'</td><td>'+esc(c.tipo||'')+'</td><td>'+esc(cvTel(c))+'</td><td>'+esc(c.status==='Pendente'?'Sem resposta':c.status)+'</td><td>'+(c.status==='Confirmado'?c.pessoas:'')+'</td><td>'+conf+'</td><td>'+esc(c.env||'')+'</td></tr>'});
+  if(!L.length)h+='<tr><td colspan="8">Nenhum convidado nesta noite.</td></tr>';
+  h+='</table></div>'});
+ return h+'</body></html>'}
+function exportarTodos(){if(busy)return;busy=true;var b=$('bpdfall');if(b){b.disabled=true;b.textContent='Gerando PDF…'}
+ run('gListaPdf',[SES,htmlTodos(),'convidados-por-noite'],function(r){busy=false;if(b){b.disabled=false;b.textContent='Exportar todos (PDF)'}if(sessaoExpirou(r))return;
+  if(r&&r.ok&&r.b64){baixaPdf(r.b64,r.nome);toast('PDF gerado');return}toast(msgErro(r)||'Não foi possível gerar o PDF')})}
 function imprimirLista(){var n=noite(SEL);if(!n)return;var w=window.open('','_blank');if(!w){toast('O navegador bloqueou a janela. Use "Exportar lista (PDF)".');return}
  w.document.write(htmlLista(n).replace('</body>','<script>window.onload=function(){window.print()}<\/script></body>'));w.document.close()}
 function modalDia(iso,n){var ed=n||{};modal(n?'Editar programação':'Abrir dia',(n?'<p class="mut">'+esc(n.label)+'</p>':'<p class="mut">'+esc(iso.split('-').reverse().join('/'))+'</p>')+'<label>Atração</label><input type="text" id="f1" maxlength="120" value="'+esc(ed.atracao||'')+'" placeholder="Ex.: Banda X · Rock"><label>Estilo</label><input type="text" id="f2" maxlength="80" value="'+esc(ed.estilo||'')+'"><label>Reservas do público</label><select id="f3"><option value="1"'+(ed.pub===false?'':' selected')+'>Abertas</option><option value="0"'+(ed.pub===false?' selected':'')+'>Fechadas</option></select>','Salvar',function(f,cb){run('gDiaSalvar',[SES,iso,val('f1'),val('f2'),val('f3')==='1'],cb)})}
@@ -309,7 +326,7 @@ document.addEventListener('click',function(e){var t=e.target;
  var gx=t.closest&&t.closest('.dc.gx');if(gx&&S){modalDia(gx.getAttribute('data-novo'),null);return}
  var bn=t.closest&&t.closest('[data-nav]');if(bn&&S){var k=Number(bn.getAttribute('data-nav'));MES=k===0?S.hoje.slice(0,7):addMes(MES,k);render();return}
  if(t.closest&&t.closest('[data-back]')){VIEW='cal';render();return}
- if(t.id==='bconv'){VIEW='conv';render();return}if(t.id==='bsync')return sincronizarLista();
+ if(t.id==='bconv'){VIEW='conv';render();return}if(t.id==='bsync')return sincronizarLista();if(t.id==='bpdfall')return exportarTodos();
  var cz=t.closest&&t.closest('[data-cz]');if(cz&&S){marcaConvite(cz.getAttribute('data-cz'),true);return}var cu=t.closest&&t.closest('[data-cu]');if(cu&&S){marcaConvite(cu.getAttribute('data-cu'),false);return}
  var zz=t.closest&&t.closest('a.cvz');if(zz&&S){marcaConvite(zz.getAttribute('data-id'),true,true);zz.parentNode.parentNode.style.opacity='.55';return}
  if(t.id==='pdf')return exportarPdf();if(t.id==='prt')return imprimirLista();if(t.id==='edd'){modalDia(noite(SEL).iso,noite(SEL));return}
