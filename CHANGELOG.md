@@ -55,3 +55,5 @@
 - Painel (calendário): barra superior com pessoas listadas, convidadas (convite enviado), confirmadas e entrada estimada; removido 'dias com programação'; cada dia mostra listadas/convidadas/confirmadas.
 - Reservas do público: máximo de 2 pessoas por reserva (teto fixo no código, vale mesmo se Config max_pessoas_reserva for maior).
 - Site: página inicial enxuta (sem parreiral/Kaffee, Heineken resumida, sem último box); nova aba Programação lê as noites da planilha via ?p=programacao do projeto do público.
+
+Atenção (deploy do projeto do público): apps-script/publico/Code.gs vem com o marcador __SHEET_ID__; antes de colar no editor, troque pelo ID real da planilha (build.py --sheet-id) ou o projeto perde o acesso à planilha.

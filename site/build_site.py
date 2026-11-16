@@ -294,8 +294,8 @@ function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return{'&':'&
 fetch('@@APP@@?p=programacao').then(function(r){return r.json()}).then(function(d){
  var L=(d&&d.noites)||[];if(!L.length){msg.textContent='Programação em breve.';return}
  var M=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
- el.innerHTML=L.map(function(n){var p=String(n.iso||'').split('-'),sem=String(n.label||'').split(',')[0];
-  return'<div class="day"><div class="d"><b>'+esc(p[2])+'</b><span>'+esc(sem)+'<br>'+esc(M[+p[1]]||'')+'</span></div><div class="a">'+esc(n.atracao||'A confirmar')+'</div><div class="s">'+esc(n.estilo)+'</div></div>'}).join('')
+ el.innerHTML=L.map(function(n){var p=String(n.iso||'').split('-'),sem=String(n.label||'').split(',')[0].replace('-feira',''),a=String(n.atracao||'').split(' \u00b7 ');
+  return'<div class="day"><div class="d"><b>'+esc(p[2])+'</b><span>'+esc(sem)+'<br>'+esc(M[+p[1]]||'')+'</span></div><div class="a">'+esc(a[0]||'A confirmar')+'</div><div class="s">'+esc(a.slice(1).join(' \u00b7 '))+'</div></div>'}).join('')
 }).catch(function(){msg.innerHTML='Não foi possível carregar a programação agora. <a href="/reservas/">Ver noites e reservar</a>.'})})();
 </script>'''.replace('@@IMG@@', PX(5858067,1600)).replace('@@APP@@', APP_PUB)
 
