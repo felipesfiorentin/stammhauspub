@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Agenda · Das Stammhaus Pub</title>
+<title>Gerenciamento Operacional · Das StammHaus Pub</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--verde:#113325;--ouro:#B47E00;--laranja:#E04E27;--off:#EAE7DA;--escuro:#0a2016}
@@ -116,7 +116,7 @@ input[type=text],input[type=search],input[type=password],select{background:#0a20
 @media(min-width:1024px){
 .wrap{max-width:1480px;padding:28px 32px 56px}
 h1{font-size:30px}
-.top{position:sticky;top:0;z-index:5;background:linear-gradient(#113325 70%,rgba(17,51,37,0));padding:10px 0 14px;margin:-10px 0 0}
+.top{position:sticky;top:0;z-index:5;background:#0D5B1D;border-bottom:3px solid #B47E00;border-radius:0 0 12px 12px;box-shadow:0 6px 16px rgba(0,0,0,.35);padding:14px 18px;margin:-10px 0 16px}
 .kpis{grid-template-columns:repeat(5,1fr);gap:14px}.kpi b{font-size:32px}
 .grid{grid-template-columns:repeat(2,1fr);gap:18px}
 .lay{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(340px,1fr);gap:20px;align-items:start;margin-top:4px}
@@ -132,7 +132,7 @@ button:hover{border-color:var(--ouro);background:rgba(180,126,0,.15)}button.p:ho
 </style></head><body><div class="wrap">
 <div id="login" style="display:none"></div>
 <div id="main" style="display:none">
-<div class="top"><div><h1>Agenda · Das Stammhaus Pub</h1><p class="sub" id="sub">Carregando…</p></div>
+<div class="top"><div><h1>Gerenciamento Operacional · Das StammHaus Pub</h1><p class="sub" id="sub">Carregando…</p></div>
 <div class="row"><button id="bconv" class="p">Convites WhatsApp</button><button id="ref">Atualizar</button><button id="btrocar">Alterar senha</button><button id="bsair">Sair</button></div></div>
 <div id="app"></div></div></div>
 <script>
