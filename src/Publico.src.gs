@@ -10,7 +10,20 @@ function ss_() {
   return SpreadsheetApp.openById(SHEET_ID);
 }
 
-function doGet() {
+/* programação pública (lida pelo site institucional): só dados já públicos, vindos da aba Programacao gerida pela equipe */
+function programacaoPublica_() {
+  var prog = prog_(), hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  return {ok: true, noites: ordemDias_(prog).filter(function (d) { return prog[d].iso && prog[d].iso >= hoje; }).map(function (d) {
+    var p = prog[d]; return {iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo};
+  })};
+}
+
+function doGet(e) {
+  if (e && e.parameter && e.parameter.p === 'programacao') {
+    var out;
+    try { out = programacaoPublica_(); } catch (err) { out = {ok: false, noites: []}; }
+    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  }
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Das Stammhaus Pub · Reservas')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')

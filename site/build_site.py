@@ -5,6 +5,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp/site'
 HERE = os.path.dirname(os.path.abspath(__file__))
 PX = lambda i, w=1600: f'https://images.pexels.com/photos/{i}/pexels-photo-{i}.jpeg?auto=compress&cs=tinysrgb&w={w}'
 VID = lambda f: f'https://videos.pexels.com/video-files/{f.split("/")[0]}/{f.split("/")[1]}.mp4'
+APP_PUB = 'https://script.google.com/macros/s/AKfycbxeidgTI_xPhbrBp2pAlgO0bFWjYilPLFq0VpeSGMhlrtVagLyR4FKXpYa4qPX6xZxD/exec'
 APP = 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec'
 
 CSS = r'''
@@ -145,7 +146,7 @@ if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es
 })();
 '''
 
-NAV = [('/', 'Início', 'home'), ('/historia/', 'História', 'historia'), ('/equipe/', 'Equipe', 'equipe'),
+NAV = [('/', 'Início', 'home'), ('/historia/', 'História', 'historia'), ('/equipe/', 'Equipe', 'equipe'), ('/programacao/', 'Programação', 'programacao'),
        ('/cardapio/', 'Cardápio', 'cardapio'), ('/fotos/', 'Fotos', 'fotos'), ('/reservas/', 'Reservas', 'reservas'),
        ('/painel/', 'Gestão', 'painel')]
 
@@ -154,14 +155,14 @@ def nav(cur):
         cls = 'l' + (' on' if k == cur else '') + (' int' if k == 'painel' else '')
         lab = t + (' · interno' if k == 'painel' else '')
         return f'<li><a class="{cls}" href="{h}">{lab}</a></li>'
-    L = ''.join(li(*x) for x in NAV[:3]); R = ''.join(li(*x) for x in NAV[3:])
+    L = ''.join(li(*x) for x in NAV[:4]); R = ''.join(li(*x) for x in NAV[4:])
     menu = ''.join(f'<a href="{h}">{t}{" (acesso interno)" if k=="painel" else ""}</a>' for h, t, k in NAV)
     return f'''<header class="nav"><div class="nv"><ul>{L}</ul><a class="logo" href="/" aria-label="Das Stammhaus Pub"><img src="/assets/site/logo-horizontal.png" alt="Das Stammhaus Pub"></a><ul class="r">{R}</ul>
 <button class="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button></div><nav class="menu">{menu}</nav></header>'''
 
 FOOT = '''<footer><div class="wrap"><div class="ft">
 <div><img src="/assets/site/logo-padrao.png" alt="Das Stammhaus Pub"><p class="mut">Um pub europeu no coração de Canoinhas - SC</p><p style="font-style:italic;font-family:'Playfair Display',serif;color:#d9a62e">O que é bom resiste ao tempo.</p></div>
-<div><h4>A casa</h4><ul><li><a href="/historia/">História e fundadores</a></li><li><a href="/equipe/">Equipe</a></li><li><a href="/cardapio/">Cardápio</a></li><li><a href="/fotos/">Fotos</a></li></ul></div>
+<div><h4>A casa</h4><ul><li><a href="/historia/">História e fundadores</a></li><li><a href="/equipe/">Equipe</a></li><li><a href="/programacao/">Programação</a></li><li><a href="/cardapio/">Cardápio</a></li><li><a href="/fotos/">Fotos</a></li></ul></div>
 <div><h4>Visite</h4><ul><li>Rua Getúlio Vargas, 839<br>Canoinhas · SC</li><li><a href="https://www.google.com/maps/dir/?api=1&destination=Rua+Get%C3%BAlio+Vargas+839+Canoinhas+SC" target="_blank" rel="noopener">Como chegar? →</a></li><li style="margin-top:14px"><a class="wab" href="https://wa.me/5547992505290" target="_blank" rel="noopener"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt=""><span>Fale conosco no WhatsApp<small>(47) 99250-5290</small></span></a></li><li><a href="/reservas/">Reservar minha noite</a></li><li><a href="/painel/">Gestão (acesso interno)</a></li></ul></div>
 </div><div class="copy"><span>© 2026 Das Stammhaus Pub · Canoinhas, SC</span><span>Imagens ilustrativas de banco de imagens (Pexels) · fotos reais em breve</span></div></div></footer>'''
 
@@ -172,7 +173,7 @@ def page(cur, title, desc, body, hero_sol=True):
 <meta name="theme-color" content="#113325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site/site.css?v=8"></head><body{'' if cur=='home' else ' data-sol'}>
+<link rel="stylesheet" href="/assets/site/site.css?v=9"></head><body{'' if cur=='home' else ' data-sol'}>
 {nav(cur)}
 {body}
 {FOOT}
@@ -184,7 +185,7 @@ def ph(i, w=1200): return f"background-image:url('{PX(i,w)}')"
 HOME = f'''
 <section class="hero"><img class="poster" alt="" src="{PX(5858067,1600)}">
 <video muted loop playsinline autoplay preload="metadata" poster="{PX(5858067,1600)}" data-lg="{VID('4752641/4752641-hd_1280_720_25fps')}" data-sm="{VID('4752641/4752641-sd_960_540_25fps')}"></video>
-<div class="in"><a class="sel" href="#inauguracao">Semana de Inauguração · 18 a 21 de novembro</a>
+<div class="in"><a class="sel" href="/programacao/">Semana de Inauguração · 18 a 21 de novembro</a>
 <h1>O que é bom <em>resiste ao tempo.</em></h1>
 <p class="lead">Um pub de estilo europeu clássico em um casarão histórico de Canoinhas. Chopp de qualidade, música ao vivo e conversa sem pressa.</p>
 <div class="row"><a class="btn" href="/reservas/">Reservar minha noite</a><a class="btn o" href="#casa">Conhecer a casa</a></div></div>
@@ -195,48 +196,29 @@ HOME = f'''
 
 <section class="alt" id="proposta"><div class="wrap">
 <div class="center rv"><span class="eb">Proposta de valor</span><h2>Um refúgio com curadoria em cada detalhe</h2>
-<p class="lead">Canoinhas pedia um lugar para quem busca substância e conforto, sem precisar viajar para outra cidade. Cuidamos do que realmente importa: o chopp, o som, a casa e o tempo da conversa.</p></div>
+</div>
 <div class="cards rv">
-<div class="card"><span class="n">01</span><h3>Chopp bem tirado</h3><p>Chopp gelado, no ponto, em parceria exclusiva com a Heineken, e bebidas bem servidas.</p></div>
-<div class="card"><span class="n">02</span><h3>Música de qualidade</h3><p>Som profissional em volume que convida à conversa. Rock, blues, MPB e pop rock, sem gritar para ser ouvido.</p></div>
-<div class="card"><span class="n">03</span><h3>Gastronomia descomplicada</h3><p>Menu pensado para trazer as melhores especialidades alemãs, com eficiência e qualidade. Os detalhes seguem em segredo até a inauguração.</p></div>
-<div class="card"><span class="n">04</span><h3>Casarão com história</h3><p>Dois andares de arquitetura preservada, madeira nobre e a herança madeireira da região em cada canto.</p></div>
+<div class="card"><span class="n">01</span><h3>Chopp bem tirado</h3><p>Chopp gelado, no ponto, e bebidas bem servidas.</p></div>
+<div class="card"><span class="n">02</span><h3>Música de qualidade</h3><p>Som profissional em volume que convida à conversa.</p></div>
+<div class="card"><span class="n">03</span><h3>Gastronomia descomplicada</h3><p>Especialidades alemãs com eficiência e qualidade. Detalhes em segredo até a inauguração.</p></div>
+<div class="card"><span class="n">04</span><h3>Casarão com história</h3><p>Arquitetura preservada e herança madeireira em cada canto.</p></div>
 </div></div></section>
 
 <section id="casa"><div class="wrap split">
 <div class="ph tall rv" style="background-image:url('/assets/site/casarao-pre-obra.jpg')" role="img" aria-label="O casarão antes da obra"></div>
 <div class="rv"><span class="eb">O casarão</span><h2>Dois andares de herança madeireira</h2>
-<p class="lead">O Das Stammhaus nasce de um casarão, de uma cidade e de gente que gosta de coisa bem feita. A restauração preserva a arquitetura e a força da cultura madeireira e da imigração europeia que formaram Canoinhas.</p>
-<p class="mut">Madeira nobre, marcenaria fina e precisão histórica: sem exageros e sem caricaturas.</p>
-<p class="mut" style="font-size:14px">Na foto, o casarão há nove meses, antes da obra. Hoje ele está todo reformado, e a revelação acontece na inauguração, dia 18/11/2026.</p><a class="btn o" href="/historia/">Nossa história</a></div></div></section>
-
-<section class="alt"><div class="wrap split rev">
-<div class="ph rv" style="{ph(5984690)}" role="img" aria-label="Parreiral (imagem ilustrativa)"></div>
-<div class="rv"><span class="eb">Kaffee · Garten · Pub</span><h2>Da tarde à noite, sob o parreiral</h2>
-<p class="lead">Um jardim com parreiral de mais de 50 anos, lounge com firepit, sofás e palco acústico, ligado ao casarão. À tarde, o Kaffee/Garten com cafés e encontros leves. À noite, o Pub.</p>
-<p class="mut">Horários de funcionamento serão divulgados em breve.</p></div></div></section>
+<p class="lead">Um casarão restaurado que preserva a arquitetura e a cultura madeireira e europeia que formaram Canoinhas.</p>
+<p class="mut" style="font-size:14px">Na foto, o casarão antes da obra. A revelação acontece na inauguração, dia 18/11.</p><a class="btn o" href="/historia/">Nossa história</a></div></div></section>
 
 <section class="parc rv"><div class="wrap"><div class="pgrid">
 <div class="pbadge"><img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Heineken_logo.svg" alt="Heineken" loading="lazy"><span>Parceria exclusiva</span></div>
 <div class="ptxt"><span class="eb">Parceria</span><h2>Chopp Heineken, com exclusividade</h2>
-<p class="lead">O Das Stammhaus Pub conta com parceria exclusiva com a Heineken: o chopp que você toma aqui é Heineken, tirado do jeito certo.</p>
-<ul class="pl"><li><b>A cervejaria mais internacional do mundo</b> no balcão de um casarão de arquitetura europeia.</li><li><b>Chopp trincando</b>, na torneira principal, com alta rotatividade.</li><li><b>A estrela vermelha em destaque</b> no balcão principal.</li><li><b>Canecas com a marca</b>, no padrão internacional premium.</li></ul></div></div></div></section>
+<p class="lead">O chopp daqui é Heineken, tirado do jeito certo.</p></div></div></div></section>
 
 <section><div class="wrap split">
 <div class="rv"><span class="eb">Para quem recebemos</span><h2>Para quem valoriza uma boa conversa</h2>
-<p class="lead">Casais, famílias jovens e grupos de amigos que querem chopp gelado, boa música e tempo para conversar. Ouvimos 147 moradores de Canoinhas e a música de qualidade foi a prioridade número um.</p>
-<p class="mut">Simples, mas caprichoso: um lugar onde dá para chegar e se sentir em casa.</p></div>
+<p class="lead">Casais, famílias e amigos que querem chopp gelado, boa música e tempo para conversar.</p></div>
 <div class="ph rv" style="{ph(1089930)}" role="img" aria-label="Brinde com chopp (imagem ilustrativa)"></div></div></section>
-
-<section class="alt" id="inauguracao"><div class="wrap"><div class="center rv"><span class="eb">Semana de Inauguração</span><h2>Quatro noites de música ao vivo</h2>
-<p class="lead">De 18 a 21 de novembro, a casa abre as portas. As noites já estão com vagas limitadas: reserve a sua.</p></div>
-<div class="days rv">
-<div class="day"><div class="d"><b>18</b><span>Quarta<br>Nov</span></div><div class="a">Lonesome Capitain</div><div class="s">Country &amp; Folk</div></div>
-<div class="day"><div class="d"><b>19</b><span>Quinta<br>Nov</span></div><div class="a">Os Bauretz</div><div class="s">Soul, Disco &amp; MPB</div></div>
-<div class="day"><div class="d"><b>20</b><span>Sexta<br>Nov</span></div><div class="a">Hardways</div><div class="s">Classic Rock</div></div>
-<div class="day"><div class="d"><b>21</b><span>Sábado<br>Nov</span></div><div class="a">Rodrigo Seidel e banda</div><div class="s">Pop Rock</div></div>
-</div>
-<div class="center rv" style="margin-top:38px"><div class="row" style="justify-content:center"><a class="btn" href="/reservas/">Reservar minha noite</a></div></div></div></section>
 
 <section><div class="wrap"><div class="center rv"><span class="eb">Em breve</span><h2>O que vem por aí</h2></div>
 <div class="tz rv">
@@ -245,9 +227,6 @@ HOME = f'''
 <a href="/equipe/" style="background-image:url('/assets/site/equipe-card.jpg')"><div><h3>Equipe</h3><p>Quem faz a casa acontecer.</p><span class="go">Ver →</span></div></a>
 </div></div></section>
 
-<section class="cta rv"><div class="wrap"><span class="eb">Honre suas raízes</span><h2>Embriague-se aqui.</h2>
-<p class="lead" style="margin:0 auto 28px">Garanta o seu lugar na Semana de Inauguração do Das Stammhaus Pub.</p>
-<div class="row"><a class="btn" href="/reservas/">Reservar minha noite</a></div></div></section>
 '''
 
 HIST = f'''
@@ -274,7 +253,7 @@ HIST = f'''
 <li><a href="https://www.livrosgratis.com.br/ler-livro-online-101418/desenvolvimento-do-setor-madeireiro-no-municipio-de-canoinhas-sc-periodo-1940-a-2007" target="_blank" rel="noopener">Marcas históricas</a>: Irmãos Procopiak, Zaniolo, Olsen, Lumber, Urano, Dietrich Siems.</li>
 </ul>
 <p class="mut" style="font-size:13px">Lista baseada nas fontes consultadas, não exaustiva. Fontes: dissertação “Desenvolvimento do setor madeireiro no município de Canoinhas (1940 a 2007)”, Cia Canoinhas, Smurfit Westrock, NSC Total e Trellis.</p></div>
-<div class="t"><span class="eb">O casarão</span><h3>Um casarão de dois andares na Rua Getúlio Vargas</h3><p>É dessa herança que o Das Stammhaus tira a madeira nobre, a marcenaria fina e o respeito pelo que dura. O casarão histórico de dois andares, com jardim e um parreiral de mais de 50 anos, foi restaurado para abrigar o pub e preservar o caráter da casa.</p></div>
+<div class="t"><span class="eb">O casarão</span><h3>Um casarão de dois andares na Rua Getúlio Vargas</h3><p>É dessa herança que o Das Stammhaus tira a madeira nobre, a marcenaria fina e o respeito pelo que dura. O casarão histórico de dois andares foi restaurado para abrigar o pub e preservar o caráter da casa.</p></div>
 <div class="t"><span class="eb">Hoje</span><h3>Um pub europeu no coração de Canoinhas</h3><p>Canoinhas tinha poucas opções de lazer com substância para o público maduro, que muitas vezes viaja para outras cidades ou deixa de sair. O Das Stammhaus nasce para ser o ponto de encontro: chopp Heineken tirado do jeito certo, música ao vivo e um menu pensado para trazer as melhores especialidades alemãs, com eficiência e qualidade. Daí o nome: Stammhaus, a casa-raiz, o lugar de quem se reconhece.</p></div>
 </div>
 <div class="split rv" style="margin-top:56px"><div class="ph tall" style="background-image:url('/assets/site/casarao-pre-obra.jpg')" role="img" aria-label="O casarão há nove meses, antes da obra"></div><div><span class="eb">Ponto de partida</span><h3>O casarão há nove meses</h3><p>Assim ele estava antes da obra. Hoje está todo reformado, e a revelação acontece na inauguração, dia 18/11/2026.</p><a class="btn" href="/reservas/">Reservar minha noite</a></div></div>
@@ -304,6 +283,22 @@ def sus(cur_img, title, text, icon='✦'):
 CARD = sus(5530258, 'Cardápio', 'Vamos compartilhar o cardápio depois da inauguração. Por ora, vamos manter o suspense para surpreender a todos 😉', '🍺')
 FOTOS = sus(15937644, 'Fotos', 'As fotos da casa também ficam para depois da inauguração. Estamos preparando as melhores imagens e, por ora, mantemos o suspense 😉', '✦')
 
+
+PROG = '''<section class="pagehero" style="--bg:url('@@IMG@@')"><div class="wrap"><span class="eb">Semana de Inauguração</span><h1>Programação</h1>
+<p class="lead">Música ao vivo, com vagas limitadas. Reserve a sua noite.</p></div></section>
+<section><div class="wrap"><div class="days" id="prog"><p class="mut" id="progmsg">Carregando programação…</p></div>
+<div class="center" style="margin-top:38px"><div class="row" style="justify-content:center"><a class="btn" href="/reservas/">Reservar minha noite</a></div></div></div></section>
+<script>
+(function(){var el=document.getElementById('prog'),msg=document.getElementById('progmsg');
+function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+fetch('@@APP@@?p=programacao').then(function(r){return r.json()}).then(function(d){
+ var L=(d&&d.noites)||[];if(!L.length){msg.textContent='Programação em breve.';return}
+ var M=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+ el.innerHTML=L.map(function(n){var p=String(n.iso||'').split('-'),sem=String(n.label||'').split(',')[0];
+  return'<div class="day"><div class="d"><b>'+esc(p[2])+'</b><span>'+esc(sem)+'<br>'+esc(M[+p[1]]||'')+'</span></div><div class="a">'+esc(n.atracao||'A confirmar')+'</div><div class="s">'+esc(n.estilo)+'</div></div>'}).join('')
+}).catch(function(){msg.innerHTML='Não foi possível carregar a programação agora. <a href="/reservas/">Ver noites e reservar</a>.'})})();
+</script>'''.replace('@@IMG@@', PX(5858067,1600)).replace('@@APP@@', APP_PUB)
+
 os.makedirs(OUT + '/assets/site', exist_ok=True)
 open(OUT + '/assets/site/site.css', 'w').write(CSS)
 open(OUT + '/assets/site/site.js', 'w').write(JS)
@@ -312,6 +307,7 @@ for f in os.listdir(os.path.join(HERE, 'img')):
 pages = {
  'index.html': page('home', 'Das Stammhaus Pub · Canoinhas, SC', 'Pub de estilo europeu em um casarão histórico de Canoinhas-SC. Chopp de qualidade, música ao vivo e conversa sem pressa. Semana de inauguração: 18 a 21 de novembro.', HOME),
  'historia/index.html': page('historia', 'História · Das Stammhaus Pub', 'A história do casarão, da cidade e dos fundadores do Das Stammhaus Pub, em Canoinhas-SC.', HIST),
+ 'programacao/index.html': page('programacao', 'Programação · Das Stammhaus Pub', 'Programação da Semana de Inauguração do Das Stammhaus Pub, em Canoinhas-SC.', PROG),
  'equipe/index.html': page('equipe', 'Equipe · Das Stammhaus Pub', 'Equipe do Das Stammhaus Pub: em construção.', EQ),
  'cardapio/index.html': page('cardapio', 'Cardápio · Das Stammhaus Pub', 'O cardápio do Das Stammhaus Pub será revelado depois da inauguração.', CARD),
  'fotos/index.html': page('fotos', 'Fotos · Das Stammhaus Pub', 'As fotos do Das Stammhaus Pub serão reveladas depois da inauguração.', FOTOS),
