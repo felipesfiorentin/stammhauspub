@@ -191,17 +191,18 @@ function resto(){var h='<div class="rc" style="margin-top:20px">'+whatsCard();
  return h+'<p class="mut">Regra: teto de '+S.teto+' pessoas por noite (capacidade '+S.capacidade+' + 10%). Convidado sem resposta conta '+(S.pendAc?'titular + acompanhante a que tem direito':'só o titular')+'; confirmado conta as pessoas confirmadas; “não vai”/cancelado libera a vaga.</p>'}
 function renderCal(){
  if(!MES)MES=S.hoje.slice(0,7);var ed=podeEditar(),mapa={};S.noites.forEach(function(n){if(n.iso)mapa[n.iso]=n});
- var t={n:0,total:0,lista:0,publico:0,receita:0};S.noites.forEach(function(n){if(n.iso.slice(0,7)===MES&&n.iso>=S.hoje){t.n++;t.total+=n.total;t.lista+=n.lista;t.publico+=n.publico;t.receita+=n.receita}});
+ var vis=function(dia){var o={l:0,c:0,f:0};S.convidados.forEach(function(c){if(c.dia!==dia)return;var k=1+(c.acomp?1:0);o.l+=k;if(c.env)o.c+=k});var n=noite(dia);o.f=n?n.confirmadosPessoas:0;return o};
+ var t={l:0,c:0,f:0,receita:0};S.noites.forEach(function(n){if(n.iso.slice(0,7)===MES){var v=vis(n.dia);t.l+=v.l;t.c+=v.c;t.f+=v.f;t.receita+=n.receita}});
  var ehMesAtual=MES===S.hoje.slice(0,7);
  var h='<div class="cal-h"><h2>'+nomeMes(MES)+'</h2><div class="row"><button class="s" data-nav="-1"'+(ehMesAtual?' disabled':'')+'>‹ Mês anterior</button><button class="s" data-nav="0">Hoje</button><button class="s" data-nav="1">Próximo mês ›</button></div></div>';
- h+='<div class="kpis"><div class="kpi"><small>Dias com programação'+(ehMesAtual?' (de hoje em diante)':'')+'</small><b>'+t.n+'</b></div><div class="kpi"><small>Pessoas comprometidas</small><b>'+t.total+'</b></div><div class="kpi"><small>Lista garantida</small><b>'+t.lista+'</b></div><div class="kpi"><small>Público reservado</small><b>'+t.publico+'</b></div><div class="kpi"><small>Entrada estimada (público)</small><b>'+brl(t.receita)+'</b></div></div>';
+ h+='<div class="kpis"><div class="kpi"><small>Pessoas listadas</small><b>'+t.l+'</b></div><div class="kpi"><small>Pessoas convidadas (convite enviado)</small><b>'+t.c+'</b></div><div class="kpi"><small>Pessoas confirmadas</small><b>'+t.f+'</b></div><div class="kpi"><small>Entrada estimada (público)</small><b>'+brl(t.receita)+'</b></div></div>';
  h+='<div class="cal-w">'+DS.map(function(d){return'<div>'+d+'</div>'}).join('')+'</div><div class="cal-g">';
  var y=+MES.slice(0,4),m=+MES.slice(5,7),off=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7,nd=new Date(Date.UTC(y,m,0)).getUTCDate();
  for(var i=0;i<off;i++)h+='<div class="dc out"></div>';
  for(var d=1;d<=nd;d++){var iso=MES+'-'+('0'+d).slice(-2),n=mapa[iso],pas=iso<S.hoje,hj=iso===S.hoje;
   var cls='dc'+(pas?' pas':'')+(hj?' hj':'');
-  if(n){var pc=Math.min(100,n.total/S.teto*100);
-   h+='<div class="'+cls+' ev" data-d="'+n.dia+'"><div class="dn"><span>'+d+'</span>'+(n.lotado?'<span class="lt">LOTADO</span>':'')+'</div><div class="at">'+esc(n.atracao||'Sem atração definida')+'</div><div class="mb"><i'+(n.lotado?' class="f"':'')+' style="width:'+pc+'%"></i></div><div class="kv"><b>'+n.total+'</b>/'+S.teto+' · lista '+n.lista+' · público '+n.publico+'</div></div>'}
+  if(n){var v=vis(n.dia),pc=Math.min(100,n.total/S.teto*100);
+   h+='<div class="'+cls+' ev" data-d="'+n.dia+'"><div class="dn"><span>'+d+'</span>'+(n.lotado?'<span class="lt">LOTADO</span>':'')+'</div><div class="at">'+esc(n.atracao||'Sem atração definida')+'</div><div class="mb"><i'+(n.lotado?' class="f"':'')+' style="width:'+pc+'%"></i></div><div class="kv"><b>'+n.total+'</b>/'+S.teto+'</div><div class="kv">listadas <b>'+v.l+'</b> · convidadas <b>'+v.c+'</b> · confirmadas <b>'+v.f+'</b></div></div>'}
   else if(ed&&!pas)h+='<div class="'+cls+' emp gx" data-novo="'+iso+'"><div class="dn"><span>'+d+'</span></div><div class="add">+<span class="ad"> abrir dia</span></div></div>';
   else h+='<div class="'+cls+' emp"><div class="dn"><span>'+d+'</span></div></div>'}
  h+='</div>'+resto();$('app').innerHTML=h;$('sub').textContent=$('sub').getAttribute('data-s')||''}

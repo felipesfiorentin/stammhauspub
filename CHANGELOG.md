@@ -52,3 +52,4 @@
 - Parte 9 (convites por WhatsApp pela API, projeto público): `processarConvitesWhats` (gatilho de 1 min, 15 por rodada, máx. 200/dia) envia o template de convite (Marketing, `convite_inauguracao`: nome, noite, atração, acompanhante) a quem tem celular válido (col J) e coluna L vazia; grava L (data) e M (situação: ENVIADO · wamid / ERRO n / FALHOU). Liga/desliga em Config `convites_ativo`. `instalarConvitesWhats`, `resumoConvitesWhats`, `testeConviteWhats`. Teste: tests/e2e9.js.
 
 - Painel de gestão: celular digitado sem máscara (47996015131, +55…) é normalizado para (47) 99601-5131 antes de validar (status do convidado, edição, reservas). Teste: tests/e2e10.js.
+- Painel (calendário): barra superior com pessoas listadas, convidadas (convite enviado), confirmadas e entrada estimada; removido 'dias com programação'; cada dia mostra listadas/convidadas/confirmadas.
