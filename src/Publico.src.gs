@@ -21,7 +21,7 @@ function programacaoPublica_() {
 function doGet(e) {
   if (e && e.parameter && e.parameter.p === 'programacao') {
     var out;
-    try { out = programacaoPublica_(); } catch (err) { out = {ok: false, noites: []}; }
+    try { out = programacaoPublica_(); } catch (err) { out = {ok: false, noites: [], erro: String(err && err.message || err).slice(0, 120)}; }
     return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
   }
   return HtmlService.createHtmlOutputFromFile('Index')
