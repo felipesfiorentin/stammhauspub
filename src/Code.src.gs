@@ -70,11 +70,12 @@ function simId_(x, y) {
   if (buscaFonetica_(x) === buscaFonetica_(y)) return 0.95;
   return 1 - buscaDist_(x, y) / Math.max(x.length, y.length);
 }
-// Mesma quantidade de palavras e cada palavra equivalente (tolera acento, ordem, 1 letra trocada, grafia parecida)
+// MESMA PESSOA (critério estrito): mesma quantidade de palavras e cada palavra igual, com/sem acento ou de grafia
+// foneticamente idêntica (Henckels/Henkels). Uma letra diferente NÃO basta: Helon e Heron são pessoas distintas.
 function nomesIguais_(a, b) {
   var ta = buscaNormalizar_(a), tb = buscaNormalizar_(b);
   if (ta.length < 2 || ta.length !== tb.length) return false;
-  var usados = {}, soma = 0, i, j;
+  var usados = {}, i, j;
   for (i = 0; i < ta.length; i++) {
     var melhor = 0, k = -1;
     for (j = 0; j < tb.length; j++) {
@@ -82,10 +83,10 @@ function nomesIguais_(a, b) {
       var s = simId_(ta[i], tb[j]);
       if (s > melhor) { melhor = s; k = j; }
     }
-    if (k < 0 || melhor < 0.80) return false;
-    usados[k] = 1; soma += melhor;
+    if (k < 0 || melhor < 0.95) return false;
+    usados[k] = 1;
   }
-  return soma / ta.length >= 0.90;
+  return true;
 }
 
 var TITULOS_ = {dr: 1, dra: 1, sr: 1, sra: 1, prefeito: 1, prefeita: 1};
@@ -99,9 +100,12 @@ function tokensConvite_(nome) {
  * (tolera acento, 1 letra trocada e grafia parecida) e pode ter até 2 palavras a mais (outros sobrenomes).
  * Não é possível trocar o nome por outra pessoa nem remover palavras do nome original.
  */
-function nomeTitularValido_(digitado, nomeLista) {
+function nomeTitularValido_(digitado, nomeLista) { return pontuaTitular_(digitado, nomeLista) > 0; }
+
+/** 0 se o nome digitado não vale para o nome do convite; senão a média de semelhança (1 = idêntico). */
+function pontuaTitular_(digitado, nomeLista) {
   var tl = tokensConvite_(nomeLista), td = tokensConvite_(digitado);
-  if (!tl.length || td.length < tl.length || td.length > tl.length + 2) return false;
+  if (!tl.length || td.length < tl.length || td.length > tl.length + 2) return 0;
   var usados = {}, soma = 0, i, j;
   for (i = 0; i < tl.length; i++) {
     var melhor = 0, k = -1;
@@ -110,10 +114,10 @@ function nomeTitularValido_(digitado, nomeLista) {
       var sc = simId_(tl[i], td[j]);
       if (sc > melhor) { melhor = sc; k = j; }
     }
-    if (k < 0 || melhor < 0.80) return false;
+    if (k < 0 || melhor < 0.80) return 0;
     usados[k] = 1; soma += melhor;
   }
-  return soma / tl.length >= 0.90;
+  return soma / tl.length >= 0.90 ? soma / tl.length : 0;
 }
 
 function nomesEmUso_(confs, ignorarLinha) {
@@ -131,10 +135,13 @@ function regrasUnicidade_(g, d, confs, todos, ignorarLinha) {
   var dup = function (n) { return usados.some(function (u) { return nomesIguais_(n, u); }); };
   if (dup(d.titNome)) return {code: 'nome_duplicado', msg: 'Já existe uma confirmação com este nome. Cada pessoa é confirmada uma única vez.'};
   // titular digitou o nome de OUTRO convidado (igual, ou um nome mais completo que contém o de outro convite)
-  var nTok = tokensConvite_(g.nome).length;
-  for (i = 0; i < todos.length; i++) {
+  // quem entrou pelo próprio convite e digitou o próprio nome (ex.: Helon, com um Heron também convidado) nunca é barrado aqui
+  var nTok = tokensConvite_(g.nome).length, propria = pontuaTitular_(d.titNome, g.nome), exatoProprio = nomesIguais_(d.titNome, g.nome);
+  for (i = 0; i < todos.length && !exatoProprio; i++) {
     var o = todos[i];
     if (o.id === g.id) continue;
+    var po = pontuaTitular_(d.titNome, o.nome);
+    if (po < propria || (po === propria && !(tokensConvite_(o.nome).length > nTok))) continue;   // só barra se o nome digitado combina melhor com o de outro convite
     if (nomesIguais_(d.titNome, o.nome) || (tokensConvite_(o.nome).length > nTok && nomeTitularValido_(d.titNome, o.nome))) {
       return {code: 'titular_outro_convidado', msg: 'O nome digitado pertence a outro convite. Para confirmar essa pessoa, volte, busque o nome dela e use o convite dela.'};
     }

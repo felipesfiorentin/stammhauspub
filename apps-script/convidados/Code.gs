@@ -482,11 +482,12 @@ function simId_(x, y) {
   if (buscaFonetica_(x) === buscaFonetica_(y)) return 0.95;
   return 1 - buscaDist_(x, y) / Math.max(x.length, y.length);
 }
-// Mesma quantidade de palavras e cada palavra equivalente (tolera acento, ordem, 1 letra trocada, grafia parecida)
+// MESMA PESSOA (critério estrito): mesma quantidade de palavras e cada palavra igual, com/sem acento ou de grafia
+// foneticamente idêntica (Henckels/Henkels). Uma letra diferente NÃO basta: Helon e Heron são pessoas distintas.
 function nomesIguais_(a, b) {
   var ta = buscaNormalizar_(a), tb = buscaNormalizar_(b);
   if (ta.length < 2 || ta.length !== tb.length) return false;
-  var usados = {}, soma = 0, i, j;
+  var usados = {}, i, j;
   for (i = 0; i < ta.length; i++) {
     var melhor = 0, k = -1;
     for (j = 0; j < tb.length; j++) {
@@ -494,10 +495,10 @@ function nomesIguais_(a, b) {
       var s = simId_(ta[i], tb[j]);
       if (s > melhor) { melhor = s; k = j; }
     }
-    if (k < 0 || melhor < 0.80) return false;
-    usados[k] = 1; soma += melhor;
+    if (k < 0 || melhor < 0.95) return false;
+    usados[k] = 1;
   }
-  return soma / ta.length >= 0.90;
+  return true;
 }
 
 var TITULOS_ = {dr: 1, dra: 1, sr: 1, sra: 1, prefeito: 1, prefeita: 1};
@@ -511,9 +512,12 @@ function tokensConvite_(nome) {
  * (tolera acento, 1 letra trocada e grafia parecida) e pode ter até 2 palavras a mais (outros sobrenomes).
  * Não é possível trocar o nome por outra pessoa nem remover palavras do nome original.
  */
-function nomeTitularValido_(digitado, nomeLista) {
+function nomeTitularValido_(digitado, nomeLista) { return pontuaTitular_(digitado, nomeLista) > 0; }
+
+/** 0 se o nome digitado não vale para o nome do convite; senão a média de semelhança (1 = idêntico). */
+function pontuaTitular_(digitado, nomeLista) {
   var tl = tokensConvite_(nomeLista), td = tokensConvite_(digitado);
-  if (!tl.length || td.length < tl.length || td.length > tl.length + 2) return false;
+  if (!tl.length || td.length < tl.length || td.length > tl.length + 2) return 0;
   var usados = {}, soma = 0, i, j;
   for (i = 0; i < tl.length; i++) {
     var melhor = 0, k = -1;
@@ -522,10 +526,10 @@ function nomeTitularValido_(digitado, nomeLista) {
       var sc = simId_(tl[i], td[j]);
       if (sc > melhor) { melhor = sc; k = j; }
     }
-    if (k < 0 || melhor < 0.80) return false;
+    if (k < 0 || melhor < 0.80) return 0;
     usados[k] = 1; soma += melhor;
   }
-  return soma / tl.length >= 0.90;
+  return soma / tl.length >= 0.90 ? soma / tl.length : 0;
 }
 
 function nomesEmUso_(confs, ignorarLinha) {
@@ -543,10 +547,13 @@ function regrasUnicidade_(g, d, confs, todos, ignorarLinha) {
   var dup = function (n) { return usados.some(function (u) { return nomesIguais_(n, u); }); };
   if (dup(d.titNome)) return {code: 'nome_duplicado', msg: 'Já existe uma confirmação com este nome. Cada pessoa é confirmada uma única vez.'};
   // titular digitou o nome de OUTRO convidado (igual, ou um nome mais completo que contém o de outro convite)
-  var nTok = tokensConvite_(g.nome).length;
-  for (i = 0; i < todos.length; i++) {
+  // quem entrou pelo próprio convite e digitou o próprio nome (ex.: Helon, com um Heron também convidado) nunca é barrado aqui
+  var nTok = tokensConvite_(g.nome).length, propria = pontuaTitular_(d.titNome, g.nome), exatoProprio = nomesIguais_(d.titNome, g.nome);
+  for (i = 0; i < todos.length && !exatoProprio; i++) {
     var o = todos[i];
     if (o.id === g.id) continue;
+    var po = pontuaTitular_(d.titNome, o.nome);
+    if (po < propria || (po === propria && !(tokensConvite_(o.nome).length > nTok))) continue;   // só barra se o nome digitado combina melhor com o de outro convite
     if (nomesIguais_(d.titNome, o.nome) || (tokensConvite_(o.nome).length > nTok && nomeTitularValido_(d.titNome, o.nome))) {
       return {code: 'titular_outro_convidado', msg: 'O nome digitado pertence a outro convite. Para confirmar essa pessoa, volte, busque o nome dela e use o convite dela.'};
     }
@@ -1364,6 +1371,17 @@ function lnGrafia_(ta, tb) {   // mesmos tokens, cada um igual ou com 1 letra de
   return difs <= 1;
 }
 
+/* mesma pessoa com grafia diferente: mesma quantidade de palavras; cada palavra igual ou, se tiver 6+ letras, com 1 letra de diferença (Carolina/Caroline, Henckels/Henkels).
+   Nomes curtos (Helon/Heron, Maria/Marta) nunca casam por aproximação: são pessoas diferentes. Só é usado junto com telefone igual. */
+function lnMesmaPessoa_(ta, tb) {
+  if (ta.length !== tb.length || ta.length < 2) return false;
+  var iguais = 0;
+  for (var i = 0; i < ta.length; i++) {
+    if (ta[i] === tb[i]) { iguais++; continue; }
+    if (!(ta[i].length >= 6 && tb[i].length >= 6 && lnDist_(ta[i], tb[i]) <= 1)) return false;
+  }
+  return iguais >= 1;
+}
 function lnTipo_(s) { var t = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); return t.indexOf('fisico') === 0 ? 'Físico' : t.indexOf('digital') === 0 ? 'Digital' : ''; }
 
 /* linhas brutas da lista (array de arrays, sem cabeçalho): [#, data, nome, grupo, estilo, convite, telefone] */
@@ -1397,6 +1415,10 @@ function lnPlano_(lista, banco) {
       return c[0].length >= 2 && c[0].every(function (t) { return c[1].indexOf(t) >= 0; }) && (!l.dia || l.dia === b.dia);
     });
     if (cand.length === 1) return {b: cand[0], modo: 'parcial'};
+    if (l.tel && l.tel.tel) {   // mesmo celular + nome com grafia parecida (Carolina/Caroline) = mesma pessoa, não cria convite novo
+      cand = banco.filter(function (b) { return b.tel === l.tel.tel && (!l.dia || l.dia === b.dia) && lnMesmaPessoa_(tl, lnTokens_(b.nome)); });
+      if (cand.length === 1) return {b: cand[0], modo: 'grafia'};
+    }
     cand = banco.filter(function (b) { return (!l.dia || l.dia === b.dia) && lnGrafia_(tl, lnTokens_(b.nome)); });
     return cand.length === 1 ? {b: cand[0], modo: 'grafia'} : null;
   }
@@ -1447,6 +1469,18 @@ function lnPlano_(lista, banco) {
     if (usados[o.id] || !ix) return;
     var ant = ordem[ix - 1], li = titulares.filter(function (x, j) { return casou[j] && casou[j].b.id === ant.id; })[0];
     if (li && mais1[lnNorm_(li.nome)] && ant.dia === o.dia) { plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: ant.nome}); removidos[o.id] = 1; rel('Acompanhante com nome removido do banco', o.nome, 'a lista agora traz só "+1" para ' + ant.nome + ' · vaga continua contando uma vez só'); }
+  });
+  /* convites duplicados já existentes no banco: mesma noite, mesmo celular, nome com grafia parecida -> fica o mais antigo */
+  var jaVistos = [];
+  ordem.forEach(function (o) {
+    if (removidos[o.id] || !o.tel) return;
+    var orig = jaVistos.filter(function (x) { return x.tel === o.tel && x.dia === o.dia && lnMesmaPessoa_(lnTokens_(x.nome), lnTokens_(o.nome)); })[0];
+    if (orig && (usados[o.id] || usados[orig.id])) rel('Possível convite duplicado (conferir)', o.nome, 'mesmo celular e nome parecido com "' + orig.nome + '" (noite ' + o.dia + ') · nada alterado');
+    else if (orig) {
+      plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: orig.nome}); removidos[o.id] = 1; usados[o.id] = 1;
+      if (lnNorm_(orig.busca).indexOf(lnNorm_(o.nome)) < 0) plano.busca.push({linha: orig.linha, id: orig.id, texto: o.nome, atual: orig.busca || ''});
+      rel('Convite duplicado removido', o.nome, 'mesmo celular e nome parecido com "' + orig.nome + '" (noite ' + o.dia + ') · mantido o convite mais antigo');
+    } else jaVistos.push(o);
   });
   var pend = banco.filter(function (b) { return !usados[b.id] && !removidos[b.id]; });
   pend.forEach(function (b) { rel('Só no banco (não está na lista)', b.nome, 'noite ' + b.dia + ' · nada alterado'); });

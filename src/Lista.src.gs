@@ -48,6 +48,17 @@ function lnGrafia_(ta, tb) {   // mesmos tokens, cada um igual ou com 1 letra de
   return difs <= 1;
 }
 
+/* mesma pessoa com grafia diferente: mesma quantidade de palavras; cada palavra igual ou, se tiver 6+ letras, com 1 letra de diferença (Carolina/Caroline, Henckels/Henkels).
+   Nomes curtos (Helon/Heron, Maria/Marta) nunca casam por aproximação: são pessoas diferentes. Só é usado junto com telefone igual. */
+function lnMesmaPessoa_(ta, tb) {
+  if (ta.length !== tb.length || ta.length < 2) return false;
+  var iguais = 0;
+  for (var i = 0; i < ta.length; i++) {
+    if (ta[i] === tb[i]) { iguais++; continue; }
+    if (!(ta[i].length >= 6 && tb[i].length >= 6 && lnDist_(ta[i], tb[i]) <= 1)) return false;
+  }
+  return iguais >= 1;
+}
 function lnTipo_(s) { var t = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); return t.indexOf('fisico') === 0 ? 'Físico' : t.indexOf('digital') === 0 ? 'Digital' : ''; }
 
 /* linhas brutas da lista (array de arrays, sem cabeçalho): [#, data, nome, grupo, estilo, convite, telefone] */
@@ -81,6 +92,10 @@ function lnPlano_(lista, banco) {
       return c[0].length >= 2 && c[0].every(function (t) { return c[1].indexOf(t) >= 0; }) && (!l.dia || l.dia === b.dia);
     });
     if (cand.length === 1) return {b: cand[0], modo: 'parcial'};
+    if (l.tel && l.tel.tel) {   // mesmo celular + nome com grafia parecida (Carolina/Caroline) = mesma pessoa, não cria convite novo
+      cand = banco.filter(function (b) { return b.tel === l.tel.tel && (!l.dia || l.dia === b.dia) && lnMesmaPessoa_(tl, lnTokens_(b.nome)); });
+      if (cand.length === 1) return {b: cand[0], modo: 'grafia'};
+    }
     cand = banco.filter(function (b) { return (!l.dia || l.dia === b.dia) && lnGrafia_(tl, lnTokens_(b.nome)); });
     return cand.length === 1 ? {b: cand[0], modo: 'grafia'} : null;
   }
@@ -131,6 +146,18 @@ function lnPlano_(lista, banco) {
     if (usados[o.id] || !ix) return;
     var ant = ordem[ix - 1], li = titulares.filter(function (x, j) { return casou[j] && casou[j].b.id === ant.id; })[0];
     if (li && mais1[lnNorm_(li.nome)] && ant.dia === o.dia) { plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: ant.nome}); removidos[o.id] = 1; rel('Acompanhante com nome removido do banco', o.nome, 'a lista agora traz só "+1" para ' + ant.nome + ' · vaga continua contando uma vez só'); }
+  });
+  /* convites duplicados já existentes no banco: mesma noite, mesmo celular, nome com grafia parecida -> fica o mais antigo */
+  var jaVistos = [];
+  ordem.forEach(function (o) {
+    if (removidos[o.id] || !o.tel) return;
+    var orig = jaVistos.filter(function (x) { return x.tel === o.tel && x.dia === o.dia && lnMesmaPessoa_(lnTokens_(x.nome), lnTokens_(o.nome)); })[0];
+    if (orig && (usados[o.id] || usados[orig.id])) rel('Possível convite duplicado (conferir)', o.nome, 'mesmo celular e nome parecido com "' + orig.nome + '" (noite ' + o.dia + ') · nada alterado');
+    else if (orig) {
+      plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: orig.nome}); removidos[o.id] = 1; usados[o.id] = 1;
+      if (lnNorm_(orig.busca).indexOf(lnNorm_(o.nome)) < 0) plano.busca.push({linha: orig.linha, id: orig.id, texto: o.nome, atual: orig.busca || ''});
+      rel('Convite duplicado removido', o.nome, 'mesmo celular e nome parecido com "' + orig.nome + '" (noite ' + o.dia + ') · mantido o convite mais antigo');
+    } else jaVistos.push(o);
   });
   var pend = banco.filter(function (b) { return !usados[b.id] && !removidos[b.id]; });
   pend.forEach(function (b) { rel('Só no banco (não está na lista)', b.nome, 'noite ' + b.dia + ' · nada alterado'); });

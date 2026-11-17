@@ -58,3 +58,8 @@
 
 Atenção (deploy do projeto do público): apps-script/publico/Code.gs vem com o marcador __SHEET_ID__; antes de colar no editor, troque pelo ID real da planilha (build.py --sheet-id) ou o projeto perde o acesso à planilha.
 - Painel > Convites WhatsApp: botão 'Exportar todos (PDF)' (convidados por noite com status, celular, pessoas, titular/acompanhante e envio). Teste: tests/e2e13.js.
+
+## Correção: nomes parecidos e convites duplicados
+- `nomesIguais_` agora é estrito (palavras iguais ou foneticamente idênticas): Helon ≠ Heron. O titular digitando o próprio nome tem precedência sobre outros convites (`regrasUnicidade_`/`pontuaTitular_`).
+- Sincronização da lista (`Lista.src.gs`): mesmo celular + mesma noite + nome com grafia parecida (palavras de 6+ letras com 1 letra de diferença) = mesma pessoa; não cria convite novo e remove duplicata já existente (mantém o mais antigo, nome vai para busca_extra).
+- Testes: e2e14 (lista), e2e15 (unicidade).
