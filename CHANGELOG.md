@@ -66,3 +66,6 @@ Atenção (deploy do projeto do público): apps-script/publico/Code.gs vem com o
 
 ## Mesma pessoa em mais de uma noite
 - Inclusão no painel só barra nome duplicado na MESMA noite; confirmação e sincronização da lista tratam nome+noite (e2e16).
+
+## Contratação das atrações (interno)
+- Programacao colunas G-K: cachê, nº integrantes, consumação/integrante, estadia, transporte. Só perfil GESTAO recebe (`contrato` em estadoGestao_); não é lido pelo projeto público. Modal "Editar programação" + resumo com custo total no detalhe do dia. Teste e2e17.

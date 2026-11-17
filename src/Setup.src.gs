@@ -29,6 +29,7 @@ function prepararReservas() {
   });
   garantirAba_(ABA.RES, ['data/hora', 'protocolo', 'dia', 'nº da pessoa', 'nome', 'celular', 'status', 'celular do titular', 'consentimento', 'compareceu', 'atualizado']);
   try { var sp = aba_(ABA.PROG); if (!String(sp.getRange(1, 6).getValue() || '')) sp.getRange(1, 6).setValue('reservas do público (SIM/NÃO)'); } catch (e) {}
+  try { var sq = aba_(ABA.PROG); if (!String(sq.getRange(1, 7).getValue() || '')) sq.getRange(1, 7, 1, 5).setValues([CONTRATO_CAB]); } catch (e) {}
   garantirAba_('Usuarios', USR_CAB);
   garantirAba_('Auditoria', ['data/hora', 'quem', 'ação', 'detalhe']);
   atualizarPainelSeguro_();
