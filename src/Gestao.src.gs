@@ -160,7 +160,7 @@ function gAddConvidado(k, p, forcar) {
       if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
       if (!dia) return {ok: false, code: 'dia_invalido'};
       var conv = convFull_(), nn = normG_(nome);
-      if (!forcar && conv.some(function (c) { return normG_(c.nome) === nn; })) return {ok: false, code: 'duplicado'};
+      if (!forcar && conv.some(function (c) { return normG_(c.nome) === nn && c.dia === dia; })) return {ok: false, code: 'duplicado'};
       var bl = gLotado_(dia, 1 + (cfg_().pendAc ? acomp : 0), forcar); if (bl) return bl;
       var max = 0; conv.forEach(function (c) { var m = /^G(\d+)$/.exec(c.id); if (m) max = Math.max(max, Number(m[1])); });
       var id = 'G' + ('000' + (max + 1)).slice(-3), sh = aba_(ABA.CONV), ult = sh.getLastRow(), nl = ult + 1, pr = prog_()[dia] || {};

@@ -84,9 +84,10 @@ function lnPlano_(lista, banco) {
   var mais1 = {};
   lista.forEach(function (l) { if (l.mais1) mais1[lnNorm_(l.nome)] = 1; });
 
-  var porNorm = {}; banco.forEach(function (b) { porNorm[lnNorm_(b.nome)] = b; });
+  var porNorm = {}; banco.forEach(function (b) { porNorm[lnNorm_(b.nome) + '|' + b.dia] = b; });
   function acha(l, livres) {
-    var k = lnNorm_(l.nome); if (porNorm[k]) return {b: porNorm[k], modo: 'exato'};
+    var k = lnNorm_(l.nome); if (l.dia && porNorm[k + '|' + l.dia]) return {b: porNorm[k + '|' + l.dia], modo: 'exato'};
+    if (!l.dia) { var ex = banco.filter(function (b) { return lnNorm_(b.nome) === k; }); if (ex.length === 1) return {b: ex[0], modo: 'exato'}; }
     var tl = lnTokens_(l.nome), cand = banco.filter(function (b) {
       var tb = lnTokens_(b.nome), c = tl.length <= tb.length ? [tl, tb] : [tb, tl];
       return c[0].length >= 2 && c[0].every(function (t) { return c[1].indexOf(t) >= 0; }) && (!l.dia || l.dia === b.dia);

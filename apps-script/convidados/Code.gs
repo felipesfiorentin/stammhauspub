@@ -532,10 +532,11 @@ function pontuaTitular_(digitado, nomeLista) {
   return soma / tl.length >= 0.90 ? soma / tl.length : 0;
 }
 
-function nomesEmUso_(confs, ignorarLinha) {
+function nomesEmUso_(confs, ignorarLinha, dia) {
   var v = [];
   confs.forEach(function (c) {
     if (c.status !== 'Confirmado' || c.linha === ignorarLinha) return;
+    if (dia && Number(c.dia) !== Number(dia)) return;   // a mesma pessoa pode ter convite em noites diferentes
     v.push(c.titNome); if (c.acNome) v.push(c.acNome);
   });
   return v;
@@ -543,7 +544,7 @@ function nomesEmUso_(confs, ignorarLinha) {
 
 /** Regras de unicidade. Retorna {code,msg} ou null. */
 function regrasUnicidade_(g, d, confs, todos, ignorarLinha) {
-  var usados = nomesEmUso_(confs, ignorarLinha), i;
+  var usados = nomesEmUso_(confs, ignorarLinha, g.dia), i;
   var dup = function (n) { return usados.some(function (u) { return nomesIguais_(n, u); }); };
   if (dup(d.titNome)) return {code: 'nome_duplicado', msg: 'Já existe uma confirmação com este nome. Cada pessoa é confirmada uma única vez.'};
   // titular digitou o nome de OUTRO convidado (igual, ou um nome mais completo que contém o de outro convite)
@@ -1057,7 +1058,7 @@ function gAddConvidado(k, p, forcar) {
       if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
       if (!dia) return {ok: false, code: 'dia_invalido'};
       var conv = convFull_(), nn = normG_(nome);
-      if (!forcar && conv.some(function (c) { return normG_(c.nome) === nn; })) return {ok: false, code: 'duplicado'};
+      if (!forcar && conv.some(function (c) { return normG_(c.nome) === nn && c.dia === dia; })) return {ok: false, code: 'duplicado'};
       var bl = gLotado_(dia, 1 + (cfg_().pendAc ? acomp : 0), forcar); if (bl) return bl;
       var max = 0; conv.forEach(function (c) { var m = /^G(\d+)$/.exec(c.id); if (m) max = Math.max(max, Number(m[1])); });
       var id = 'G' + ('000' + (max + 1)).slice(-3), sh = aba_(ABA.CONV), ult = sh.getLastRow(), nl = ult + 1, pr = prog_()[dia] || {};
@@ -1407,9 +1408,10 @@ function lnPlano_(lista, banco) {
   var mais1 = {};
   lista.forEach(function (l) { if (l.mais1) mais1[lnNorm_(l.nome)] = 1; });
 
-  var porNorm = {}; banco.forEach(function (b) { porNorm[lnNorm_(b.nome)] = b; });
+  var porNorm = {}; banco.forEach(function (b) { porNorm[lnNorm_(b.nome) + '|' + b.dia] = b; });
   function acha(l, livres) {
-    var k = lnNorm_(l.nome); if (porNorm[k]) return {b: porNorm[k], modo: 'exato'};
+    var k = lnNorm_(l.nome); if (l.dia && porNorm[k + '|' + l.dia]) return {b: porNorm[k + '|' + l.dia], modo: 'exato'};
+    if (!l.dia) { var ex = banco.filter(function (b) { return lnNorm_(b.nome) === k; }); if (ex.length === 1) return {b: ex[0], modo: 'exato'}; }
     var tl = lnTokens_(l.nome), cand = banco.filter(function (b) {
       var tb = lnTokens_(b.nome), c = tl.length <= tb.length ? [tl, tb] : [tb, tl];
       return c[0].length >= 2 && c[0].every(function (t) { return c[1].indexOf(t) >= 0; }) && (!l.dia || l.dia === b.dia);

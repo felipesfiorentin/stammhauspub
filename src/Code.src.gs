@@ -120,10 +120,11 @@ function pontuaTitular_(digitado, nomeLista) {
   return soma / tl.length >= 0.90 ? soma / tl.length : 0;
 }
 
-function nomesEmUso_(confs, ignorarLinha) {
+function nomesEmUso_(confs, ignorarLinha, dia) {
   var v = [];
   confs.forEach(function (c) {
     if (c.status !== 'Confirmado' || c.linha === ignorarLinha) return;
+    if (dia && Number(c.dia) !== Number(dia)) return;   // a mesma pessoa pode ter convite em noites diferentes
     v.push(c.titNome); if (c.acNome) v.push(c.acNome);
   });
   return v;
@@ -131,7 +132,7 @@ function nomesEmUso_(confs, ignorarLinha) {
 
 /** Regras de unicidade. Retorna {code,msg} ou null. */
 function regrasUnicidade_(g, d, confs, todos, ignorarLinha) {
-  var usados = nomesEmUso_(confs, ignorarLinha), i;
+  var usados = nomesEmUso_(confs, ignorarLinha, g.dia), i;
   var dup = function (n) { return usados.some(function (u) { return nomesIguais_(n, u); }); };
   if (dup(d.titNome)) return {code: 'nome_duplicado', msg: 'Já existe uma confirmação com este nome. Cada pessoa é confirmada uma única vez.'};
   // titular digitou o nome de OUTRO convidado (igual, ou um nome mais completo que contém o de outro convite)
