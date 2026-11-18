@@ -137,6 +137,12 @@ const R=x=>JSON.parse(JSON.stringify(x));
  w=W();enche(w,19,25);
  pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  ok((await pg.textContent('#noites')).includes('Últimas vagas'),'noite com poucas vagas aparece como "Últimas vagas"');
+ {const bs2=await pg.$$('#noites .noite');await bs2[1].click();await pg.waitForSelector('#s-form:not(.hide)');
+ const n1=(await pg.$$('#qtd button')).length;ok(n1===1&&(await pg.textContent('#qtd-h')).includes('Restam apenas 1 vaga'),'noite com 1 vaga: só a opção 1 ('+n1+' botões)');}
+ await pg.close();
+ w=W();enche(w,19,23);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
+ {const bs3=await pg.$$('#noites .noite');await bs3[1].click();await pg.waitForSelector('#s-form:not(.hide)');
+ const lb=await pg.$$eval('#qtd button',x=>x.map(b=>b.textContent+(b.disabled?'d':'')));ok(lb.join(',')==='1,2,3'&&(await pg.textContent('#qtd-h')).includes('Restam apenas 3 vagas'),'noite com 3 vagas: opções 1,2,3 e nenhuma desabilitada ('+lb+')');}
  await pg.close();
  w=W();enche(w,19,26);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  const bs=await pg.$$('#noites .noite');ok(cnt(w,19).lotado&&(await bs[1].isDisabled())&&(await bs[1].textContent()).includes('Lotado')&&!(await bs[0].isDisabled()),'noite lotada aparece "Lotado" e não pode ser selecionada; as demais abrem');

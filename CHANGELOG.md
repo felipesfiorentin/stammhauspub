@@ -74,3 +74,6 @@ Atenção (deploy do projeto do público): apps-script/publico/Code.gs vem com o
 - `max_pessoas_reserva` (aba Config) agora manda: padrão 8, limite de segurança 20; migração única do valor antigo 2 -> 8 em prepararReservas. Nova chave `confirmar_ate` (12h).
 - Painel > Convites WhatsApp > "Lembretes de confirmação": só convidados sem resposta, mensagem pedindo confirmação até as 12h do dia do evento, envio semi-automático por wa.me; registro na coluna N da aba Convidados (`gLembreteMarcar`). Testes e2e18.
 - Deploy do projeto PÚBLICO exige trocar `__SHEET_ID__` pelo ID real.
+
+## Seletor de quantidade pelas vagas
+- Página pública mostra só as quantidades que cabem (1 até min(vagas restantes, máx. por reserva)); servidor já recusava excesso (sem_vagas). Teste em e2e2.

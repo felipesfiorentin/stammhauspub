@@ -248,10 +248,11 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     N=n;QTD=1;$('f-dia').textContent=n.label;$('f-at').textContent=n.atracao?' · '+n.atracao:'';$('e-geral').textContent='';$('site').value='';
     $('pessoas').innerHTML='';pessoas(true);ticket();ir('s-form')}
   function botoesQtd(){
-    var q=$('qtd');q.innerHTML='';var mx=Math.max(1,Math.min(INFO.max,N.vagas||INFO.max));
-    for(var i=1;i<=INFO.max;i++){(function(i){var b=document.createElement('button');b.type='button';b.className='ghost'+(i===QTD?' on':'');b.textContent=i;
-      if(i>mx){b.disabled=true;b.style.opacity='.4'}else b.onclick=function(){QTD=i;pessoas(false)};q.appendChild(b)})(i)}
-    $('qtd-h').textContent=(N.vagas<INFO.max?'Restam poucas vagas nesta noite. ':'')+'Pedimos nome e celular de cada pessoa para agilizar o cadastro de todos no sistema e tornar a sua chegada e a sua experiência muito mais fluidas.'}
+    var q=$('qtd');q.innerHTML='';var mx=N.vagas>0?Math.min(INFO.max,N.vagas):1;   // só as quantidades que cabem na noite (vagas restantes, até o máximo por reserva)
+    if(QTD>mx)QTD=mx;
+    for(var i=1;i<=mx;i++){(function(i){var b=document.createElement('button');b.type='button';b.className='ghost'+(i===QTD?' on':'');b.textContent=i;
+      b.onclick=function(){QTD=i;pessoas(false)};q.appendChild(b)})(i)}
+    $('qtd-h').textContent=(N.vagas>0&&N.vagas<INFO.max?'Restam apenas '+N.vagas+' vaga'+(N.vagas>1?'s':'')+' nesta noite. ':'')+'Pedimos nome e celular de cada pessoa para agilizar o cadastro de todos no sistema e tornar a sua chegada e a sua experiência muito mais fluidas.'}
   function pessoas(zera){
     var P=[].slice.call(document.querySelectorAll('#pessoas .pess')),old=P.map(function(p){return[p.querySelector('.pn').value,p.querySelector('.pt').value]});
     var box=$('pessoas');box.innerHTML='';
