@@ -89,8 +89,9 @@ function cfg_() {
     capacidade: Number(o.capacidade_por_noite) || 74,
     teto: Number(o.teto_por_noite) || 81,               // 74 + 10% de overbooking
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
-    maxPessoas: Math.min(Number(o.max_pessoas_reserva) || 2, 2),   // regra: no máximo 2 pessoas por reserva do público
+    maxPessoas: Math.max(1, Math.min(Math.floor(Number(o.max_pessoas_reserva)) || 8, 20)),   // hiperparâmetro (aba Config): pessoas por reserva do público; padrão 8, limite de segurança 20
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
+    confirmarAte: String(o.confirmar_ate || '12h').trim(),   // prazo pedido no lembrete de confirmação (meio-dia do dia do evento)
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),

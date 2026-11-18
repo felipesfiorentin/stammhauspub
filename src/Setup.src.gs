@@ -15,9 +15,14 @@ function prepararReservas() {
   var sc = ss_().getSheetByName(ABA.CFG);
   if (!sc) throw new Error('ABA_AUSENTE: ' + ABA.CFG);
   var existentes = {}; lerConfig_().forEach(function (r) { if (r[0]) existentes[String(r[0]).trim()] = 1; });
+  try {   // migração: o valor antigo (teto fixo de 2) vira 8 uma única vez; depois é livre para editar
+    var vals = sc.getRange(1, 1, Math.max(sc.getLastRow(), 1), 3).getValues();
+    vals.forEach(function (r, i) { if (String(r[0]).trim() === 'max_pessoas_reserva' && /teto fixo de 2/.test(String(r[2] || ''))) { sc.getRange(i + 1, 2).setValue(8); sc.getRange(i + 1, 3).setValue('Máximo de pessoas por reserva do público (editável; de 1 a 20).'); } });
+  } catch (e) {}
   [['teto_por_noite', 81, 'Teto de pessoas por noite: 74 + 10%. Lista garantida + reservas do público; ao chegar nesse número a noite aparece como LOTADA.'],
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
-   ['max_pessoas_reserva', 2, 'Máximo de pessoas por reserva do público (teto fixo de 2 no código).'],
+   ['max_pessoas_reserva', 8, 'Máximo de pessoas por reserva do público (editável; de 1 a 20).'],
+   ['confirmar_ate', '12h', 'Horário-limite pedido no lembrete de confirmação por WhatsApp, no dia do evento (só texto da mensagem).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],

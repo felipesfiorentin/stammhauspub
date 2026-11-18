@@ -90,8 +90,9 @@ function cfg_() {
     capacidade: Number(o.capacidade_por_noite) || 74,
     teto: Number(o.teto_por_noite) || 81,               // 74 + 10% de overbooking
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
-    maxPessoas: Math.min(Number(o.max_pessoas_reserva) || 2, 2),   // regra: no máximo 2 pessoas por reserva do público
+    maxPessoas: Math.max(1, Math.min(Math.floor(Number(o.max_pessoas_reserva)) || 8, 20)),   // hiperparâmetro (aba Config): pessoas por reserva do público; padrão 8, limite de segurança 20
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
+    confirmarAte: String(o.confirmar_ate || '12h').trim(),   // prazo pedido no lembrete de confirmação (meio-dia do dia do evento)
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
@@ -775,9 +776,14 @@ function prepararReservas() {
   var sc = ss_().getSheetByName(ABA.CFG);
   if (!sc) throw new Error('ABA_AUSENTE: ' + ABA.CFG);
   var existentes = {}; lerConfig_().forEach(function (r) { if (r[0]) existentes[String(r[0]).trim()] = 1; });
+  try {   // migração: o valor antigo (teto fixo de 2) vira 8 uma única vez; depois é livre para editar
+    var vals = sc.getRange(1, 1, Math.max(sc.getLastRow(), 1), 3).getValues();
+    vals.forEach(function (r, i) { if (String(r[0]).trim() === 'max_pessoas_reserva' && /teto fixo de 2/.test(String(r[2] || ''))) { sc.getRange(i + 1, 2).setValue(8); sc.getRange(i + 1, 3).setValue('Máximo de pessoas por reserva do público (editável; de 1 a 20).'); } });
+  } catch (e) {}
   [['teto_por_noite', 81, 'Teto de pessoas por noite: 74 + 10%. Lista garantida + reservas do público; ao chegar nesse número a noite aparece como LOTADA.'],
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
-   ['max_pessoas_reserva', 2, 'Máximo de pessoas por reserva do público (teto fixo de 2 no código).'],
+   ['max_pessoas_reserva', 8, 'Máximo de pessoas por reserva do público (editável; de 1 a 20).'],
+   ['confirmar_ate', '12h', 'Horário-limite pedido no lembrete de confirmação por WhatsApp, no dia do evento (só texto da mensagem).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],
@@ -917,12 +923,13 @@ function normG_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g,
 function convFull_() {
   var sh = aba_(ABA.CONV), n = sh.getLastRow();
   if (n < 2) return [];
-  var nc = Math.min(sh.getMaxColumns(), LISTA_COL.ENV);
+  var nc = Math.min(sh.getMaxColumns(), LISTA_COL.LEM);
   return sh.getRange(2, 1, n - 1, nc).getValues().map(function (r, i) {
-    var env = r[LISTA_COL.ENV - 1];
+    var env = r[LISTA_COL.ENV - 1], lem = r[LISTA_COL.LEM - 1];
     return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0,
             tel: String(r[LISTA_COL.TEL - 1] || '').trim(), tipo: String(r[LISTA_COL.TIPO - 1] || ''),
-            env: env instanceof Date ? Utilities.formatDate(env, TZ, 'dd/MM HH:mm') : String(env || '')};
+            env: env instanceof Date ? Utilities.formatDate(env, TZ, 'dd/MM HH:mm') : String(env || ''),
+            lem: lem instanceof Date ? Utilities.formatDate(lem, TZ, 'dd/MM HH:mm') : String(lem || '')};
   }).filter(function (c) { return c.id; });
 }
 
@@ -975,7 +982,7 @@ function estadoGestao_(a) {
   var convidados = conv.map(function (c) {
     var u = ultConf_(c.id, confs), st = !u ? 'Pendente' : (u.status === 'Confirmado' ? 'Confirmado' : 'Não vai');
     return {id: c.id, nome: c.nome, dia: c.dia, grupo: c.grupo, acomp: c.acomp, status: st, pessoas: u && st === 'Confirmado' ? u.pessoas : 0,
-            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : '', tel: c.tel, tipo: c.tipo, env: c.env};
+            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : '', tel: c.tel, tipo: c.tipo, lem: c.lem, env: c.env};
   });
   var gr = {}, ordem = [];
   resv.forEach(function (r) {
@@ -999,7 +1006,7 @@ function estadoGestao_(a) {
       .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
   }
   return {ok: true, hoje: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
-          valor: cfg.valor, maxPessoas: cfg.maxPessoas, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
+          valor: cfg.valor, maxPessoas: cfg.maxPessoas, confirmarAte: cfg.confirmarAte, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
           reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
 }
 
@@ -1125,6 +1132,20 @@ function gConviteMarcar(k, id, enviado) {
       var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
       sh.getRange(g.linha, LISTA_COL.ENV).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
       aud_(a, enviado ? 'Convite WhatsApp enviado' : 'Desmarcou convite enviado', g.id + ' ' + g.nome);
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* marca (ou desmarca) que o lembrete de confirmação por WhatsApp foi enviado a este convidado */
+function gLembreteMarcar(k, id, enviado) {
+  return api_('gLembreteMarcar', function () {
+    return gMut_(k, 'lembrete', function (a) {
+      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
+      if (!g) return {ok: false, code: 'nao_encontrado'};
+      var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
+      sh.getRange(g.linha, LISTA_COL.LEM).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
+      aud_(a, enviado ? 'Lembrete de confirmação enviado' : 'Desmarcou lembrete enviado', g.id + ' ' + g.nome);
       return {ok: true};
     });
   }, arguments);
@@ -1372,7 +1393,7 @@ function gListaPdf(k, html, nome) {
 
 var LISTA_ID = '1Pi6Za8_D4me13YUZna6y9TrsIZA7EpM-dZry-pzODgA';
 var LISTA_ABA = 'Semana de Inauguração';
-var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12};          // colunas J, K, L da aba Convidados
+var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12, LEM: 14};          // colunas J, K, L da aba Convidados
 var LISTA_ESTILOS = {'1': {dia: 18, estilo: 'Formal'}, '2': {dia: 19, estilo: 'MPB'}, '3': {dia: 20, estilo: 'Rock'}, '4': {dia: 21, estilo: 'Pop Rock'}};
 var LISTA_GRUPOS = {'família': 'Família', 'projeto': 'Projeto', 'autoridades': 'Autoridades'};
 
@@ -1540,11 +1561,12 @@ function lnPlano_(lista, banco) {
 
 /* ---- leitura/escrita na planilha ---- */
 function lnGarantirColunas_(sh) {
-  var need = LISTA_COL.ENV; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
+  var need = LISTA_COL.LEM; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
   var h = sh.getRange(1, LISTA_COL.TEL, 1, 3), v = h.getValues()[0];
   if (!v[0]) h.getCell(1, 1).setValue('telefone');
   if (!v[1]) h.getCell(1, 2).setValue('convite (tipo)');
   if (!v[2]) h.getCell(1, 3).setValue('convite enviado em');
+  try { if (!String(sh.getRange(1, LISTA_COL.LEM).getValue() || '')) sh.getRange(1, LISTA_COL.LEM).setValue('lembrete de confirmação enviado em'); } catch (e) {}
   sh.getRange(2, LISTA_COL.TEL, Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
 }
 function lnBanco_() {

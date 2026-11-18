@@ -69,3 +69,8 @@ Atenção (deploy do projeto do público): apps-script/publico/Code.gs vem com o
 
 ## Contratação das atrações (interno)
 - Programacao colunas G-K: cachê, nº integrantes, consumação/integrante, estadia, transporte. Só perfil GESTAO recebe (`contrato` em estadoGestao_); não é lido pelo projeto público. Modal "Editar programação" + resumo com custo total no detalhe do dia. Teste e2e17.
+
+## Reservas até 8 pessoas (hiperparâmetro) + lembrete de confirmação
+- `max_pessoas_reserva` (aba Config) agora manda: padrão 8, limite de segurança 20; migração única do valor antigo 2 -> 8 em prepararReservas. Nova chave `confirmar_ate` (12h).
+- Painel > Convites WhatsApp > "Lembretes de confirmação": só convidados sem resposta, mensagem pedindo confirmação até as 12h do dia do evento, envio semi-automático por wa.me; registro na coluna N da aba Convidados (`gLembreteMarcar`). Testes e2e18.
+- Deploy do projeto PÚBLICO exige trocar `__SHEET_ID__` pelo ID real.
