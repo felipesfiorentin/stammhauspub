@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## 2026-11-19 (2)
+- Painel › Convites por WhatsApp: botão "Enviar lembrete" ao lado de "Enviar convite" para quem ainda não confirmou (inclui quem recebeu só o convite físico, desde que tenha telefone) e "Lembrete de horário" para quem já confirmou.
+- Mensagem de lembrete de confirmação reescrita: calorosa, avisa que convites sem resposta até as 14h do dia serão considerados desistência (Config `confirmar_ate`, padrão agora 14h).
+- Novo fluxo "Lembretes de horário": mesa guardada até as 20h, depois oferecida a outros clientes; envio registrado na coluna O da aba Convidados.
+
 ## 2026-11-19
 - Correção da tela branca no navegador embutido do Instagram/WhatsApp: páginas de reservas (`/reservas/`) e confirmação (`/convidados/`) agora são HTML estático no GitHub Pages e falam com o Apps Script por `fetch` POST (`doPost`, lista fechada de rotas `ROTAS_`). O Apps Script continua servindo as mesmas páginas como alternativa (`google.script.run`).
 - Teste `e2e19`.

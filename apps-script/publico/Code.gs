@@ -91,7 +91,7 @@ function cfg_() {
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
     maxPessoas: Math.max(1, Math.min(Math.floor(Number(o.max_pessoas_reserva)) || 8, 20)),   // hiperparâmetro (aba Config): pessoas por reserva do público; padrão 8, limite de segurança 20
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
-    confirmarAte: String(o.confirmar_ate || '12h').trim(),   // prazo pedido no lembrete de confirmação (meio-dia do dia do evento)
+    confirmarAte: String(o.confirmar_ate || '14h').trim(),   // prazo pedido no lembrete de confirmação (meio-dia do dia do evento)
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),

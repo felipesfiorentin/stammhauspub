@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 14},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 15},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
   getCell(rr,cc){return{setValue:v=>{s.rows[r-1+rr-1]=s.rows[r-1+rr-1]||[];s.rows[r-1+rr-1][c-1+cc-1]=v}}},setNumberFormat(){return this},setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v;return{setNumberFormat(){return this}}},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
@@ -53,8 +53,9 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(mx()===8,'padrão sem valor na Config: 8 pessoas por reserva');
  cfgRow(w,5);ok(mx()===5,'Config=5 vale (hiperparâmetro dinâmico)');cfgRow(w,99);ok(mx()===20,'limite de segurança 20');cfgRow(w,8);
  const cv=R(w.guest.painel(K)).convidados;const alvo=cv.find(c=>c.dia===19);
+ const outro=cv.find(c=>c.dia===19&&c.id!==alvo.id&&!c.acomp);R(w.guest.confirmar({id:outro.id,titNome:outro.nome,titTel:'(47) 98888-7777',vaiAcomp:false}));
  let e=R(w.guest.gEditarConvidado(K,alvo.id,{nome:alvo.nome,acomp:alvo.acomp,tel:'(47) 99999-1111'}));
- ok(e.ok&&e.confirmarAte==='12h','estado traz o prazo de confirmação (12h)');
+ ok(e.ok&&e.confirmarAte==='14h','estado traz o prazo de confirmação (14h)');
  e=R(w.guest.gLembreteMarcar(K,alvo.id,true));ok(e.ok!==false&&e.convidados.find(c=>c.id===alvo.id).lem!=='','lembrete marcado como enviado');
  ok(String(w.sheets.Convidados.rows[0][13]).includes('lembrete'),'coluna N com cabeçalho');
  e=R(w.guest.gLembreteMarcar(K,alvo.id,false));ok(e.convidados.find(c=>c.id===alvo.id).lem==='','marcação desfeita');
@@ -62,9 +63,18 @@ const R=x=>JSON.parse(JSON.stringify(x));
  let pg=await pagina(w.guest,'/tmp/out/convidados/Painel.html',h=>h.replace("try{SES=sessionStorage.getItem('sh_ses')}catch(e){}","SES="+JSON.stringify(K)+";"));
  await pg.waitForSelector('.dc.ev');await pg.click('#bconv');await pg.waitForSelector('#bmlem');await pg.click('#bmlem');await pg.selectOption('#cvd','todos');await pg.waitForSelector('a.lmz');
  const hs=await pg.$$eval('a.lmz',a=>a.map(x=>decodeURIComponent(x.href.split('text=')[1])));
- ok(hs.length>=1&&hs.every(t=>/confirme até as 12h (de|do dia) /.test(t)&&t.includes('stammhauspub.github.io/convidados')),'lembretes: mensagem pede confirmação até as 12h e traz o link ('+hs.length+')');
+ ok(hs.length>=1&&hs.every(t=>/mais um dia da nossa Semana de Inauguração/.test(t)&&/ainda não recebemos a sua confirmação pelo site/.test(t)&&/sem resposta até as 14h (de|do dia) .*desistência/.test(t)&&/reservar o quanto antes/.test(t)&&t.includes('stammhauspub.github.io/convidados')),'lembretes: mensagem calorosa, prazo 14h = desistência e link ('+hs.length+')');
  console.log(hs[0]);
  const antes=await pg.$$eval('a.lmz',a=>a.length);await pg.click('[data-lz]');await pg.waitForTimeout(300);const dep=await pg.$$eval('a.lmz',a=>a.length);
  ok(dep===antes-1,'marcar enviado tira da lista "faltam enviar"');
+ // lembrete ao lado do convite (também p/ convite físico) e fluxo de horário
+ await pg.click('#bmconv');await pg.waitForSelector('a.cvz');await pg.selectOption('#cvf','todos');
+ const par=await pg.$$eval('a.cvz',a=>a.length),lem=await pg.$$eval('a.lmz',a=>a.length),hor=await pg.$$eval('a.hrz',a=>a.length);
+ ok(par>0&&lem>0&&lem+hor<=par&&await pg.$$eval('tr',r=>r.some(t=>t.querySelector('a.cvz')&&t.querySelector('a.lmz'))),'lista de convites: "Enviar lembrete" ao lado de "Enviar convite" ('+par+' convites, '+lem+' lembretes, '+hor+' horário)');
+ e=R(w.guest.gHorarioMarcar(K,alvo.id,true));ok(e.ok!==false&&e.convidados.find(c=>c.id===alvo.id).hor!==''&&String(w.sheets.Convidados.rows[0][14]).includes('horário'),'lembrete de horário marcado + cabeçalho coluna O');
+ e=R(w.guest.gHorarioMarcar(K,alvo.id,false));ok(e.convidados.find(c=>c.id===alvo.id).hor==='','horário desfeito');ok(R(w.guest.gHorarioMarcar(K,'G999',true)).code==='nao_encontrado','horário: id inexistente');
+ await pg.click('#bmhor');await pg.selectOption('#cvd','todos');await pg.selectOption('#cvf','todos').catch(()=>{});await pg.waitForTimeout(200);
+ const hm=await pg.$$eval('a.hrz',a=>a.map(x=>decodeURIComponent(x.href.split('text=')[1])));
+ ok(hm.length>=1&&hm.every(t=>/está confirmada/.test(t)&&/seguramos a sua mesa até as 20h/.test(t)&&/outros clientes/.test(t)&&!/stammhauspub.github.io\/convidados/.test(t)),'lembrete de horário: mesa guardada até as 20h, oferecida a outros ('+hm.length+')');console.log(hm[0]);
  await pg.close();await br.close();console.log(out.join('\n'));
 })();

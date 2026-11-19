@@ -16,7 +16,7 @@
 
 var LISTA_ID = '1Pi6Za8_D4me13YUZna6y9TrsIZA7EpM-dZry-pzODgA';
 var LISTA_ABA = 'Semana de Inauguração';
-var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12, LEM: 14};          // colunas J, K, L da aba Convidados
+var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12, LEM: 14, HOR: 15};          // colunas J, K, L da aba Convidados
 var LISTA_ESTILOS = {'1': {dia: 18, estilo: 'Formal'}, '2': {dia: 19, estilo: 'MPB'}, '3': {dia: 20, estilo: 'Rock'}, '4': {dia: 21, estilo: 'Pop Rock'}};
 var LISTA_GRUPOS = {'família': 'Família', 'projeto': 'Projeto', 'autoridades': 'Autoridades'};
 
@@ -184,12 +184,13 @@ function lnPlano_(lista, banco) {
 
 /* ---- leitura/escrita na planilha ---- */
 function lnGarantirColunas_(sh) {
-  var need = LISTA_COL.LEM; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
+  var need = LISTA_COL.HOR; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
   var h = sh.getRange(1, LISTA_COL.TEL, 1, 3), v = h.getValues()[0];
   if (!v[0]) h.getCell(1, 1).setValue('telefone');
   if (!v[1]) h.getCell(1, 2).setValue('convite (tipo)');
   if (!v[2]) h.getCell(1, 3).setValue('convite enviado em');
   try { if (!String(sh.getRange(1, LISTA_COL.LEM).getValue() || '')) sh.getRange(1, LISTA_COL.LEM).setValue('lembrete de confirmação enviado em'); } catch (e) {}
+  try { if (!String(sh.getRange(1, LISTA_COL.HOR).getValue() || '')) sh.getRange(1, LISTA_COL.HOR).setValue('lembrete de horário enviado em'); } catch (e) {}
   sh.getRange(2, LISTA_COL.TEL, Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
 }
 function lnBanco_() {

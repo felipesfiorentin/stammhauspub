@@ -92,7 +92,7 @@ function cfg_() {
     valor: Number(o.valor_ingresso) || 40,               // R$ por pessoa (público geral), pago na quitação da comanda
     maxPessoas: Math.max(1, Math.min(Math.floor(Number(o.max_pessoas_reserva)) || 8, 20)),   // hiperparâmetro (aba Config): pessoas por reserva do público; padrão 8, limite de segurança 20
     reservaAte: String(o.reserva_valida_ate || '20h').trim(),
-    confirmarAte: String(o.confirmar_ate || '12h').trim(),   // prazo pedido no lembrete de confirmação (meio-dia do dia do evento)
+    confirmarAte: String(o.confirmar_ate || '14h').trim(),   // prazo pedido no lembrete de confirmação (meio-dia do dia do evento)
     urlApp: String(o.url_app_convidados || '').trim(),
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
@@ -795,7 +795,7 @@ function prepararReservas() {
   [['teto_por_noite', 81, 'Teto de pessoas por noite: 74 + 10%. Lista garantida + reservas do público; ao chegar nesse número a noite aparece como LOTADA.'],
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
    ['max_pessoas_reserva', 8, 'Máximo de pessoas por reserva do público (editável; de 1 a 20).'],
-   ['confirmar_ate', '12h', 'Horário-limite pedido no lembrete de confirmação por WhatsApp, no dia do evento (só texto da mensagem).'],
+   ['confirmar_ate', '14h', 'Horário-limite do lembrete de confirmação por WhatsApp, no dia do evento: convites sem resposta até esse horário são considerados desistência (só texto da mensagem).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],
@@ -935,13 +935,14 @@ function normG_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g,
 function convFull_() {
   var sh = aba_(ABA.CONV), n = sh.getLastRow();
   if (n < 2) return [];
-  var nc = Math.min(sh.getMaxColumns(), LISTA_COL.LEM);
+  var nc = Math.min(sh.getMaxColumns(), LISTA_COL.HOR);
   return sh.getRange(2, 1, n - 1, nc).getValues().map(function (r, i) {
-    var env = r[LISTA_COL.ENV - 1], lem = r[LISTA_COL.LEM - 1];
+    var env = r[LISTA_COL.ENV - 1], lem = r[LISTA_COL.LEM - 1], hor = r[LISTA_COL.HOR - 1];
     return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0,
             tel: String(r[LISTA_COL.TEL - 1] || '').trim(), tipo: String(r[LISTA_COL.TIPO - 1] || ''),
             env: env instanceof Date ? Utilities.formatDate(env, TZ, 'dd/MM HH:mm') : String(env || ''),
-            lem: lem instanceof Date ? Utilities.formatDate(lem, TZ, 'dd/MM HH:mm') : String(lem || '')};
+            lem: lem instanceof Date ? Utilities.formatDate(lem, TZ, 'dd/MM HH:mm') : String(lem || ''),
+            hor: hor instanceof Date ? Utilities.formatDate(hor, TZ, 'dd/MM HH:mm') : String(hor || '')};
   }).filter(function (c) { return c.id; });
 }
 
@@ -994,7 +995,7 @@ function estadoGestao_(a) {
   var convidados = conv.map(function (c) {
     var u = ultConf_(c.id, confs), st = !u ? 'Pendente' : (u.status === 'Confirmado' ? 'Confirmado' : 'Não vai');
     return {id: c.id, nome: c.nome, dia: c.dia, grupo: c.grupo, acomp: c.acomp, status: st, pessoas: u && st === 'Confirmado' ? u.pessoas : 0,
-            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : '', tel: c.tel, tipo: c.tipo, lem: c.lem, env: c.env};
+            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : '', tel: c.tel, tipo: c.tipo, lem: c.lem, hor: c.hor, env: c.env};
   });
   var gr = {}, ordem = [];
   resv.forEach(function (r) {
@@ -1158,6 +1159,20 @@ function gLembreteMarcar(k, id, enviado) {
       var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
       sh.getRange(g.linha, LISTA_COL.LEM).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
       aud_(a, enviado ? 'Lembrete de confirmação enviado' : 'Desmarcou lembrete enviado', g.id + ' ' + g.nome);
+      return {ok: true};
+    });
+  }, arguments);
+}
+
+/* marca (ou desmarca) que o lembrete de horário (mesa guardada até as 20h) foi enviado a este convidado */
+function gHorarioMarcar(k, id, enviado) {
+  return api_('gHorarioMarcar', function () {
+    return gMut_(k, 'lembrete de horário', function (a) {
+      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
+      if (!g) return {ok: false, code: 'nao_encontrado'};
+      var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
+      sh.getRange(g.linha, LISTA_COL.HOR).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
+      aud_(a, enviado ? 'Lembrete de horário enviado' : 'Desmarcou lembrete de horário', g.id + ' ' + g.nome);
       return {ok: true};
     });
   }, arguments);
@@ -1405,7 +1420,7 @@ function gListaPdf(k, html, nome) {
 
 var LISTA_ID = '1Pi6Za8_D4me13YUZna6y9TrsIZA7EpM-dZry-pzODgA';
 var LISTA_ABA = 'Semana de Inauguração';
-var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12, LEM: 14};          // colunas J, K, L da aba Convidados
+var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12, LEM: 14, HOR: 15};          // colunas J, K, L da aba Convidados
 var LISTA_ESTILOS = {'1': {dia: 18, estilo: 'Formal'}, '2': {dia: 19, estilo: 'MPB'}, '3': {dia: 20, estilo: 'Rock'}, '4': {dia: 21, estilo: 'Pop Rock'}};
 var LISTA_GRUPOS = {'família': 'Família', 'projeto': 'Projeto', 'autoridades': 'Autoridades'};
 
@@ -1573,12 +1588,13 @@ function lnPlano_(lista, banco) {
 
 /* ---- leitura/escrita na planilha ---- */
 function lnGarantirColunas_(sh) {
-  var need = LISTA_COL.LEM; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
+  var need = LISTA_COL.HOR; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
   var h = sh.getRange(1, LISTA_COL.TEL, 1, 3), v = h.getValues()[0];
   if (!v[0]) h.getCell(1, 1).setValue('telefone');
   if (!v[1]) h.getCell(1, 2).setValue('convite (tipo)');
   if (!v[2]) h.getCell(1, 3).setValue('convite enviado em');
   try { if (!String(sh.getRange(1, LISTA_COL.LEM).getValue() || '')) sh.getRange(1, LISTA_COL.LEM).setValue('lembrete de confirmação enviado em'); } catch (e) {}
+  try { if (!String(sh.getRange(1, LISTA_COL.HOR).getValue() || '')) sh.getRange(1, LISTA_COL.HOR).setValue('lembrete de horário enviado em'); } catch (e) {}
   sh.getRange(2, LISTA_COL.TEL, Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
 }
 function lnBanco_() {
