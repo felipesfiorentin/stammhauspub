@@ -215,7 +215,7 @@ function cardNoite(n){var w1=n.confirmadosPessoas/n.teto*100,w2=n.pendentesPesso
   +'<tr><td>Público: reservas · pessoas</td><td class="n">'+n.reservas+' · '+n.publico+'</td></tr><tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table></div></div>'}
 function renderDia(n){var ed=podeEditar();
  var h='<div class="dh"><div><button class="s bk" data-back="1">‹ Voltar ao calendário</button><h2>'+esc(n.label)+'</h2><div class="mut">'+esc(n.atracao||'Sem atração definida')+(n.estilo?' · '+esc(n.estilo):'')+' · reservas do público '+(n.pub?'abertas':'fechadas')+'</div>'+(ed?contratoResumo(n.contrato):'')+'</div>'
-  +'<div class="row"><button class="p" id="pdf">Exportar lista (PDF)</button><button id="prt">Imprimir lista</button>'+(ed?'<button id="edd">Editar programação</button>':'')+'</div></div>'
+  +'<div class="row"><button class="p" id="pdf">Exportar PDF em ordem alfabética</button><button class="p" id="pdfg">Exportar PDF por grupo de reserva</button><button id="prt">Imprimir lista</button>'+(ed?'<button id="edd">Editar programação</button>':'')+'</div></div>'
   +'<div class="lay"><div class="lc">'+cardNoite(n)+detalhe(n)+'</div><div class="rc">'+whatsCard()+'</div></div>';
  $('app').innerHTML=h;window.scrollTo(0,0)}
 /* ===== envio manual do ingresso pelo WhatsApp (link wa.me; a equipe só toca em enviar) ===== */
@@ -282,19 +282,32 @@ function listaPortaria(n){var R=[],pend=0;
   else{R.push({nome:c.nome,org:'Lista',obs:'Sem resposta'+(c.acomp&&S.pendAc?' · direito a +1 acompanhante':'')});if(c.acomp&&S.pendAc)pend++}});
  S.reservas.forEach(function(r){if(r.dia!==n.dia)return;r.pessoas.forEach(function(p){R.push({nome:p.nome,org:'Reserva '+r.prot,obs:p.tel?'Cel. '+p.tel:''})})});
  R.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});return{R:R,pend:pend}}
-function htmlLista(n){var L=listaPortaria(n),R=L.R,nl=R.filter(function(x){return x.org==='Lista'}).length,nr=R.length-nl;
- var h='<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:2px 0 8px;font-weight:normal}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:4px 5px;text-align:left}th{background:#ddd}td.c{width:22px}.m{color:#444}</style></head><body>'
- +'<h1>Das Stammhaus Pub · Lista de portaria</h1><h2>'+esc(n.label)+(n.atracao?' · '+esc(n.atracao):'')+'</h2>'
- +'<p class="m">Nomes na lista: <b>'+nl+'</b> · nomes em reservas do público: <b>'+nr+'</b>'+(L.pend?' · acompanhantes sem nome (convites sem resposta): <b>'+L.pend+'</b>':'')+' · pessoas esperadas: <b>'+n.total+'</b> de '+n.teto+'. Gerado em '+esc(S.geradoEm)+'.</p>'
- +'<table><tr><th>#</th><th>Nome</th><th>Origem</th><th>Observação</th><th>OK</th></tr>';
- R.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.org)+'</td><td>'+esc(x.obs)+'</td><td class="c">&nbsp;</td></tr>'});
- if(!R.length)h+='<tr><td colspan="5">Nenhum nome nesta noite.</td></tr>';
+function listaGrupos(n){var G=[],pend=0;
+ S.convidados.forEach(function(c){if(c.dia!==n.dia||c.status==='Não vai')return;var M=[];
+  if(c.status==='Confirmado'){M.push({nome:c.titNome||c.nome,tel:c.titTel||'',obs:''});if(c.acNome)M.push({nome:c.acNome,tel:c.acTel||'',obs:'Acompanhante'});
+   G.push({tipo:'Convite',label:'Convite de '+c.nome,chave:c.titNome||c.nome,M:M})}
+  else{M.push({nome:c.nome,tel:cvTel(c)||'',obs:'Sem resposta'+(c.acomp&&S.pendAc?' · direito a +1 acompanhante':'')});if(c.acomp&&S.pendAc)pend++
+   G.push({tipo:'Convite',label:'Convite de '+c.nome+' · sem resposta',chave:c.nome,M:M})}});
+ S.reservas.forEach(function(r){if(r.dia!==n.dia||!r.pessoas.length)return;
+  G.push({tipo:'Reserva',label:'Reserva '+r.prot,chave:r.pessoas[0].nome,M:r.pessoas.map(function(p){return{nome:p.nome,tel:p.tel||'',obs:''}})})});
+ G.sort(function(a,b){return a.chave.localeCompare(b.chave,'pt-BR')});return{G:G,pend:pend}}
+function htmlLista(n,modo){var L=listaPortaria(n),R=L.R,nl=R.filter(function(x){return x.org==='Lista'}).length,nr=R.length-nl,gr=modo==='grupo';
+ var h='<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:2px 0 8px;font-weight:normal}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:4px 5px;text-align:left}th{background:#ddd}td.c{width:22px}td.g{background:#eee;font-weight:bold}tr{page-break-inside:avoid}.m{color:#444}</style></head><body>'
+ +'<h1>Das Stammhaus Pub · Lista de portaria'+(gr?' · por grupo de reserva':' · ordem alfabética')+'</h1><h2>'+esc(n.label)+(n.atracao?' · '+esc(n.atracao):'')+'</h2>'
+ +'<p class="m">Nomes na lista: <b>'+nl+'</b> · nomes em reservas do público: <b>'+nr+'</b>'+(L.pend?' · acompanhantes sem nome (convites sem resposta): <b>'+L.pend+'</b>':'')+' · pessoas esperadas: <b>'+n.total+'</b> de '+n.teto+'. Gerado em '+esc(S.geradoEm)+'.</p>';
+ if(!gr){h+='<table><tr><th>#</th><th>Nome</th><th>Origem</th><th>Observação</th><th>OK</th></tr>';
+  R.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.org)+'</td><td>'+esc(x.obs)+'</td><td class="c">&nbsp;</td></tr>'});
+  if(!R.length)h+='<tr><td colspan="5">Nenhum nome nesta noite.</td></tr>';return h+'</table></body></html>'}
+ var GG=listaGrupos(n).G,k=0;h+='<table><tr><th>#</th><th>Nome</th><th>Celular</th><th>Observação</th><th>OK</th></tr>';
+ GG.forEach(function(g){h+='<tr><td class="g" colspan="5">'+esc(g.label)+' · '+g.M.length+(g.M.length===1?' pessoa':' pessoas')+'</td></tr>';
+  g.M.forEach(function(x){k++;h+='<tr><td>'+k+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.tel)+'</td><td>'+esc(x.obs)+'</td><td class="c">&nbsp;</td></tr>'})});
+ if(!GG.length)h+='<tr><td colspan="5">Nenhum nome nesta noite.</td></tr>';
  return h+'</table></body></html>'}
-function nomeArq(n){return'lista-portaria-'+(n.iso||n.dia)}
+function nomeArq(n,modo){return'lista-portaria-'+(modo==='grupo'?'por-grupo-':'alfabetica-')+(n.iso||n.dia)}
 function baixaPdf(b64,nome){var bin=atob(b64),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
  var url=URL.createObjectURL(new Blob([u],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=nome;document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(url)},4000)}
-function exportarPdf(){var n=noite(SEL);if(!n||busy)return;busy=true;var b=$('pdf');if(b){b.disabled=true;b.textContent='Gerando PDF…'}
- run('gListaPdf',[SES,htmlLista(n),nomeArq(n)],function(r){busy=false;if(b){b.disabled=false;b.textContent='Exportar lista (PDF)'}if(sessaoExpirou(r))return;
+function exportarPdf(modo){var n=noite(SEL);if(!n||busy)return;busy=true;var id=modo==='grupo'?'pdfg':'pdf',tx=modo==='grupo'?'PDF por grupo de reserva':'PDF em ordem alfabética',b=$(id);if(b){b.disabled=true;b.textContent='Gerando PDF…'}
+ run('gListaPdf',[SES,htmlLista(n,modo),nomeArq(n,modo)],function(r){busy=false;if(b){b.disabled=false;b.textContent='Exportar '+tx}if(sessaoExpirou(r))return;
   if(r&&r.ok&&r.b64){baixaPdf(r.b64,r.nome);toast('PDF gerado');return}toast(msgErro(r)||'Não foi possível gerar o PDF')})}
 
 /* ===== exportação geral: todos os convidados por noite, com status e dados (PDF) ===== */
@@ -313,7 +326,7 @@ function htmlTodos(){var h='<html><head><meta charset="utf-8"><style>body{font-f
 function exportarTodos(){if(busy)return;busy=true;var b=$('bpdfall');if(b){b.disabled=true;b.textContent='Gerando PDF…'}
  run('gListaPdf',[SES,htmlTodos(),'convidados-por-noite'],function(r){busy=false;if(b){b.disabled=false;b.textContent='Exportar todos (PDF)'}if(sessaoExpirou(r))return;
   if(r&&r.ok&&r.b64){baixaPdf(r.b64,r.nome);toast('PDF gerado');return}toast(msgErro(r)||'Não foi possível gerar o PDF')})}
-function imprimirLista(){var n=noite(SEL);if(!n)return;var w=window.open('','_blank');if(!w){toast('O navegador bloqueou a janela. Use "Exportar lista (PDF)".');return}
+function imprimirLista(){var n=noite(SEL);if(!n)return;var w=window.open('','_blank');if(!w){toast('O navegador bloqueou a janela. Use "Exportar PDF em ordem alfabética".');return}
  w.document.write(htmlLista(n).replace('</body>','<script>window.onload=function(){window.print()}<\/script></body>'));w.document.close()}
 function modalDia(iso,n){var ed=n||{};var ct=ed.contrato||{};modal(n?'Editar programação':'Abrir dia',(n?'<p class="mut">'+esc(n.label)+'</p>':'<p class="mut">'+esc(iso.split('-').reverse().join('/'))+'</p>')+'<label>Atração</label><input type="text" id="f1" maxlength="120" value="'+esc(ed.atracao||'')+'" placeholder="Ex.: Banda X · Rock"><label>Estilo</label><input type="text" id="f2" maxlength="80" value="'+esc(ed.estilo||'')+'"><label>Reservas do público</label><select id="f3"><option value="1"'+(ed.pub===false?'':' selected')+'>Abertas</option><option value="0"'+(ed.pub===false?' selected':'')+'>Fechadas</option></select>'
  +'<h3 style="margin:14px 0 4px;font-size:15px">Contratação <small class="mut">(uso interno, não aparece para o público)</small></h3>'
@@ -360,7 +373,7 @@ document.addEventListener('click',function(e){var t=e.target;
  if(t.id==='bconv'){VIEW='conv';CVM='conv';CVF='falta';render();return}if(t.id==='bmlem'){CVM='lem';CVF='falta';var pr=S.noites.filter(function(n){return n.iso>=S.hoje})[0];CVD=pr?String(pr.dia):'todos';render();return}if(t.id==='bmconv'){CVM='conv';CVF='falta';CVD='todos';render();return}if(t.id==='bmhor'){CVM='hor';CVF='falta';var ph=S.noites.filter(function(n){return n.iso>=S.hoje})[0];CVD=ph?String(ph.dia):'todos';render();return}if(t.id==='bsync')return sincronizarLista();if(t.id==='bpdfall')return exportarTodos();
  var hz=t.closest&&t.closest('[data-hz]');if(hz&&S){marcaHorario(hz.getAttribute('data-hz'),true);return}var hu=t.closest&&t.closest('[data-hu]');if(hu&&S){marcaHorario(hu.getAttribute('data-hu'),false);return}var lz=t.closest&&t.closest('[data-lz]');if(lz&&S){marcaLembrete(lz.getAttribute('data-lz'),true);return}var lu=t.closest&&t.closest('[data-lu]');if(lu&&S){marcaLembrete(lu.getAttribute('data-lu'),false);return}var cz=t.closest&&t.closest('[data-cz]');if(cz&&S){marcaConvite(cz.getAttribute('data-cz'),true);return}var cu=t.closest&&t.closest('[data-cu]');if(cu&&S){marcaConvite(cu.getAttribute('data-cu'),false);return}
  var zh=t.closest&&t.closest('a.hrz');if(zh&&S){marcaHorario(zh.getAttribute('data-id'),true,true);if(CVM==='hor')zh.parentNode.parentNode.style.opacity='.55';else zh.style.opacity='.55';return}var zl=t.closest&&t.closest('a.lmz');if(zl&&S){marcaLembrete(zl.getAttribute('data-id'),true,true);if(CVM==='lem')zl.parentNode.parentNode.style.opacity='.55';else zl.style.opacity='.55';return}var zz=t.closest&&t.closest('a.cvz');if(zz&&S){marcaConvite(zz.getAttribute('data-id'),true,true);zz.parentNode.parentNode.style.opacity='.55';return}
- if(t.id==='pdf')return exportarPdf();if(t.id==='prt')return imprimirLista();if(t.id==='edd'){modalDia(noite(SEL).iso,noite(SEL));return}
+ if(t.id==='pdf')return exportarPdf('alfa');if(t.id==='pdfg')return exportarPdf('grupo');if(t.id==='prt')return imprimirLista();if(t.id==='edd'){modalDia(noite(SEL).iso,noite(SEL));return}
  if(t.getAttribute&&t.getAttribute('data-tab')){TAB=t.getAttribute('data-tab');render();return}
  if(t.id==='addc')return novoConv();if(t.id==='addr')return novaRes();
  var a=t.getAttribute&&t.getAttribute('data-a');if(!a||!S)return;var id=t.getAttribute('data-id'),l=t.getAttribute('data-l');

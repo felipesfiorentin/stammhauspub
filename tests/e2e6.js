@@ -74,7 +74,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  await pg.click('.dc.gx >> nth=9');await pg.fill('#f1','Show de Janeiro');await pg.click('#mOk');await pg.waitForSelector('.toast');ok((await pg.$$('.dc.ev')).length===1&&(await pg.textContent('.dc.ev')).includes('Show de Janeiro'),'abrir dia pelo calendário');
  await pg.click('[data-nav="0"]');await pg.click('.dc.ev[data-d="18"]');await pg.waitForSelector('#pdf');
  ok((await pg.textContent('.dh h2')).includes('Quarta-feira, 18/11')&&(await pg.$$('[data-back]')).length===1,'clicar no dia abre o detalhe');
- const [dl]=await Promise.all([pg.waitForEvent('download',{timeout:8000}),pg.click('#pdf')]);ok(dl.suggestedFilename()==='lista-portaria-2026-11-18.pdf','botão exporta PDF com nome do dia');
+ const [dl]=await Promise.all([pg.waitForEvent('download',{timeout:8000}),pg.click('#pdf')]);ok(dl.suggestedFilename()==='lista-portaria-alfabetica-2026-11-18.pdf','botão exporta PDF alfabético com nome do dia');
  const html=await pg.evaluate(()=>htmlLista(noite(SEL)));ok(html.includes('Lista de portaria')&&html.includes('<th>Nome</th>')&&(html.match(/<tr>/g)||[]).length>50,'HTML da lista tem cabeçalho e linhas');
  await pg.click('[data-back]');await pg.waitForSelector('.cal-g');ok(true,'voltar ao calendário');
  await pg.setViewportSize({width:1280,height:900});await pg.waitForTimeout(200);await pg.screenshot({path:'/tmp/cal_d.png'});await pg.click('.dc.ev[data-d="19"]');await pg.waitForTimeout(200);await pg.screenshot({path:'/tmp/dia_d.png'});await pg.setViewportSize({width:390,height:844});await pg.click('[data-back]');await pg.waitForTimeout(200);await pg.screenshot({path:'/tmp/cal_m.png'});

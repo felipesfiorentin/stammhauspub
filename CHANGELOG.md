@@ -1,5 +1,9 @@
 # Histórico de mudanças
 
+## 2026-11-19 (6)
+- Painel › dia: exportação da lista de portaria (convidados + reservas do dia) em duas opções: "Exportar PDF em ordem alfabética" e "Exportar PDF por grupo de reserva" (cada convite ou reserva como bloco, com celular, ordenado pelo titular). Nomes de arquivo `lista-portaria-alfabetica-AAAA-MM-DD` e `lista-portaria-por-grupo-AAAA-MM-DD`. "Imprimir lista" segue alfabética.
+- Teste `e2e22`.
+
 ## 2026-11-19 (5)
 - Painel › Nova reserva (equipe): campo "Número de pessoas" que abre a lista de nome e celular na quantidade pedida; sem limite por reserva para a equipe (teto de segurança de 300; o limite de `max_pessoas_reserva` vale só para o público). Celular opcional (se informado, mantém o formato e a checagem de repetição). Incluir/editar pessoa em reserva existente também sem limite e com celular opcional.
 - Teste `e2e21`.
