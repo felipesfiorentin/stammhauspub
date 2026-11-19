@@ -759,6 +759,18 @@ function diagnostico() {
   SpreadsheetApp.getUi().alert('Diagnóstico do sistema', L.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
+/* Entrada para a página estática do site (GitHub Pages): mesma API do google.script.run, só as funções da confirmação de presença. */
+var ROTAS_ = {config: function (a) { return config.apply(null, a); }, buscar: function (a) { return buscar.apply(null, a); }, estado: function (a) { return estado.apply(null, a); },
+              abrir: function (a) { return abrir.apply(null, a); }, cancelar: function (a) { return cancelar.apply(null, a); }};
+function doPost(e) {
+  var out;
+  try {
+    var b = JSON.parse((e && e.postData && e.postData.contents) || '{}'), f = ROTAS_[b.fn];
+    out = f ? f(Array.isArray(b.args) ? b.args : []) : {erro: {codigo: 'S99', titulo: 'Função inválida'}};
+  } catch (err) { out = {erro: {codigo: 'S99', titulo: 'Erro não classificado', detalhe: String(err && err.message || err).slice(0, 120)}}; }
+  return ContentService.createTextOutput(JSON.stringify(out === undefined ? null : out)).setMimeType(ContentService.MimeType.JSON);
+}
+
 /* ================= CONFIGURAÇÃO INICIAL (menu Stammhaus) ================= */
 
 function fmtData_(d) { return Object.prototype.toString.call(d) === '[object Date]' ? Utilities.formatDate(d, TZ, 'dd/MM HH:mm') : ''; }

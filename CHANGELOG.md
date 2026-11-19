@@ -1,5 +1,9 @@
 # Histórico de mudanças
 
+## 2026-11-19
+- Correção da tela branca no navegador embutido do Instagram/WhatsApp: páginas de reservas (`/reservas/`) e confirmação (`/convidados/`) agora são HTML estático no GitHub Pages e falam com o Apps Script por `fetch` POST (`doPost`, lista fechada de rotas `ROTAS_`). O Apps Script continua servindo as mesmas páginas como alternativa (`google.script.run`).
+- Teste `e2e19`.
+
 ## 2026-11-15
 - Landing page de redirecionamento (`index.html`, GitHub Pages) para o QR code, pois o tiny.cc bloqueou o link do Apps Script.
 - Cards "ingresso vintage" por noite (papel/tinta); Lonesome Capitain com foto vertical; Hardways em faixa larga; Rodrigo Seidel com "e banda".

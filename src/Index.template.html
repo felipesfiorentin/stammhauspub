@@ -206,14 +206,16 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   var TEL_RE=/^\([1-9]\d\) 9\d{4}-\d{4}$/, NOME_RE=/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{3,78}$/;
   var TELAS=['s-busca','s-result','s-form','s-verif','s-ok','s-aviso'];
 
+  var EXEC='';   /* vazio dentro do Apps Script; na página estática do site recebe o endereço do web app (evita a tela branca nos navegadores embutidos do Instagram/WhatsApp) */
   var TIPOS_C={C01:'Falha de comunicação com o servidor',C02:'Resposta vazia do servidor',C03:'Tempo de resposta esgotado'};
   function run(fn){var a=[].slice.call(arguments,1);return new Promise(function(res,rej){
     var done=false,tm=setTimeout(function(){if(!done){done=true;rej({codigo:'C03',titulo:TIPOS_C.C03,funcao:fn})}},window.__TMO||30000);
-    google.script.run
-      .withSuccessHandler(function(r){if(done)return;done=true;clearTimeout(tm);
-        if(r===null||r===undefined)rej({codigo:'C02',titulo:TIPOS_C.C02,funcao:fn});else if(r.erro)rej(r.erro);else res(r)})
-      .withFailureHandler(function(e){if(done)return;done=true;clearTimeout(tm);
-        rej({codigo:'C01',titulo:TIPOS_C.C01,funcao:fn,detalhe:String(e&&e.message||e).slice(0,200)})})[fn].apply(null,a)})}
+    function ok(r){if(done)return;done=true;clearTimeout(tm);
+        if(r===null||r===undefined)rej({codigo:'C02',titulo:TIPOS_C.C02,funcao:fn});else if(r.erro)rej(r.erro);else res(r)}
+    function bad(e){if(done)return;done=true;clearTimeout(tm);
+        rej({codigo:'C01',titulo:TIPOS_C.C01,funcao:fn,detalhe:String(e&&e.message||e).slice(0,200)})}
+    if(!EXEC&&window.google&&google.script&&google.script.run)google.script.run.withSuccessHandler(ok).withFailureHandler(bad)[fn].apply(null,a);
+    else fetch(EXEC,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:a})}).then(function(r){return r.json()}).then(ok,bad)})}
   function zapLink(msg){return 'https://wa.me/'+ZAP+'?text='+encodeURIComponent(msg||'Olá! Preciso de ajuda com a confirmação de presença da inauguração do Das Stammhaus.')}
   function contato(msg){return ' <a class="zap" target="_blank" rel="noopener" href="'+zapLink(msg)+'">Falar com a equipe no WhatsApp</a>'}
   function ir(id){TELAS.forEach(function(t){$(t).classList.toggle('hide',t!==id)});window.scrollTo(0,0)}

@@ -141,3 +141,15 @@ function dados()                   { return api_('dados',    dados_,           a
 function reservar(p)               { return api_('reservar', reservar_,        arguments); }
 function abrirReserva(nome, tel)   { return api_('abrir',    abrirReserva_,    arguments); }
 function cancelarReserva(prot, nome, tel){ return api_('cancelar', cancelarReserva_, arguments); }
+
+/* Entrada para a página estática do site (GitHub Pages): mesma API do google.script.run, só as funções públicas. */
+var ROTAS_ = {dados: function (a) { return dados.apply(null, a); }, reservar: function (a) { return reservar.apply(null, a); },
+              abrirReserva: function (a) { return abrirReserva.apply(null, a); }, cancelarReserva: function (a) { return cancelarReserva.apply(null, a); }};
+function doPost(e) {
+  var out;
+  try {
+    var b = JSON.parse((e && e.postData && e.postData.contents) || '{}'), f = ROTAS_[b.fn];
+    out = f ? f(Array.isArray(b.args) ? b.args : []) : {erro: {codigo: 'S99', titulo: 'Função inválida'}};
+  } catch (err) { out = {erro: {codigo: 'S99', titulo: 'Erro não classificado', detalhe: String(err && err.message || err).slice(0, 120)}}; }
+  return ContentService.createTextOutput(JSON.stringify(out === undefined ? null : out)).setMimeType(ContentService.MimeType.JSON);
+}

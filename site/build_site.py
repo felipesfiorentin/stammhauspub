@@ -315,4 +315,12 @@ pages = {
 for p, h in pages.items():
     os.makedirs(os.path.dirname(os.path.join(OUT, p)) or OUT, exist_ok=True)
     open(os.path.join(OUT, p), 'w', encoding='utf-8').write(h)
+# páginas de reservas e de confirmação de presença: HTML estático no GitHub Pages falando com o Apps Script por fetch.
+# (o navegador embutido do Instagram/WhatsApp deixa em branco as páginas servidas pelo próprio script.google.com)
+AS = os.path.join(HERE, '..', 'apps-script')
+for dest, src, url in (('reservas/index.html', 'publico/Index.html', APP_PUB), ('convidados/index.html', 'convidados/Index.html', APP)):
+    h = open(os.path.join(AS, src), encoding='utf-8').read()
+    assert "var EXEC='';" in h
+    os.makedirs(os.path.dirname(os.path.join(OUT, dest)), exist_ok=True)
+    open(os.path.join(OUT, dest), 'w', encoding='utf-8').write(h.replace("var EXEC='';", "var EXEC='%s';" % url, 1))
 print('ok', list(pages))
