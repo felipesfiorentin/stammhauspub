@@ -206,7 +206,7 @@ function confirmar_(p) {
     var pessoas = d.acNome ? 2 : 1;
     if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
     var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);   // a lista já conta o convidado; só barra se a resposta AUMENTA o total
-    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > cfgv.teto) return {ok: false, code: 'lotado'};
+    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > tetoDe_(cfgv, g.dia)) return {ok: false, code: 'lotado'};
     var agora = new Date(), sh = aba_(ABA.CONF), linha = proximaLinha_(sh);
     if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
     sh.getRange(linha, 1, 1, 13).setValues([[agora, g.id, g.nome, g.dia, d.titNome, d.titTel, d.acNome, d.acTel,
@@ -277,7 +277,7 @@ function atualizar_(p) {
     var pessoas = d.acNome ? 2 : 1;
     if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
     var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);
-    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > cfgv.teto) return {ok: false, code: 'lotado'};
+    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > tetoDe_(cfgv, g.dia)) return {ok: false, code: 'lotado'};
     aba_(ABA.CONF).getRange(c.linha, 5, 1, 5).setValues([[d.titNome, d.titTel, d.acNome, d.acTel, pessoas]]);
     aba_(ABA.CONF).getRange(c.linha, 13).setValue(new Date());
     atualizarPainelSeguro_();

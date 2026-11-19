@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## 2026-11-19 (3)
+- Painel › editar dia: campo "Lotação desta noite" (exceção à regra). Vale só para a noite; vazio volta ao teto padrão da Config (`teto_por_noite`). Guardado na coluna L da aba Programacao; só perfil GESTAO altera e a mudança vai para a Auditoria.
+- Lista, reservas do público, trava de "lotado", mover convidado e cartões/PDF do painel passam a usar o teto da própria noite.
+- Teste `e2e20`.
+
 ## 2026-11-19 (2)
 - Painel › Convites por WhatsApp: botão "Enviar lembrete" ao lado de "Enviar convite" para quem ainda não confirmou (inclui quem recebeu só o convite físico, desde que tenha telefone) e "Lembrete de horário" para quem já confirmou.
 - Mensagem de lembrete de confirmação reescrita: calorosa, avisa que convites sem resposta até as 14h do dia serão considerados desistência (Config `confirmar_ate`, padrão agora 14h).

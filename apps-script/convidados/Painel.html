@@ -156,7 +156,7 @@ function tk(n,r){
    +(String(n.dia)==='21'?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+esc(at[1]?at[1].trim():'')+'</div></div>'
    +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt=""><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div>'
    +(b.w?'<div class="tk-wp" style="background-image:url('+IMG+b.w+')"></div>':'')+'</div>'
-   +'<div class="tk-hr"><div><small>Lotação</small><b>'+n.total+'<span style="font:600 11px Inter,sans-serif;color:#4c5a4f"> /'+r.teto+'</span></b></div><div><small>Ocupação</small><b>'+pct+'%</b></div><div><small>Disponível</small>'+st+'</div></div></div>'}
+   +'<div class="tk-hr"><div><small>Lotação</small><b>'+n.total+'<span style="font:600 11px Inter,sans-serif;color:#4c5a4f"> /'+n.teto+'</span></b></div><div><small>Ocupação</small><b>'+pct+'%</b></div><div><small>Disponível</small>'+st+'</div></div></div>'}
 
 function msgErro(r){var c=r&&r.code;return c==='sem_permissao'?'Seu perfil é de consulta: não pode alterar.':c==='limite'?'Muitas tentativas. Aguarde alguns minutos.':c==='nao_encontrado'?'Registro não encontrado (já foi alterado?). Atualize a página.':c==='duplicado'?'Já existe um convidado com esse nome.':c==='tem_acompanhante'?'Este convidado confirmou com acompanhante. Altere o status antes de remover o acompanhante.':c==='mesmo_dia'?'A pessoa já está nessa noite.':c==='ultima_pessoa'?'É a última pessoa da reserva. Cancele a reserva inteira.':c==='max_pessoas'?'Máximo de '+r.max+' pessoas por reserva.':c==='tel_duplicado'||c==='invalido'?(r.msg||'Dados inválidos.'):r&&r.erro?'Erro '+esc(r.erro.codigo)+' · ref '+esc(r.erro.ref):'Não foi possível concluir.'}
 function podeEditar(){return S&&S.perfil==='GESTAO'}
@@ -201,15 +201,15 @@ function renderCal(){
  for(var i=0;i<off;i++)h+='<div class="dc out"></div>';
  for(var d=1;d<=nd;d++){var iso=MES+'-'+('0'+d).slice(-2),n=mapa[iso],pas=iso<S.hoje,hj=iso===S.hoje;
   var cls='dc'+(pas?' pas':'')+(hj?' hj':'');
-  if(n){var v=vis(n.dia),pc=Math.min(100,n.total/S.teto*100);
-   h+='<div class="'+cls+' ev" data-d="'+n.dia+'"><div class="dn"><span>'+d+'</span>'+(n.lotado?'<span class="lt">LOTADO</span>':'')+'</div><div class="at">'+esc(n.atracao||'Sem atração definida')+'</div><div class="mb"><i'+(n.lotado?' class="f"':'')+' style="width:'+pc+'%"></i></div><div class="kv"><b>'+n.total+'</b>/'+S.teto+'</div><div class="kv">listadas <b>'+v.l+'</b> · convidadas <b>'+v.c+'</b> · confirmadas <b>'+v.f+'</b></div></div>'}
+  if(n){var v=vis(n.dia),pc=Math.min(100,n.total/n.teto*100);
+   h+='<div class="'+cls+' ev" data-d="'+n.dia+'"><div class="dn"><span>'+d+'</span>'+(n.lotado?'<span class="lt">LOTADO</span>':'')+'</div><div class="at">'+esc(n.atracao||'Sem atração definida')+'</div><div class="mb"><i'+(n.lotado?' class="f"':'')+' style="width:'+pc+'%"></i></div><div class="kv"><b>'+n.total+'</b>/'+n.teto+'</div><div class="kv">listadas <b>'+v.l+'</b> · convidadas <b>'+v.c+'</b> · confirmadas <b>'+v.f+'</b></div></div>'}
   else if(ed&&!pas)h+='<div class="'+cls+' emp gx" data-novo="'+iso+'"><div class="dn"><span>'+d+'</span></div><div class="add">+<span class="ad"> abrir dia</span></div></div>';
   else h+='<div class="'+cls+' emp"><div class="dn"><span>'+d+'</span></div></div>'}
  h+='</div>'+resto();$('app').innerHTML=h;$('sub').textContent=$('sub').getAttribute('data-s')||''}
-function cardNoite(n){var w1=n.confirmadosPessoas/S.teto*100,w2=n.pendentesPessoas/S.teto*100,w3=n.publico/S.teto*100;
- return'<div class="nc">'+tk(n,S)+'<div class="card"><div class="bar" title="'+n.total+' de '+S.teto+'"><i class="b1" style="width:'+w1+'%"></i><i class="b2" style="width:'+w2+'%"></i><i class="b3" style="width:'+w3+'%"></i></div>'
+function cardNoite(n){var w1=n.confirmadosPessoas/n.teto*100,w2=n.pendentesPessoas/n.teto*100,w3=n.publico/n.teto*100;
+ return'<div class="nc">'+tk(n,S)+'<div class="card"><div class="bar" title="'+n.total+' de '+n.teto+'"><i class="b1" style="width:'+w1+'%"></i><i class="b2" style="width:'+w2+'%"></i><i class="b3" style="width:'+w3+'%"></i></div>'
   +'<div class="leg"><span style="--c:#2f7a3b">convidados confirmados</span><span style="--c:#8a6a1a">convidados sem resposta</span><span style="--c:#B47E00">público</span></div>'
-  +'<table><tr><td>Total comprometido</td><td class="n"><b>'+n.total+' / '+S.teto+'</b> ('+String(n.pct).replace('.',',')+'%)'+(n.total>S.teto?' <span class="lotx">+'+(n.total-S.teto)+' acima</span>':'')+'</td></tr>'
+  +'<table><tr><td>Total comprometido</td><td class="n"><b>'+n.total+' / '+n.teto+'</b> ('+String(n.pct).replace('.',',')+'%)'+(n.excecao?' <span class="mut">(exceção; padrão '+n.padrao+')</span>':'')+(n.total>n.teto?' <span class="lotx">+'+(n.total-n.teto)+' acima</span>':'')+'</td></tr>'
   +'<tr><td>Vagas restantes</td><td class="n">'+n.restantes+'</td></tr><tr><td>Convidados confirmados (pessoas)</td><td class="n">'+n.confirmadosPessoas+'</td></tr>'
   +'<tr><td>Sem resposta (pessoas contadas · convites)</td><td class="n">'+n.pendentesPessoas+' · '+n.pendentesConvites+'</td></tr><tr><td>Convidados que não vão (convites)</td><td class="n">'+n.naoVaiConvites+'</td></tr>'
   +'<tr><td>Público: reservas · pessoas</td><td class="n">'+n.reservas+' · '+n.publico+'</td></tr><tr><td>Entrada estimada do público</td><td class="n">'+brl(n.receita)+'</td></tr></table></div></div>'}
@@ -285,7 +285,7 @@ function listaPortaria(n){var R=[],pend=0;
 function htmlLista(n){var L=listaPortaria(n),R=L.R,nl=R.filter(function(x){return x.org==='Lista'}).length,nr=R.length-nl;
  var h='<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:2px 0 8px;font-weight:normal}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:4px 5px;text-align:left}th{background:#ddd}td.c{width:22px}.m{color:#444}</style></head><body>'
  +'<h1>Das Stammhaus Pub · Lista de portaria</h1><h2>'+esc(n.label)+(n.atracao?' · '+esc(n.atracao):'')+'</h2>'
- +'<p class="m">Nomes na lista: <b>'+nl+'</b> · nomes em reservas do público: <b>'+nr+'</b>'+(L.pend?' · acompanhantes sem nome (convites sem resposta): <b>'+L.pend+'</b>':'')+' · pessoas esperadas: <b>'+n.total+'</b> de '+S.teto+'. Gerado em '+esc(S.geradoEm)+'.</p>'
+ +'<p class="m">Nomes na lista: <b>'+nl+'</b> · nomes em reservas do público: <b>'+nr+'</b>'+(L.pend?' · acompanhantes sem nome (convites sem resposta): <b>'+L.pend+'</b>':'')+' · pessoas esperadas: <b>'+n.total+'</b> de '+n.teto+'. Gerado em '+esc(S.geradoEm)+'.</p>'
  +'<table><tr><th>#</th><th>Nome</th><th>Origem</th><th>Observação</th><th>OK</th></tr>';
  R.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.org)+'</td><td>'+esc(x.obs)+'</td><td class="c">&nbsp;</td></tr>'});
  if(!R.length)h+='<tr><td colspan="5">Nenhum nome nesta noite.</td></tr>';
@@ -321,7 +321,8 @@ function modalDia(iso,n){var ed=n||{};var ct=ed.contrato||{};modal(n?'Editar pro
  +'<label>Nº de integrantes</label><input type="text" inputmode="numeric" id="c2" value="'+esc(ct.integrantes)+'">'
  +'<label>Consumação por integrante (R$)</label><input type="text" inputmode="decimal" id="c3" value="'+esc(fmtN(ct.consumacao))+'">'
  +'<label>Estadia (R$)</label><input type="text" inputmode="decimal" id="c4" value="'+esc(fmtN(ct.estadia))+'">'
- +'<label>Transporte (R$)</label><input type="text" inputmode="decimal" id="c5" value="'+esc(fmtN(ct.transporte))+'">','Salvar',function(f,cb){run('gDiaSalvar',[SES,iso,val('f1'),val('f2'),val('f3')==='1',{cache:val('c1'),integrantes:val('c2'),consumacao:val('c3'),estadia:val('c4'),transporte:val('c5')}],cb)})}
+ +'<label>Transporte (R$)</label><input type="text" inputmode="decimal" id="c5" value="'+esc(fmtN(ct.transporte))+'">'
+ +(podeEditar()?'<h3 style="margin:14px 0 4px;font-size:15px">Lotação desta noite <small class="mut">(exceção à regra)</small></h3><label>Máximo de pessoas (padrão: '+S.teto+')</label><input type="text" inputmode="numeric" id="c6" value="'+(ed.excecao?esc(ed.teto):'')+'" placeholder="vazio = padrão de '+S.teto+'"><p class="mut" style="margin:4px 0 0">Vale só para esta noite: a lista, as reservas do público e a trava de “lotado” passam a usar este número. Deixe vazio para voltar ao padrão.</p>':''),'Salvar',function(f,cb){run('gDiaSalvar',[SES,iso,val('f1'),val('f2'),val('f3')==='1',{cache:val('c1'),integrantes:val('c2'),consumacao:val('c3'),estadia:val('c4'),transporte:val('c5'),teto:$('c6')?val('c6'):undefined}],cb)})}
 function fmtN(v){return v===''||v===null||v===undefined?'':String(v).replace('.',',')}
 function brl(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function contratoResumo(c){if(!c)return'';var t=[c.cache,c.integrantes,c.consumacao,c.estadia,c.transporte].some(function(x){return x!==''});if(!t)return'<div class="mut" style="margin-top:6px">Contratação: não informada</div>';
@@ -343,7 +344,7 @@ function whatsCard(){var w=S.whats;if(!w)return'';var c=w.contagem||{};var h='<h
  if(w.pendencias.length){h+='<table class="tb" style="margin-top:8px"><tr><th>Pessoa</th><th>Noite</th><th>Status</th><th></th></tr>'+w.pendencias.map(function(x){return'<tr><td>'+esc(x.nome)+'<br><small>'+esc(x.ref)+(x.detalhe?' · '+esc(x.detalhe):'')+'</small></td><td>'+x.dia+'</td><td>'+esc(x.status)+(x.tent?' ('+x.tent+')':'')+'</td><td>'+(podeEditar()&&(x.status==='FALHOU'||x.status==='SEM_NUMERO')?'<button class="s" data-a="wr" data-l="'+x.linha+'">Reenviar</button>':'')+'</td></tr>'}).join('')+'</table>'}
  return h+'</div>'}
 function norm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim()}
-function opcoesDia(sel,sem){return S.noites.filter(function(n){return n.dia!==sem&&n.iso>=S.hoje}).map(function(n){return'<option value="'+n.dia+'"'+(n.dia===sel?' selected':'')+'>'+esc(n.label)+' ('+n.total+'/'+S.teto+')</option>'}).join('')}
+function opcoesDia(sel,sem){return S.noites.filter(function(n){return n.dia!==sem&&n.iso>=S.hoje}).map(function(n){return'<option value="'+n.dia+'"'+(n.dia===sel?' selected':'')+'>'+esc(n.label)+' ('+n.total+'/'+n.teto+')</option>'}).join('')}
 function modal(titulo,corpo,botao,envia){var m=document.createElement('div');m.className='mask';m.innerHTML='<div class="mod"><h2>'+titulo+'</h2>'+corpo+'<div class="bad" id="mErr"></div><div class="row" style="margin-top:14px;justify-content:flex-end"><button id="mX">Fechar</button><button class="p" id="mOk">'+botao+'</button></div></div>';document.body.appendChild(m);
  var forcar=false;$('mX').onclick=function(){m.remove()};
  $('mOk').onclick=function(){if(busy)return;busy=true;$('mOk').disabled=true;$('mErr').textContent='';

@@ -93,9 +93,26 @@ function cfg_() {
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
     horario: String(o.horario || '').trim(),
-    waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM'
+    waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM',
+    tetos: tetosExcecao_()                                // exceções por noite (Programacao, coluna L): sobrepõem o teto padrão
   };
 }
+
+/* Lotação manual por noite: Programacao, coluna L ("lotação desta noite"). Vazio = usa teto_por_noite da Config. */
+var PROG_COL_TETO = 12;
+function tetosExcecao_() {
+  var m = {};
+  try {
+    var sh = aba_(ABA.PROG), n = sh.getLastRow();
+    if (n < 2 || sh.getMaxColumns() < PROG_COL_TETO) return m;
+    sh.getRange(2, 1, n - 1, PROG_COL_TETO).getValues().forEach(function (r) {
+      var t = Math.floor(Number(r[PROG_COL_TETO - 1]));
+      if (r[0] && t > 0) m[Number(r[0])] = t;
+    });
+  } catch (e) {}
+  return m;
+}
+function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
 function convLeve_() {
@@ -131,7 +148,7 @@ function contribConv_(g, confs, cfg) {
 }
 
 function contagem_(dia, cfg, conv, confs, resv) {
-  var o = {dia: dia, teto: cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
+  var teto = tetoDe_(cfg, dia), o = {dia: dia, teto: teto, padrao: cfg.teto, excecao: teto !== cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
            pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, reservas: 0, canceladasPublico: 0};
   var prots = {};
   conv.forEach(function (g) {
@@ -149,9 +166,9 @@ function contagem_(dia, cfg, conv, confs, resv) {
   o.reservas = Object.keys(prots).length;
   o.lista = o.confirmadosPessoas + o.pendentesPessoas;
   o.total = o.lista + o.publico;
-  o.restantes = Math.max(0, cfg.teto - o.total);
-  o.lotado = o.total >= cfg.teto;
-  o.pct = cfg.teto ? Math.round(1000 * o.total / cfg.teto) / 10 : 0;
+  o.restantes = Math.max(0, teto - o.total);
+  o.lotado = o.total >= teto;
+  o.pct = teto ? Math.round(1000 * o.total / teto) / 10 : 0;
   return o;
 }
 

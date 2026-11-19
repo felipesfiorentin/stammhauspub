@@ -97,9 +97,26 @@ function cfg_() {
     pendAc: String(o.pendente_conta_acompanhante || 'SIM').trim().toUpperCase() !== 'NAO',
     whatsapp: String(o.whatsapp_contato || '').trim(),
     horario: String(o.horario || '').trim(),
-    waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM'
+    waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM',
+    tetos: tetosExcecao_()                                // exceções por noite (Programacao, coluna L): sobrepõem o teto padrão
   };
 }
+
+/* Lotação manual por noite: Programacao, coluna L ("lotação desta noite"). Vazio = usa teto_por_noite da Config. */
+var PROG_COL_TETO = 12;
+function tetosExcecao_() {
+  var m = {};
+  try {
+    var sh = aba_(ABA.PROG), n = sh.getLastRow();
+    if (n < 2 || sh.getMaxColumns() < PROG_COL_TETO) return m;
+    sh.getRange(2, 1, n - 1, PROG_COL_TETO).getValues().forEach(function (r) {
+      var t = Math.floor(Number(r[PROG_COL_TETO - 1]));
+      if (r[0] && t > 0) m[Number(r[0])] = t;
+    });
+  } catch (e) {}
+  return m;
+}
+function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
 function convLeve_() {
@@ -135,7 +152,7 @@ function contribConv_(g, confs, cfg) {
 }
 
 function contagem_(dia, cfg, conv, confs, resv) {
-  var o = {dia: dia, teto: cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
+  var teto = tetoDe_(cfg, dia), o = {dia: dia, teto: teto, padrao: cfg.teto, excecao: teto !== cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
            pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, reservas: 0, canceladasPublico: 0};
   var prots = {};
   conv.forEach(function (g) {
@@ -153,9 +170,9 @@ function contagem_(dia, cfg, conv, confs, resv) {
   o.reservas = Object.keys(prots).length;
   o.lista = o.confirmadosPessoas + o.pendentesPessoas;
   o.total = o.lista + o.publico;
-  o.restantes = Math.max(0, cfg.teto - o.total);
-  o.lotado = o.total >= cfg.teto;
-  o.pct = cfg.teto ? Math.round(1000 * o.total / cfg.teto) / 10 : 0;
+  o.restantes = Math.max(0, teto - o.total);
+  o.lotado = o.total >= teto;
+  o.pct = teto ? Math.round(1000 * o.total / teto) / 10 : 0;
   return o;
 }
 
@@ -619,7 +636,7 @@ function confirmar_(p) {
     var pessoas = d.acNome ? 2 : 1;
     if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
     var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);   // a lista já conta o convidado; só barra se a resposta AUMENTA o total
-    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > cfgv.teto) return {ok: false, code: 'lotado'};
+    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > tetoDe_(cfgv, g.dia)) return {ok: false, code: 'lotado'};
     var agora = new Date(), sh = aba_(ABA.CONF), linha = proximaLinha_(sh);
     if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
     sh.getRange(linha, 1, 1, 13).setValues([[agora, g.id, g.nome, g.dia, d.titNome, d.titTel, d.acNome, d.acTel,
@@ -690,7 +707,7 @@ function atualizar_(p) {
     var pessoas = d.acNome ? 2 : 1;
     if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
     var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);
-    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > cfgv.teto) return {ok: false, code: 'lotado'};
+    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > tetoDe_(cfgv, g.dia)) return {ok: false, code: 'lotado'};
     aba_(ABA.CONF).getRange(c.linha, 5, 1, 5).setValues([[d.titNome, d.titTel, d.acNome, d.acTel, pessoas]]);
     aba_(ABA.CONF).getRange(c.linha, 13).setValue(new Date());
     atualizarPainelSeguro_();
@@ -963,6 +980,7 @@ function atividade_(resv) {
 }
 
 /* ===== contratação das atrações (uso interno) — Programacao, colunas G a K ===== */
+var TETO_CAB = 'lotação desta noite (exceção ao teto padrão)';
 var CONTRATO_CAB = ['cachê (R$)', 'nº de integrantes', 'consumação por integrante (R$)', 'estadia (R$)', 'transporte (R$)'];
 function gNum_(v) {
   if (v === '' || v === null || v === undefined) return '';
@@ -1053,7 +1071,7 @@ function gMut_(k, nome, fn) {
 function gDiaValido_(dia) { var p = prog_(); return p[Number(dia)] ? Number(dia) : 0; }
 function gTotalNoite_(dia) { return contagem_(dia, cfg_(), convLeve_(), confs_(), reservas_()).total; }
 function gLotado_(dia, add, forcar) {
-  var t = gTotalNoite_(dia), teto = cfg_().teto;
+  var t = gTotalNoite_(dia), teto = tetoDe_(cfg_(), dia);
   if (add > 0 && t + add > teto && !forcar) return {ok: false, code: 'lotado', total: t, teto: teto, adicional: add};
   return null;
 }
@@ -1353,7 +1371,7 @@ function gWhatsReenviar(k, linha) {
 
 /* ===== agenda perpétua: abrir/editar um dia (qualquer data) =====
  * Cria (ou atualiza) a linha da Programacao. Reservas do público só aparecem na página pública se pub = SIM. */
-function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {
+function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {   // contrato.teto = lotação manual desta noite (vazio = padrão da Config)
   return api_('gDiaSalvar', function () {
     return gMut_(k, 'dia', function (a) {
       iso = String(iso || '').trim();
@@ -1362,7 +1380,12 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {
       var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
       if (dt.getUTCFullYear() !== +m[1] || dt.getUTCMonth() !== +m[2] - 1 || dt.getUTCDate() !== +m[3]) return {ok: false, code: 'invalido', campo: 'data', msg: 'Data inválida.'};
       atracao = String(atracao || '').replace(/\s+/g, ' ').trim().slice(0, 120); estilo = String(estilo || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-      var cv = null;
+      var cv = null, tt = null;
+      if (contrato && contrato.teto !== undefined) {
+        var ts = String(contrato.teto === null ? '' : contrato.teto).trim();
+        if (ts === '') tt = '';
+        else { var tn = Number(ts); if (!isFinite(tn) || tn !== Math.floor(tn) || tn < 1 || tn > 500) return {ok: false, code: 'invalido', campo: 'teto', msg: 'Lotação: informe um número inteiro entre 1 e 500, ou deixe vazio para usar o padrão.'}; tt = tn; }
+      }
       if (contrato) {
         cv = [gNum_(contrato.cache), gNum_(contrato.integrantes), gNum_(contrato.consumacao), gNum_(contrato.estadia), gNum_(contrato.transporte)];
         for (var q = 0; q < 5; q++) if (cv[q] !== cv[q]) return {ok: false, code: 'invalido', campo: 'contrato', msg: 'Contratação: use apenas números (ex.: 1500 ou 1.500,00).'};
@@ -1370,15 +1393,18 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {
       }
       var prog = prog_(), key = chaveDeIso_(iso, prog), sh = aba_(ABA.PROG), pubv = pub ? 'SIM' : 'NÃO', ex = prog[key];
       if (cv) { try { if (!String(sh.getRange(1, 7).getValue() || '')) sh.getRange(1, 7, 1, 5).setValues([CONTRATO_CAB]); } catch (e1) {} }
+      if (tt !== null) { try { if (sh.getMaxColumns() < PROG_COL_TETO) sh.insertColumnsAfter(sh.getMaxColumns(), PROG_COL_TETO - sh.getMaxColumns()); if (!String(sh.getRange(1, PROG_COL_TETO).getValue() || '')) sh.getRange(1, PROG_COL_TETO).setValue(TETO_CAB); } catch (e2) {} }
       if (ex) {
         sh.getRange(ex.linha, 3, 1, 2).setValues([[atracao, estilo]]); sh.getRange(ex.linha, 6).setValue(pubv);
         if (cv) sh.getRange(ex.linha, 7, 1, 5).setValues([cv]);
+        if (tt !== null) { var tAnt = tetoDe_(cfg_(), key); sh.getRange(ex.linha, PROG_COL_TETO).setValue(tt); aud_(a, 'Lotação da noite', iso + ': ' + tAnt + ' → ' + (tt === '' ? 'padrão' : tt)); }
         aud_(a, 'Editou programação', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv + (cv ? ' · contratação atualizada' : ''));
       } else {
         var nl = Math.max(sh.getLastRow(), 1) + 1;
         sh.getRange(nl, 2).setNumberFormat('@');
         sh.getRange(nl, 1, 1, 6).setValues([[key, iso, atracao, estilo, '', pubv]]);
         if (cv) sh.getRange(nl, 7, 1, 5).setValues([cv]);
+        if (tt !== null && tt !== '') { sh.getRange(nl, PROG_COL_TETO).setValue(tt); aud_(a, 'Lotação da noite', iso + ': padrão → ' + tt); }
         aud_(a, 'Abriu dia', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv + (cv ? ' · com contratação' : ''));
       }
       return {ok: true};
