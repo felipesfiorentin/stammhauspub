@@ -66,5 +66,11 @@ const R=x=>JSON.parse(JSON.stringify(x));
  h=st(fs.readFileSync('/tmp/out/convidados/Index.html','utf8'));fs.writeFileSync('/tmp/pg3.html',h);await pg2.goto('file:///tmp/pg3.html');
  await pg2.waitForSelector('#q',{timeout:5000});await pg2.fill('#q','Eliane Silva');await pg2.click('#btn-buscar');await pg2.waitForTimeout(800);
  ok(usos.includes('g:config')&&usos.includes('g:buscar'),'confirmação de presença estática: config e buscar via fetch');
- console.log('DBG',usos.join(' '));await br.close();console.log(out.join('\n'));
+ console.log('DBG',usos.join(' ')); { const t1=fs.readFileSync('/home/claude/stammhauspub/src/Index.template.html','utf8'),t2=fs.readFileSync('/home/claude/stammhauspub/src/Publico.template.html','utf8');
+  const f1=new Set([...t1.matchAll(/run\('([A-Za-z_]+)'/g)].map(x=>x[1]));['atualizar','confirmar','recusar'].forEach(x=>f1.add(x));
+  const f2=new Set([...t2.matchAll(/run\('([A-Za-z_]+)'/g)].map(x=>x[1]));
+  const bad=(ctx,fn)=>{const r=post(ctx,{fn,args:[]});return r&&r.erro&&r.erro.titulo==='Função inválida'};
+  const faltaG=[...f1].filter(fn=>bad(w.guest,fn)),faltaP=[...f2].filter(fn=>bad(w.pub,fn));
+  ok(faltaG.length===0&&faltaP.length===0,'todas as funções chamadas pelas páginas estáticas estão liberadas no doPost (faltam: '+faltaG.concat(faltaP).join(',')+')'); }
+ await br.close();console.log(out.join('\n'));
 })();

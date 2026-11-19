@@ -348,7 +348,8 @@ function diagnostico() {
 
 /* Entrada para a página estática do site (GitHub Pages): mesma API do google.script.run, só as funções da confirmação de presença. */
 var ROTAS_ = {config: function (a) { return config.apply(null, a); }, buscar: function (a) { return buscar.apply(null, a); }, estado: function (a) { return estado.apply(null, a); },
-              abrir: function (a) { return abrir.apply(null, a); }, cancelar: function (a) { return cancelar.apply(null, a); }};
+              abrir: function (a) { return abrir.apply(null, a); }, cancelar: function (a) { return cancelar.apply(null, a); },
+              confirmar: function (a) { return confirmar.apply(null, a); }, recusar: function (a) { return recusar.apply(null, a); }, atualizar: function (a) { return atualizar.apply(null, a); }};
 function doPost(e) {
   var out;
   try {

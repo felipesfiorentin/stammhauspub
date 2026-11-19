@@ -1,5 +1,8 @@
 # Histórico de mudanças
 
+## 2026-11-19 (4)
+- Correção: a página estática de confirmação (`/convidados/`) falhava com erro S99 ao confirmar/recusar/atualizar presença, porque essas três funções não estavam na lista do `doPost`. Liberadas; teste `e2e19` agora verifica que toda função chamada pelas páginas está na lista.
+
 ## 2026-11-19 (3)
 - Painel › editar dia: campo "Lotação desta noite" (exceção à regra). Vale só para a noite; vazio volta ao teto padrão da Config (`teto_por_noite`). Guardado na coluna L da aba Programacao; só perfil GESTAO altera e a mudança vai para a Auditoria.
 - Lista, reservas do público, trava de "lotado", mover convidado e cartões/PDF do painel passam a usar o teto da própria noite.
