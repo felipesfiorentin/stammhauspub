@@ -1285,17 +1285,16 @@ function gReservaPessoa(k, prot, linha, nome, tel, forcar) {
     return gMut_(k, 'rpessoa', function (a) {
       nome = limpaNome_(nome); tel = gTelFmt_(tel);
       if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
-      if (!gTelOk_(tel, true)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999.'};
+      if (!gTelOk_(tel, false)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
       var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
       var sh = aba_(ABA.RES), agora = new Date();
       var outros = rows.filter(function (r) { return String(r.linha) !== String(linha); });
-      if (outros.some(function (r) { return digitos_(r.tel) === digitos_(tel); })) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Cada pessoa precisa de um celular próprio.'};
+      if (digitos_(tel) && outros.some(function (r) { return digitos_(r.tel) === digitos_(tel); })) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Cada pessoa precisa de um celular próprio.'};
       if (linha) {
         var r0 = rows.filter(function (r) { return String(r.linha) === String(linha); })[0]; if (!r0) return {ok: false, code: 'nao_encontrado'};
         sh.getRange(r0.linha, 5, 1, 2).setValues([[nome, tel]]); sh.getRange(r0.linha, 11).setValue(agora);
         aud_(a, 'Editou pessoa da reserva', prot + ': "' + r0.nome + '" → "' + nome + '"');
       } else {
-        if (rows.length >= cfg_().maxPessoas && !forcar) return {ok: false, code: 'max_pessoas', max: cfg_().maxPessoas};
         var bl = gLotado_(rows[0].dia, 1, forcar); if (bl) return bl;
         var nl = proximaLinha_(sh); if (nl > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
         var n = Math.max.apply(null, rows.map(function (r) { return r.n; })) + 1;
@@ -1329,20 +1328,20 @@ function gReservaNova(k, dia, pessoas, forcar) {
       pessoas = (pessoas || []).filter(function (x) { return x && (x.nome || x.tel); });
       var cfg = cfg_();
       if (!pessoas.length) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe ao menos uma pessoa.'};
-      if (pessoas.length > cfg.maxPessoas && !forcar) return {ok: false, code: 'max_pessoas', max: cfg.maxPessoas};
+      if (pessoas.length > 300) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Máximo de 300 pessoas por reserva.'};   // equipe: sem o limite do público; só um teto de segurança
       var tels = {}, ativos = {};
-      reservas_().forEach(function (r) { if (r.status === 'Confirmado') ativos[digitos_(r.tel)] = r.prot; });
+      reservas_().forEach(function (r) { var dg = digitos_(r.tel); if (r.status === 'Confirmado' && dg) ativos[dg] = r.prot; });
       for (var i = 0; i < pessoas.length; i++) {
         var n = limpaNome_(pessoas[i].nome), t = gTelFmt_(pessoas[i].tel);
         if (!NOME_RE.test(n) || n.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome' + i, msg: 'Pessoa ' + (i + 1) + ': informe nome e sobrenome.'};
-        if (!gTelOk_(t, true)) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Pessoa ' + (i + 1) + ': celular no formato (42) 99999-9999.'};
-        var d = digitos_(t);
-        if (tels[d]) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Cada pessoa precisa de um celular próprio.'};
-        if (ativos[d] && !forcar) return {ok: false, code: 'tel_duplicado', msg: 'O celular da pessoa ' + (i + 1) + ' já está na reserva ' + ativos[d] + '.'};
-        tels[d] = 1; pessoas[i] = {nome: n, tel: t};
+        if (!gTelOk_(t, false)) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Pessoa ' + (i + 1) + ': celular no formato (42) 99999-9999 (ou deixe em branco).'};
+        var d = digitos_(t);   // celular é opcional na reserva da equipe; só confere repetição quando informado
+        if (d && tels[d]) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Cada pessoa precisa de um celular próprio.'};
+        if (d && ativos[d] && !forcar) return {ok: false, code: 'tel_duplicado', msg: 'O celular da pessoa ' + (i + 1) + ' já está na reserva ' + ativos[d] + '.'};
+        if (d) tels[d] = 1; pessoas[i] = {nome: n, tel: t};
       }
       var bl = gLotado_(dia, pessoas.length, forcar); if (bl) return bl;
-      var sh = aba_(ABA.RES), agora = new Date(), l0 = proximaLinha_(sh), prot = 'R' + l0, titTel = pessoas[0].tel;
+      var sh = aba_(ABA.RES), agora = new Date(), l0 = proximaLinha_(sh), prot = 'R' + l0, titTel = (pessoas.filter(function (x) { return x.tel; })[0] || {tel: ''}).tel;
       if (l0 + pessoas.length > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
       sh.getRange(l0, 1, pessoas.length, 11).setValues(pessoas.map(function (x, i) {
         return [agora, prot, dia, i + 1, x.nome, x.tel, 'Confirmado', titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora];

@@ -1,5 +1,9 @@
 # Histórico de mudanças
 
+## 2026-11-19 (5)
+- Painel › Nova reserva (equipe): campo "Número de pessoas" que abre a lista de nome e celular na quantidade pedida; sem limite por reserva para a equipe (teto de segurança de 300; o limite de `max_pessoas_reserva` vale só para o público). Celular opcional (se informado, mantém o formato e a checagem de repetição). Incluir/editar pessoa em reserva existente também sem limite e com celular opcional.
+- Teste `e2e21`.
+
 ## 2026-11-19 (4)
 - Correção: a página estática de confirmação (`/convidados/`) falhava com erro S99 ao confirmar/recusar/atualizar presença, porque essas três funções não estavam na lista do `doPost`. Liberadas; teste `e2e19` agora verifica que toda função chamada pelas páginas está na lista.
 
