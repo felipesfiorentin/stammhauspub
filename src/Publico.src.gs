@@ -13,7 +13,7 @@ function ss_() {
 /* programação pública (lida pelo site institucional): só dados já públicos, vindos da aba Programacao gerida pela equipe */
 function programacaoPublica_() {
   var prog = prog_(), hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  return {ok: true, noites: ordemDias_(prog).filter(function (d) { return prog[d].iso && prog[d].iso >= hoje; }).map(function (d) {
+  return {ok: true, noites: ordemDias_(prog).filter(function (d) { return prog[d].iso && prog[d].iso >= hoje && prog[d].aberto; }).map(function (d) {
     var p = prog[d]; return {iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo};
   })};
 }
@@ -41,16 +41,22 @@ function pubInfo_(cfg) {
 /* Noites, com situação (Disponível/Lotado). Não expõe contagens: só "vagas" até o máximo por reserva. */
 function dados_() {
   var cfg = cfg_(), prog = prog_(), conv = convLeve_(), confs = confs_(), resv = reservas_();
-  var noites = ordemDias_(prog).filter(function (d) { return prog[d].pub && prog[d].iso >= Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }).map(function (d) {
-    var c = contagem_(d, cfg, conv, confs, resv), p = prog[d];
-    return {dia: d, label: p.label, atracao: p.atracao, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
+  var hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), lim = isoMais_(hoje, cfg.reservaDias);
+  /* programação aberta e futura é exibida; só as noites dentro da janela (hoje + reserva_antecedencia_dias) aceitam reserva */
+  var noites = ordemDias_(prog).filter(function (d) { return prog[d].pub && prog[d].aberto && prog[d].iso >= hoje; }).map(function (d) {
+    var p = prog[d], res = p.iso <= lim;
+    if (!res) { var ab = isoMais_(p.iso, -cfg.reservaDias).split('-'); return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, reservavel: false, abreEm: ab[2] + '/' + ab[1], lotado: false, vagas: 0}; }
+    var c = contagem_(d, cfg, conv, confs, resv);
+    return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
   });
   return {ok: true, noites: noites, info: pubInfo_(cfg)};
 }
 
 function validarReserva_(p, cfg, prog) {
   var dia = Number(p.dia);
-  if (!prog[dia] || !prog[dia].pub) return {campo: 'geral', msg: 'Noite inválida. Escolha uma das noites da programação.'};
+  if (!prog[dia] || !prog[dia].pub || !prog[dia].aberto) return {campo: 'geral', msg: 'Noite inválida. Escolha uma das noites da programação.'};
+  var hojeV = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  if (prog[dia].iso < hojeV || prog[dia].iso > isoMais_(hojeV, cfg.reservaDias)) return {campo: 'geral', msg: 'As reservas desta noite ainda não estão abertas. Reservamos os próximos ' + cfg.reservaDias + ' dias.'};
   var ps = Array.isArray(p.pessoas) ? p.pessoas : [];
   if (ps.length < 1 || ps.length > cfg.maxPessoas) return {campo: 'qtd', msg: 'Cada reserva é de 1 a ' + cfg.maxPessoas + ' pessoas.'};
   var out = [], tels = {}, nomes = {};

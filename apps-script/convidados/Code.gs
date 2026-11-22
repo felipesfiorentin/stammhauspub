@@ -98,12 +98,16 @@ function cfg_() {
     whatsapp: String(o.whatsapp_contato || '').trim(),
     horario: String(o.horario || '').trim(),
     waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM',
+    reservaDias: Math.max(1, Math.min(Math.floor(Number(o.reserva_antecedencia_dias)) || 30, 365)),   // janela de reservas do público: hoje + N dias (padrão 30)
     tetos: tetosExcecao_()                                // exceções por noite (Programacao, coluna L): sobrepõem o teto padrão
   };
 }
 
 /* Lotação manual por noite: Programacao, coluna L ("lotação desta noite"). Vazio = usa teto_por_noite da Config. */
-var PROG_COL_TETO = 12;
+var PROG_COL_TETO = 12, PROG_COL_REF = 13, PROG_COL_SIT = 14;   // 13 = refeição (SIM/vazio), 14 = situação (ABERTO/FECHADO/vazio = padrão pelo dia da semana)
+/* padrão da casa: domingo, segunda e terça fechados; uma linha com atração ou com situação ABERTO é exceção */
+function padraoFechado_(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); if (!m) return false; var w = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay(); return w === 0 || w === 1 || w === 2; }
+function isoMais_(iso, n) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + n)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
 function tetosExcecao_() {
   var m = {};
   try {
@@ -217,9 +221,10 @@ function prog_() {
   var sh = aba_(ABA.PROG), n = sh.getLastRow(), m = {};
   if (n < 2) return m;
   var tz = TZ; try { tz = ss_().getSpreadsheetTimeZone() || TZ; } catch (e0) {}
+  var ext = []; try { if (sh.getMaxColumns() >= PROG_COL_SIT) ext = sh.getRange(2, PROG_COL_REF, n - 1, 2).getValues(); } catch (e1) {}
   sh.getRange(2, 1, n - 1, 6).getValues().forEach(function (r, ix) {
     if (!r[0]) return;
-    var key = Number(r[0]), v = r[1], p = null;
+    var key = Number(r[0]), v = r[1], p = null, ee = ext[ix] || ['', ''];
     if (Object.prototype.toString.call(v) === '[object Date]') {
       /* a data da célula é um instante à meia-noite no fuso DA PLANILHA; formatar em outro fuso desloca o dia.
          autocorrição: a chave (dia do mês ou AAAAMMDD) é a verdade; se o fuso deslocou o dia, testa ±12h */
@@ -238,8 +243,11 @@ function prog_() {
       label: p ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
       iso: p ? p[0] + '-' + p[1] + '-' + p[2] : '',
       atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || ''),
-      pub: !/^N/i.test(String(r[5] || '').trim())
+      pub: !/^N/i.test(String(r[5] || '').trim()),
+      refeicao: /^S/i.test(String(ee[0] || '').trim())
     };
+    var sit = String(ee[1] || '').trim().toUpperCase(), isoP = m[key].iso;
+    m[key].aberto = sit === 'FECHADO' ? false : sit === 'ABERTO' ? true : (m[key].atracao ? true : !padraoFechado_(isoP));
   });
   return m;
 }
@@ -814,6 +822,7 @@ function prepararReservas() {
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
    ['max_pessoas_reserva', 8, 'Máximo de pessoas por reserva do público (editável; de 1 a 20).'],
    ['confirmar_ate', '14h', 'Horário-limite do lembrete de confirmação por WhatsApp, no dia do evento: convites sem resposta até esse horário são considerados desistência (só texto da mensagem).'],
+   ['reserva_antecedencia_dias', 30, 'Reservas do público abertas para os próximos N dias (a programação além disso aparece só para consulta).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],
@@ -981,7 +990,11 @@ function atividade_(resv) {
 }
 
 /* ===== contratação das atrações (uso interno) — Programacao, colunas G a K ===== */
-var TETO_CAB = 'lotação desta noite (exceção ao teto padrão)';
+var TETO_CAB = 'lotação desta noite (exceção ao teto padrão)', REF_CAB = 'refeição da equipe (SIM/vazio)', SIT_CAB = 'situação (ABERTO/FECHADO; vazio = padrão: dom/seg/ter fechados)';
+function progColunas_(sh) {   // garante colunas 12–14 e cabeçalhos da aba Programacao
+  try { if (sh.getMaxColumns() < PROG_COL_SIT) sh.insertColumnsAfter(sh.getMaxColumns(), PROG_COL_SIT - sh.getMaxColumns());
+    [[PROG_COL_TETO, TETO_CAB], [PROG_COL_REF, REF_CAB], [PROG_COL_SIT, SIT_CAB]].forEach(function (c) { if (!String(sh.getRange(1, c[0]).getValue() || '')) sh.getRange(1, c[0]).setValue(c[1]); }); } catch (e) {}
+}
 var CONTRATO_CAB = ['cachê (R$)', 'nº de integrantes', 'consumação por integrante (R$)', 'estadia (R$)', 'transporte (R$)'];
 function gNum_(v) {
   if (v === '' || v === null || v === undefined) return '';
@@ -1008,7 +1021,7 @@ function estadoGestao_(a) {
   var noites = ordemDias_(prog).map(function (d) {
     var c = contagem_(d, cfg, leve, confs, resv);
     if (a.gestao) c.contrato = contr[d] || {cache: '', integrantes: '', consumacao: '', estadia: '', transporte: ''};
-    c.label = prog[d].label; c.iso = prog[d].iso; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.pub = prog[d].pub; c.receita = c.publico * cfg.valor;
+    if (c.contrato) c.contrato.refeicao = prog[d].refeicao; c.aberto = prog[d].aberto; c.label = prog[d].label; c.iso = prog[d].iso; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.pub = prog[d].pub; c.receita = c.publico * cfg.valor;
     return c;
   });
   var convidados = conv.map(function (c) {
@@ -1391,12 +1404,15 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {   // contrato.teto
         for (var q = 0; q < 5; q++) if (cv[q] !== cv[q]) return {ok: false, code: 'invalido', campo: 'contrato', msg: 'Contratação: use apenas números (ex.: 1500 ou 1.500,00).'};
         if (cv[1] !== '' && cv[1] !== Math.floor(cv[1])) return {ok: false, code: 'invalido', campo: 'contrato', msg: 'Nº de integrantes deve ser um número inteiro.'};
       }
+      var refV = contrato && contrato.refeicao !== undefined ? (contrato.refeicao ? 'SIM' : '') : null, sitV = contrato && contrato.aberto !== undefined ? (contrato.aberto ? 'ABERTO' : 'FECHADO') : null;
       var prog = prog_(), key = chaveDeIso_(iso, prog), sh = aba_(ABA.PROG), pubv = pub ? 'SIM' : 'NÃO', ex = prog[key];
+      if (refV !== null || sitV !== null || tt !== null) progColunas_(sh);
       if (cv) { try { if (!String(sh.getRange(1, 7).getValue() || '')) sh.getRange(1, 7, 1, 5).setValues([CONTRATO_CAB]); } catch (e1) {} }
-      if (tt !== null) { try { if (sh.getMaxColumns() < PROG_COL_TETO) sh.insertColumnsAfter(sh.getMaxColumns(), PROG_COL_TETO - sh.getMaxColumns()); if (!String(sh.getRange(1, PROG_COL_TETO).getValue() || '')) sh.getRange(1, PROG_COL_TETO).setValue(TETO_CAB); } catch (e2) {} }
       if (ex) {
         sh.getRange(ex.linha, 3, 1, 2).setValues([[atracao, estilo]]); sh.getRange(ex.linha, 6).setValue(pubv);
         if (cv) sh.getRange(ex.linha, 7, 1, 5).setValues([cv]);
+        if (refV !== null) sh.getRange(ex.linha, PROG_COL_REF).setValue(refV);
+        if (sitV !== null) { if (sitV === 'FECHADO' && ex.aberto || sitV === 'ABERTO' && !ex.aberto) aud_(a, sitV === 'FECHADO' ? 'Fechou o dia' : 'Abriu o dia', iso); sh.getRange(ex.linha, PROG_COL_SIT).setValue(sitV); }
         if (tt !== null) { var tAnt = tetoDe_(cfg_(), key); sh.getRange(ex.linha, PROG_COL_TETO).setValue(tt); aud_(a, 'Lotação da noite', iso + ': ' + tAnt + ' → ' + (tt === '' ? 'padrão' : tt)); }
         aud_(a, 'Editou programação', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv + (cv ? ' · contratação atualizada' : ''));
       } else {
@@ -1404,6 +1420,8 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {   // contrato.teto
         sh.getRange(nl, 2).setNumberFormat('@');
         sh.getRange(nl, 1, 1, 6).setValues([[key, iso, atracao, estilo, '', pubv]]);
         if (cv) sh.getRange(nl, 7, 1, 5).setValues([cv]);
+        if (refV) sh.getRange(nl, PROG_COL_REF).setValue(refV);
+        if (sitV !== null) sh.getRange(nl, PROG_COL_SIT).setValue(sitV);
         if (tt !== null && tt !== '') { sh.getRange(nl, PROG_COL_TETO).setValue(tt); aud_(a, 'Lotação da noite', iso + ': padrão → ' + tt); }
         aud_(a, 'Abriu dia', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv + (cv ? ' · com contratação' : ''));
       }
@@ -1425,6 +1443,35 @@ function gListaPdf(k, html, nome) {
     var blob = Utilities.newBlob(html, 'text/html', nm + '.html').getAs('application/pdf');
     aud_(a, 'Exportou lista de portaria', nm);
     return {ok: true, nome: nm + '.pdf', b64: Utilities.base64Encode(blob.getBytes())};
+  }, arguments);
+}
+
+/* Mover a atração (e contratação) de uma data para outra. Convidados e reservas já feitos ficam na data original (use "Mudar de dia" para movê-los). */
+function gDiaMover(k, isoOrig, isoDest) {
+  return api_('gDiaMover', function () {
+    return gMut_(k, 'dia', function (a) {
+      isoOrig = String(isoOrig || '').trim(); isoDest = String(isoDest || '').trim();
+      var re = /^\d{4}-\d{2}-\d{2}$/;
+      if (!re.test(isoOrig) || !re.test(isoDest)) return {ok: false, code: 'invalido', campo: 'data', msg: 'Data inválida.'};
+      if (isoOrig === isoDest) return {ok: false, code: 'invalido', campo: 'data', msg: 'Escolha uma data diferente.'};
+      var hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+      if (isoDest < hoje) return {ok: false, code: 'invalido', campo: 'data', msg: 'A nova data não pode estar no passado.'};
+      var prog = prog_(), kO = chaveDeIso_(isoOrig, prog), exO = prog[kO];
+      if (!exO || exO.iso !== isoOrig) return {ok: false, code: 'invalido', campo: 'data', msg: 'Programação de origem não encontrada.'};
+      var exD = null; Object.keys(prog).forEach(function (d) { if (prog[d].iso === isoDest) exD = prog[d]; });
+      if (exD && exD.atracao) return {ok: false, code: 'invalido', campo: 'data', msg: 'Já existe atração em ' + exD.label + ' (' + exD.atracao + '). Edite ou limpe esse dia antes.'};
+      var sh = aba_(ABA.PROG); progColunas_(sh);
+      var v = sh.getRange(exO.linha, 3, 1, PROG_COL_REF - 2).getValues()[0];   // atração … refeição (cols 3–13)
+      var cfg = cfg_(), c = contagem_(kO, cfg, convLeve_(), confs_(), reservas_()), linhaD;
+      if (exD) linhaD = exD.linha;
+      else { linhaD = Math.max(sh.getLastRow(), 1) + 1; sh.getRange(linhaD, 2).setNumberFormat('@'); sh.getRange(linhaD, 1, 1, 2).setValues([[chaveDeIso_(isoDest, prog), isoDest]]); }
+      sh.getRange(linhaD, 3, 1, PROG_COL_REF - 2).setValues([v]);
+      sh.getRange(linhaD, PROG_COL_SIT).setValue(exO.aberto === false ? 'FECHADO' : 'ABERTO');
+      sh.getRange(exO.linha, 3, 1, PROG_COL_REF - 2).clearContent();
+      sh.getRange(exO.linha, PROG_COL_SIT).setValue(c.total > 0 ? 'ABERTO' : '');
+      aud_(a, 'Mudou a data da atração', isoOrig + ' → ' + isoDest + ': "' + String(v[0]) + '"' + (c.total > 0 ? ' (' + c.total + ' pessoa(s) continuam em ' + isoOrig + ')' : ''));
+      return {ok: true};
+    });
   }, arguments);
 }
 

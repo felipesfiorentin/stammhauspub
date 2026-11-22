@@ -94,12 +94,16 @@ function cfg_() {
     whatsapp: String(o.whatsapp_contato || '').trim(),
     horario: String(o.horario || '').trim(),
     waAtivo: String(o.whatsapp_ativo || 'NAO').trim().toUpperCase() === 'SIM',
+    reservaDias: Math.max(1, Math.min(Math.floor(Number(o.reserva_antecedencia_dias)) || 30, 365)),   // janela de reservas do público: hoje + N dias (padrão 30)
     tetos: tetosExcecao_()                                // exceções por noite (Programacao, coluna L): sobrepõem o teto padrão
   };
 }
 
 /* Lotação manual por noite: Programacao, coluna L ("lotação desta noite"). Vazio = usa teto_por_noite da Config. */
-var PROG_COL_TETO = 12;
+var PROG_COL_TETO = 12, PROG_COL_REF = 13, PROG_COL_SIT = 14;   // 13 = refeição (SIM/vazio), 14 = situação (ABERTO/FECHADO/vazio = padrão pelo dia da semana)
+/* padrão da casa: domingo, segunda e terça fechados; uma linha com atração ou com situação ABERTO é exceção */
+function padraoFechado_(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); if (!m) return false; var w = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay(); return w === 0 || w === 1 || w === 2; }
+function isoMais_(iso, n) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + n)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
 function tetosExcecao_() {
   var m = {};
   try {
@@ -213,9 +217,10 @@ function prog_() {
   var sh = aba_(ABA.PROG), n = sh.getLastRow(), m = {};
   if (n < 2) return m;
   var tz = TZ; try { tz = ss_().getSpreadsheetTimeZone() || TZ; } catch (e0) {}
+  var ext = []; try { if (sh.getMaxColumns() >= PROG_COL_SIT) ext = sh.getRange(2, PROG_COL_REF, n - 1, 2).getValues(); } catch (e1) {}
   sh.getRange(2, 1, n - 1, 6).getValues().forEach(function (r, ix) {
     if (!r[0]) return;
-    var key = Number(r[0]), v = r[1], p = null;
+    var key = Number(r[0]), v = r[1], p = null, ee = ext[ix] || ['', ''];
     if (Object.prototype.toString.call(v) === '[object Date]') {
       /* a data da célula é um instante à meia-noite no fuso DA PLANILHA; formatar em outro fuso desloca o dia.
          autocorrição: a chave (dia do mês ou AAAAMMDD) é a verdade; se o fuso deslocou o dia, testa ±12h */
@@ -234,8 +239,11 @@ function prog_() {
       label: p ? sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dm : 'Dia ' + r[0],
       iso: p ? p[0] + '-' + p[1] + '-' + p[2] : '',
       atracao: String(r[2] || ''), estilo: String(r[3] || ''), instagram: String(r[4] || ''),
-      pub: !/^N/i.test(String(r[5] || '').trim())
+      pub: !/^N/i.test(String(r[5] || '').trim()),
+      refeicao: /^S/i.test(String(ee[0] || '').trim())
     };
+    var sit = String(ee[1] || '').trim().toUpperCase(), isoP = m[key].iso;
+    m[key].aberto = sit === 'FECHADO' ? false : sit === 'ABERTO' ? true : (m[key].atracao ? true : !padraoFechado_(isoP));
   });
   return m;
 }

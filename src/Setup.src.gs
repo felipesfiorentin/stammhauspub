@@ -23,6 +23,7 @@ function prepararReservas() {
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
    ['max_pessoas_reserva', 8, 'Máximo de pessoas por reserva do público (editável; de 1 a 20).'],
    ['confirmar_ate', '14h', 'Horário-limite do lembrete de confirmação por WhatsApp, no dia do evento: convites sem resposta até esse horário são considerados desistência (só texto da mensagem).'],
+   ['reserva_antecedencia_dias', 30, 'Reservas do público abertas para os próximos N dias (a programação além disso aparece só para consulta).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],
    ['url_app_convidados', 'https://script.google.com/macros/s/AKfycbx3wEPWFrKRAjefiG9RLPOqeLPZHeCSnlu551adkqPNJHWbzldQOuhEFcSiqq6ylf-RDw/exec', 'Endereço (/exec) do app dos convidados; usado para montar os links de métricas na aba Acesso.'],
    ['whatsapp_ativo', 'NAO', 'SIM liga o envio do ingresso por WhatsApp (precisa das credenciais da Meta no projeto público). NAO = nada é enfileirado.'],

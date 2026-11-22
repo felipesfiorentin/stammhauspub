@@ -1,5 +1,13 @@
 # Histórico de mudanças
 
+## 2026-11-22
+- Painel › editar programação: campo "Data da atração" (move atração e contratação para outro dia; convidados e reservas já feitos ficam no dia original; destino com atração é recusado; não aceita data passada). Novo `gDiaMover`.
+- Contratação: checkbox "Refeição" (banda sem consumação que janta a comida da equipe). Programacao, coluna M.
+- Calendário do painel começa no domingo.
+- Dias fechados: "Situação do dia" Aberto/Fechado (Programacao, coluna N). Padrão: domingo, segunda e terça fechados; linha com atração é aberta; dia fechado pode ser reaberto como exceção. Dia fechado sai do site e recusa reservas do público.
+- Site: exibe a programação aberta e aceita reservas só dos próximos 30 dias (Config `reserva_antecedencia_dias`, padrão 30); noites além disso aparecem como "Reservas a partir de dd/mm"; servidor recusa reserva fora da janela.
+- Testes: `e2e23`; os testes passam a rodar com relógio fixo (`node -r ./fakedate.js`, 19/11/2026) e o mock da planilha ganhou `clearContent` e 15 colunas.
+
 ## 2026-11-19 (6)
 - Painel › dia: exportação da lista de portaria (convidados + reservas do dia) em duas opções: "Exportar PDF em ordem alfabética" e "Exportar PDF por grupo de reserva" (cada convite ou reserva como bloco, com celular, ordenado pelo titular). Nomes de arquivo `lista-portaria-alfabetica-AAAA-MM-DD` e `lista-portaria-por-grupo-AAAA-MM-DD`. "Imprimir lista" segue alfabética.
 - Teste `e2e22`.
