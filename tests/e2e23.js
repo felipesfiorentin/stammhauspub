@@ -12,7 +12,7 @@ function mundo(cfgExtra=[]){
  const cache={};let uu=0;const triggers=[];
  const mkctx=(files)=>{const ctx={Date:global.Date,console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
+  CacheService:{getScriptCache:()=>({get:k=>(!global.__CACHE&&/^(dados|prog)_v2$/.test(k))?null:(cache[k]??null),put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   ScriptApp:{getService:()=>({getUrl:()=>'https://script.google.com/macros/s/TESTE/exec'}),getProjectTriggers:()=>triggers,newTrigger:(f)=>({timeBased:()=>({everyMinutes:()=>({create:()=>triggers.push({getHandlerFunction:()=>f})})})})},
   HtmlService:{},
@@ -71,8 +71,8 @@ const R=x=>JSON.parse(JSON.stringify(x));
  sal('2026-12-10','Banda Dentro da Janela',{},true);sal('2027-01-15','Banda Futura',{},true);
  const d=R(w.pub.dados()).noites,dj=d.find(x=>x.label.includes('10/12')),df=d.find(x=>x.label.includes('15/01'));
  ok(dj&&dj.reservavel===true,'janela: 10/12 (21 dias) reservável');
- ok(df&&df.reservavel===false&&df.abreEm==='16/12'&&df.atracao==='Banda Futura','janela: 15/01 só exibida, reservas abrem em 16/12');
- r=R(w.pub.reservar({dia:df.dia,pessoas:[{nome:'Joao Pereira',tel:'(42) 99100-0001'}],cli:'x2'}));ok(r.ok===false&&/ainda não estão abertas/.test(r.msg||''),'janela: reserva além de 30 dias é recusada pelo servidor');
+ ok(!df&&!JSON.stringify(R(w.pub.programacaoPublica_())).includes('Banda Futura'),'janela: 15/01 (além de 30 dias) não é carregada nem na programação pública');
+ r=R(w.pub.reservar({dia:20270115,pessoas:[{nome:'Joao Pereira',tel:'(42) 99100-0001'}],cli:'x2'}));ok(r.ok===false&&/ainda não estão abertas/.test(r.msg||''),'janela: reserva além de 30 dias é recusada pelo servidor');
  r=R(w.pub.reservar({dia:dj.dia,pessoas:[{nome:'Joao Pereira',tel:'(42) 99100-0001'}],cli:'x3'}));ok(r.ok!==false,'janela: reserva dentro dos 30 dias funciona');
  // mudar data
  const L20=R(w.guest.painel(K)).convidados.filter(c=>c.dia===20).length;

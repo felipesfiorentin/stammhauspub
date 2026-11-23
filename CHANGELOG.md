@@ -1,5 +1,9 @@
 # Histórico de mudanças
 
+## 2026-11-23 (3)
+- Página pública de reservas mais rápida: carrega só as noites abertas de hoje até +30 dias (sem passado e sem noites distantes); resposta em cache de 25 s (limpo a cada reserva/cancelamento); `?p=programacao` com a mesma janela.
+- PC (≥900 px): calendário domingo→sábado, clicável; celular: lista vertical.
+
 ## 2026-11-23 (2)
 - Horário do show por noite: padrão 20:30 (qua/qui) e 21:30 (sex/sáb); ajustável no painel (Editar programação › Horário do show; vazio/igual ao padrão = padrão). Programacao, coluna O. Aparece no dia do painel e no ingresso do site; vai junto ao mudar a data. `showPadrao_`.
 - Reservas do público: até 10 pessoas (`max_pessoas_reserva` padrão 10) e aviso no formulário: acima disso, falar com a equipe pelo WhatsApp (link com mensagem pronta).

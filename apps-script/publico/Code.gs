@@ -344,10 +344,13 @@ function ss_() {
 
 /* programação pública (lida pelo site institucional): só dados já públicos, vindos da aba Programacao gerida pela equipe */
 function programacaoPublica_() {
+  var ch = cacheGet_('prog_v2'); if (ch) return ch;
   var prog = prog_(), hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  return {ok: true, noites: ordemDias_(prog).filter(function (d) { return prog[d].iso && prog[d].iso >= hoje && prog[d].aberto; }).map(function (d) {
-    var p = prog[d]; return {iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo};
+  var lim = isoMais_(hoje, cfg_().reservaDias);   // só os próximos 30 dias (reserva_antecedencia_dias)
+  var out = {ok: true, noites: ordemDias_(prog).filter(function (d) { return prog[d].iso && prog[d].iso >= hoje && prog[d].iso <= lim && prog[d].aberto; }).map(function (d) {
+    var p = prog[d]; return {iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show};
   })};
+  cachePut_('prog_v2', out, 60); return out;
 }
 
 function doGet(e) {
@@ -367,21 +370,28 @@ function normNome_(s) {
 }
 
 function pubInfo_(cfg) {
-  return {valor: cfg.valor, ate: cfg.reservaAte, max: cfg.maxPessoas, whatsapp: cfg.whatsapp};
+  return {valor: cfg.valor, ate: cfg.reservaAte, max: cfg.maxPessoas, whatsapp: cfg.whatsapp, dias: cfg.reservaDias};
 }
 
 /* Noites, com situação (Disponível/Lotado). Não expõe contagens: só "vagas" até o máximo por reserva. */
+function cacheGet_(k) { try { var h = CacheService.getScriptCache().get(k); return h ? JSON.parse(h) : null; } catch (e) { return null; } }
+function cachePut_(k, v, seg) { try { CacheService.getScriptCache().put(k, JSON.stringify(v), seg); } catch (e) {} }
+function cacheLimpa_() { try { CacheService.getScriptCache().remove('dados_v2'); } catch (e) {} }
+
+/* Noites, com situação (Disponível/Lotado). Não expõe contagens: só "vagas" até o máximo por reserva.
+   Só as noites abertas de hoje até hoje + reserva_antecedencia_dias (30). Resposta em cache por 25 s (limpo a cada reserva/cancelamento). */
 function dados_() {
-  var cfg = cfg_(), prog = prog_(), conv = convLeve_(), confs = confs_(), resv = reservas_();
+  var ch = cacheGet_('dados_v2'); if (ch) return ch;
+  var cfg = cfg_(), prog = prog_();
   var hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), lim = isoMais_(hoje, cfg.reservaDias);
-  /* programação aberta e futura é exibida; só as noites dentro da janela (hoje + reserva_antecedencia_dias) aceitam reserva */
-  var noites = ordemDias_(prog).filter(function (d) { return prog[d].pub && prog[d].aberto && prog[d].iso >= hoje; }).map(function (d) {
-    var p = prog[d], res = p.iso <= lim;
-    if (!res) { var ab = isoMais_(p.iso, -cfg.reservaDias).split('-'); return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: false, abreEm: ab[2] + '/' + ab[1], lotado: false, vagas: 0}; }
-    var c = contagem_(d, cfg, conv, confs, resv);
-    return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
+  var dias = ordemDias_(prog).filter(function (d) { return prog[d].pub && prog[d].aberto && prog[d].iso >= hoje && prog[d].iso <= lim; });
+  var conv = dias.length ? convLeve_() : [], confs = dias.length ? confs_() : [], resv = dias.length ? reservas_() : [];
+  var noites = dias.map(function (d) {
+    var p = prog[d], c = contagem_(d, cfg, conv, confs, resv);
+    return {dia: d, iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
   });
-  return {ok: true, noites: noites, info: pubInfo_(cfg)};
+  var out = {ok: true, hoje: hoje, noites: noites, info: pubInfo_(cfg)};
+  cachePut_('dados_v2', out, 25); return out;
 }
 
 function validarReserva_(p, cfg, prog) {
@@ -439,6 +449,7 @@ function reservar_(p) {
     if (String(sh.getRange(linha, 2).getValue()) !== prot || String(sh.getRange(linha + n - 1, 5).getValue()) !== v.pessoas[n - 1].nome) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     atualizarPainelSeguro_();
     enfileirarWhats_('R', prot, v.dia, v.pessoas);
+    cacheLimpa_();
     return {ok: true, resumo: resumoRes_(prot, v.dia, prog, v.pessoas, cfg)};
   } finally { lock.releaseLock(); }
 }
@@ -470,6 +481,7 @@ function cancelarReserva_(prot, nome, tel) {
     var sh = aba_(ABA.RES), agora = new Date();
     rows.forEach(function (r) { sh.getRange(r.linha, 7).setValue('Cancelado'); sh.getRange(r.linha, 11).setValue(agora); });
     cancelarFilaWhats_('R', rows[0].prot, null);
+    cacheLimpa_();
     atualizarPainelSeguro_();
     return {ok: true};
   } finally { lock.releaseLock(); }
