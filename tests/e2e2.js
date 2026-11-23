@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 12},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 15},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
   setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
@@ -10,7 +10,7 @@ function mundo(cfgExtra=[]){
   Programacao:mkSheet([['Dia','Data','Atração','Estilo','Instagram'],[18,new Date('2026-11-18T00:00:00-03:00'),'Lonesome Capitain · Country & Folk','Formal','@a'],[19,new Date('2026-11-19T00:00:00-03:00'),'Os Bauretz · Soul, Disco & MPB','MPB','@b'],[20,new Date('2026-11-20T00:00:00-03:00'),'Hardways · Classic Rock','Rock','@c'],[21,new Date('2026-11-21T00:00:00-03:00'),'Rodrigo Seidel e banda · Pop Rock','Pop Rock','@d']]),
   Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',74],['mesas',19],['whatsapp_contato',''],['horario',''],...cfgExtra])};
  const cache={};let uu=0;const triggers=[];
- const mkctx=(files)=>{const ctx={console,
+ const mkctx=(files)=>{const ctx={Date:global.Date,console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
   CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
@@ -32,7 +32,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // monta mundo com público lendo o mesmo ss
  function W(cfg){const w=mundo(cfg);
   const ss=w.guest.SpreadsheetApp.getActiveSpreadsheet();
-  const ctx={...w.pub};const pctx=vm.createContext({console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
+  const ctx={...w.pub};const pctx=vm.createContext({Date:global.Date,console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
   vm.runInContext(pubSrc,pctx);w.pub=pctx;w.guest.prepararReservas();return w}
  const br=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
  async function pagina(ctx,arq,sub){const pg=await br.newPage({viewport:{width:390,height:844}});
@@ -47,10 +47,10 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // ---- preparação ----
  let w=W();
  ok(['Reservas','Lotacao','Usuarios','Auditoria'].every(n=>w.sheets[n]),'prepararReservas cria Reservas, Lotacao, Usuarios e Auditoria');
- ok(w.sheets.Config.rows.some(r=>r[0]==='teto_por_noite'&&r[1]===81)&&w.sheets.Config.rows.some(r=>r[0]==='valor_ingresso'&&r[1]===40)&&w.sheets.Config.rows.some(r=>r[0]==='reserva_valida_ate'&&r[1]==='20h')&&w.sheets.Config.rows.some(r=>r[0]==='max_pessoas_reserva'&&r[1]===8),'Config recebe teto 81, valor 40, validade 20h, máx. 8');
+ ok(w.sheets.Config.rows.some(r=>r[0]==='teto_por_noite'&&r[1]===81)&&w.sheets.Config.rows.some(r=>r[0]==='valor_ingresso'&&r[1]===40)&&w.sheets.Config.rows.some(r=>r[0]==='reserva_valida_ate'&&r[1]==='20h')&&w.sheets.Config.rows.some(r=>r[0]==='max_pessoas_reserva'&&r[1]===10),'Config recebe teto 81, valor 40, validade 20h, máx. 10');
  const nCfg=w.sheets.Config.rows.length;w.guest.prepararReservas();ok(w.sheets.Config.rows.length===nCfg&&w.sheets.Usuarios.rows.length===1,'prepararReservas é idempotente (sem duplicar linhas)');
  let d=R(w.pub.dados());
- ok(d.noites.length===4&&d.noites.every(n=>!n.lotado&&n.vagas===8)&&d.info.valor===40&&d.info.ate==='20h'&&d.info.max===8,'público vê 4 noites disponíveis, valor 40, até 20h, máx. 8');
+ ok(d.noites.length===4&&d.noites.every(n=>!n.lotado&&n.vagas===10)&&d.info.valor===40&&d.info.ate==='20h'&&d.info.max===10,'público vê 4 noites disponíveis, valor 40, até 20h, máx. 10');
  ok(JSON.stringify(d).includes('Strack')===false&&!/"nome"/.test(JSON.stringify(d)),'resposta pública não expõe nomes de convidados');
  // contagem base: lista inteira conta (pendentes = titular + acompanhante)
  ok(cnt(w,18).total===63&&cnt(w,19).total===55&&cnt(w,20).total===62&&cnt(w,21).total===65&&cnt(w,18).restantes===18,'lista garantida conta 63/55/62/65 e restam 18 na noite 18 (teto 81)');
@@ -62,7 +62,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(cnt(w,18).total===65&&cnt(w,18).publico===2&&cnt(w,18).reservas===1,'contagem: cada pessoa conta (63+2=65), 1 reserva');
  ok(w.sheets.Lotacao.rows.length>=5,'painel Lotacao atualizado na aba');
  const inv=(p,campo)=>{const x=R(w.pub.reservar({dia:19,pessoas:p,cli:'b'+Math.random()}));return x.ok===false&&x.code==='invalido'&&(!campo||x.campo===campo)};
- ok(inv([1,2,3,4,5,6,7,8,9].map(i=>P('Pessoa Numero'+'abcdefghi'[i-1],'(42) 99200-000'+i))),'servidor recusa mais de 8 pessoas','qtd');
+ ok(inv([1,2,3,4,5,6,7,8,9,10,11].map(i=>P('Pessoa Numero'+'abcdefghijk'[i-1],'(42) 99200-00'+('0'+i).slice(-2)))),'servidor recusa mais de 10 pessoas','qtd');
  ok(inv([P('Ana Souza','(42) 99200-0001'),P('Bia Souza','')],'tel1'),'todas as pessoas precisam de celular');
  ok(inv([P('Ana','(42) 99200-0001')],'nome0'),'nome completo obrigatório (só um nome é recusado)');
  ok(inv([P('Ana Souza','(42) 99200-0001'),P('Bia Souza','(42) 99200-0001')],'tel1'),'celular repetido dentro da reserva é recusado');
@@ -114,7 +114,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  await pg.screenshot({path:'shot_pub_home.png',fullPage:true});
  await pg.click('#noites .noite');await pg.waitForSelector('#s-form:not(.hide)');
  ok((await pg.textContent('#tk .tk-hr')).includes('R$ 40')&&(await pg.textContent('.tk-note')).includes('R$ 40,00')&&(await pg.textContent('.tk-note')).includes('comanda')&&(await pg.$$('.tk-pr')).length===0,'ingresso: valor na faixa dos horários + pequeno comentário (R$ 40,00 na comanda)');
- ok((await pg.$$('#qtd button')).length===8&&(await pg.$$('#pessoas .pess')).length===1,'seletor de 1 a 8 pessoas; começa com 1');
+ ok((await pg.$$('#qtd button')).length===10&&(await pg.$$('#pessoas .pess')).length===1,'seletor de 1 a 10 pessoas; começa com 1');
  await pg.screenshot({path:'shot_pub_form1.png',fullPage:true});
  await pg.click('#qtd button:nth-child(3)');ok((await pg.$$('#pessoas .pess')).length===3,'escolher 3 pessoas abre 3 blocos nome+celular');
  await pg.fill('#pn0','Joao');await pg.fill('#pt0','4299');await pg.click('#btn-res');

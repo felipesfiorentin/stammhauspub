@@ -21,7 +21,7 @@ function prepararReservas() {
   } catch (e) {}
   [['teto_por_noite', 81, 'Teto de pessoas por noite: 74 + 10%. Lista garantida + reservas do público; ao chegar nesse número a noite aparece como LOTADA.'],
    ['valor_ingresso', 40, 'R$ por pessoa (público geral), pago junto à quitação da comanda na noite.'],
-   ['max_pessoas_reserva', 8, 'Máximo de pessoas por reserva do público (editável; de 1 a 20).'],
+   ['max_pessoas_reserva', 10, 'Máximo de pessoas por reserva do público (editável; de 1 a 20). Acima disso, o site orienta falar com a equipe pelo WhatsApp.'],
    ['confirmar_ate', '14h', 'Horário-limite do lembrete de confirmação por WhatsApp, no dia do evento: convites sem resposta até esse horário são considerados desistência (só texto da mensagem).'],
    ['reserva_antecedencia_dias', 30, 'Reservas do público abertas para os próximos N dias (a programação além disso aparece só para consulta).'],
    ['reserva_valida_ate', '20h', 'Texto exibido: a reserva vale só até esse horário.'],

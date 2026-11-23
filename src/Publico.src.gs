@@ -45,9 +45,9 @@ function dados_() {
   /* programação aberta e futura é exibida; só as noites dentro da janela (hoje + reserva_antecedencia_dias) aceitam reserva */
   var noites = ordemDias_(prog).filter(function (d) { return prog[d].pub && prog[d].aberto && prog[d].iso >= hoje; }).map(function (d) {
     var p = prog[d], res = p.iso <= lim;
-    if (!res) { var ab = isoMais_(p.iso, -cfg.reservaDias).split('-'); return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, reservavel: false, abreEm: ab[2] + '/' + ab[1], lotado: false, vagas: 0}; }
+    if (!res) { var ab = isoMais_(p.iso, -cfg.reservaDias).split('-'); return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: false, abreEm: ab[2] + '/' + ab[1], lotado: false, vagas: 0}; }
     var c = contagem_(d, cfg, conv, confs, resv);
-    return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
+    return {dia: d, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
   });
   return {ok: true, noites: noites, info: pubInfo_(cfg)};
 }

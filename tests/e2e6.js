@@ -55,7 +55,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(R(w.guest.gDiaSalvar(K,'2026-02-30','x','y',true)).code==='invalido'&&R(w.guest.gDiaSalvar(K,'abc','x','y',true)).code==='invalido','data inválida recusada');
  e=R(w.guest.gDiaSalvar(K,'2026-12-05','Outra Banda','Pop',true));ok(e.ok&&e.noites.length===5&&e.noites.find(x=>x.iso==='2026-12-05').atracao==='Outra Banda','editar o mesmo dia não duplica');
  e=R(w.guest.gAddConvidado(K,{nome:'Fulano Novo',dia:20261205,acomp:1},false));ok(e.ok&&e.convidados.some(c=>c.nome==='Fulano Novo'&&c.dia===20261205),'incluir convidado no dia novo');
- ok(noite(w,20261205)&&noite(w,20261205).vagas===8,'público vê o dia novo');
+ ok(noite(w,20261205)&&noite(w,20261205).vagas===10,"público vê o dia novo");
  let r=R(w.pub.reservar({dia:20261205,pessoas:[P('Cliente Dois','(42) 99600-0002')],cli:'z'}));ok(r.ok,'reserva do público no dia novo');
  e=R(w.guest.painel(K));ok(e.noites.find(x=>x.dia===20261205).publico===1&&e.noites.find(x=>x.dia===18).publico===0,'contagem por dia isolada');
  e=R(w.guest.gDiaSalvar(K,'2026-12-05','Outra Banda','Pop',false));ok(!R(w.pub.dados()).noites.some(x=>x.dia===20261205)&&R(w.pub.reservar({dia:20261205,pessoas:[P('Cliente Tres','(42) 99600-0003')],cli:'y'})).ok===false,'reservas do público fechadas: some da página e recusa');

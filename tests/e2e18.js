@@ -50,7 +50,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  w.guest.Utilities.newBlob=(h,t,n)=>({getAs:()=>({getBytes:()=>Array.from(Buffer.from('%PDF-FAKE '+h.length))}),_h:h});w.guest.Utilities.base64Encode=b=>Buffer.from(b).toString('base64');
  const cfgRow=(w,v)=>{const r=w.sheets.Config.rows.find(r=>r[0]==='max_pessoas_reserva');if(r)r[1]=v;else w.sheets.Config.rows.push(['max_pessoas_reserva',v,''])};
  const mx=()=>R(w.pub.dados()).info.max;
- ok(mx()===8,'padrão sem valor na Config: 8 pessoas por reserva');
+ ok(mx()===10,'padrão sem valor na Config: 10 pessoas por reserva');
  cfgRow(w,5);ok(mx()===5,'Config=5 vale (hiperparâmetro dinâmico)');cfgRow(w,99);ok(mx()===20,'limite de segurança 20');cfgRow(w,8);
  const cv=R(w.guest.painel(K)).convidados;const alvo=cv.find(c=>c.dia===19);
  const outro=cv.find(c=>c.dia===19&&c.id!==alvo.id&&!c.acomp);R(w.guest.confirmar({id:outro.id,titNome:outro.nome,titTel:'(47) 98888-7777',vaiAcomp:false}));

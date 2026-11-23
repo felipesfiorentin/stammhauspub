@@ -232,14 +232,15 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   var BANDAS={18:{l:'ph18L.jpg',r:'ph18R.jpg',logo:'logo18.png',show:'21h'},19:{l:'ph19L.jpg',r:'ph19R.jpg',logo:'logo19.png',show:'22h'},20:{l:'ph20L.jpg',r:'ph20R.jpg',w:'ph20W.jpg',logo:'logo20.png',show:'22h'},21:{l:'ph21L.jpg',r:'ph21R.jpg',logo:'logo21.png',show:'22h'}};
   var MESES=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var LOGOD='data:image/png;base64,__LOGOD__';
-  var GEN={gen:1,show:'Ao vivo'};   /* noites sem arte própria (fora da semana de inauguração): ingresso só de texto */
+  var GEN={gen:1};
+  function showTxt(s){var m=/^(\d{2}):(\d{2})$/.exec(s||'');return m?(+m[1])+'h'+(m[2]==='00'?'':m[2]):'Ao vivo'}   /* noites sem arte própria (fora da semana de inauguração): ingresso só de texto */
   function tkHTML(n,vagas){
     var b=BANDAS[n&&n.dia]||GEN;
     var m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·');
     var cel=vagas?'<div><small>Vagas</small><b class="st '+vagas[0]+'">'+vagas[1]+'</b></div>':'<div class="pv"><small>Entrada</small><b>R$ <span class="vl">'+esc(brl(INFO.valor||40))+'</span></b></div>';
     if(b.gen)return '<div class="tk-in"><div class="tk-main"><div class="tk-top">Música ao vivo</div><div class="tk-logo"><div class="tk-nm">'+esc(at[0].trim())+'</div></div><div class="tk-gen">'+esc(n.estilo||(at[1]?at[1].trim():''))+'</div></div>'
      +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt="Das Stammhaus Pub"><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div></div>'
-     +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+b.show+'</b></div>'+cel+'</div>';
+     +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+showTxt(n.show)+'</b></div>'+cel+'</div>';
     return (b.w?'':'<div class="tk-ph l" style="background-image:url('+IMG+b.l+')"></div><div class="tk-ph r" style="background-image:url('+IMG+b.r+')"></div>')
      +'<div class="tk-in"><div class="tk-main"><div class="tk-top">Semana de Inauguração</div><div class="tk-logo"><img src="'+IMG+b.logo+'" alt="'+esc(at[0].trim())+'"></div>'
      +(String(n.dia)==='21'?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+esc(at[1]?at[1].trim():'')+'</div></div>'
@@ -259,7 +260,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     if(QTD>mx)QTD=mx;
     for(var i=1;i<=mx;i++){(function(i){var b=document.createElement('button');b.type='button';b.className='ghost'+(i===QTD?' on':'');b.textContent=i;
       b.onclick=function(){QTD=i;pessoas(false)};q.appendChild(b)})(i)}
-    $('qtd-h').textContent=(N.vagas>0&&N.vagas<INFO.max?'Restam apenas '+N.vagas+' vaga'+(N.vagas>1?'s':'')+' nesta noite. ':'')+'Pedimos nome e celular de cada pessoa para agilizar o cadastro de todos no sistema e tornar a sua chegada e a sua experiência muito mais fluidas.'}
+    $('qtd-h').innerHTML=esc((N.vagas>0&&N.vagas<INFO.max?'Restam apenas '+N.vagas+' vaga'+(N.vagas>1?'s':'')+' nesta noite. ':'')+'Pedimos nome e celular de cada pessoa para agilizar o cadastro de todos no sistema e tornar a sua chegada e a sua experiência muito mais fluidas.')+'<br><b>Reservas para mais de '+INFO.max+' pessoas:</b> fale com a nossa equipe pelo <a class="zap" target="_blank" rel="noopener" href="'+zapLink('Olá! Quero fazer uma reserva para mais de '+INFO.max+' pessoas no Das Stammhaus Pub.')+'">WhatsApp</a>.'}
   function pessoas(zera){
     var P=[].slice.call(document.querySelectorAll('#pessoas .pess')),old=P.map(function(p){return[p.querySelector('.pn').value,p.querySelector('.pt').value]});
     var box=$('pessoas');box.innerHTML='';
