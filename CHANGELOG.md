@@ -1,5 +1,8 @@
 # Histórico de mudanças
 
+## 2026-11-23
+- Reservas (site): corrigido página sem noites. O backend devolvia as noites, mas o ingresso só tinha arte para os dias 18–21 (`BANDAS`) e as demais saíam vazias. Noites sem arte própria agora têm ingresso de texto (atração, estilo, data, abertura 18h, vagas). Texto de abertura deixou de citar "18 a 21 de novembro"/"quatro noites". Teste `e2e24`.
+
 ## 2026-11-22
 - Painel › editar programação: campo "Data da atração" (move atração e contratação para outro dia; convidados e reservas já feitos ficam no dia original; destino com atração é recusado; não aceita data passada). Novo `gDiaMover`.
 - Contratação: checkbox "Refeição" (banda sem consumação que janta a comida da equipe). Programacao, coluna M.

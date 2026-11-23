@@ -59,6 +59,7 @@ button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;border:0;p
 .tk-logo{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:8px 0}
 .tk-logo img{max-width:100%;max-height:86px;width:auto;height:auto}
 .tk-eb{font:italic 600 13px/1 'Playfair Display',Georgia,serif;color:#16241b;letter-spacing:.04em;margin:-2px 0 8px}.tk-eb.hide{display:none}
+.tk-nm{font:800 22px/1.15 'Playfair Display',Georgia,serif;color:#16241b;text-align:center;padding:2px 4px}
 .tk-gen{font:italic 600 14px/1.1 'Playfair Display',Georgia,serif;color:#16241b;letter-spacing:.02em}
 .tk-stub{grid-column:3;border-left:2px dashed rgba(22,36,27,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 6px;background:rgba(238,231,211,.80);text-align:center}
 .tk-stub .dw{font:800 10px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#7a5400}
@@ -109,9 +110,9 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   <p class="tag">O QUE É BOM RESISTE AO TEMPO.</p>
 
   <section id="s-home">
-    <p class="eyebrow">18 a 21 de novembro · Canoinhas</p>
+    <p class="eyebrow">Próximas noites · Canoinhas</p>
     <h1>Faça parte da noite que vai entrar para a história de Canoinhas</h1>
-    <p class="lead">O casarão reabre as portas com quatro noites de música ao vivo, chopp de qualidade e a atmosfera de um pub europeu feito para durar. Escolha a sua noite e garanta o seu lugar entre os primeiros a viver essa história.</p>
+    <p class="lead">Música ao vivo, chopp de qualidade e a atmosfera de um pub europeu feito para durar. Escolha a sua noite e garanta o seu lugar.</p>
     <div id="noites"><p class="hint">Carregando as noites…</p></div>
     <p class="err" id="home-msg"></p>
     <hr class="sep">
@@ -221,7 +222,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
       var b=document.createElement('button');b.className='noite tkc';b.type='button';
       var v=n.reservavel===false?['p','Reservas a partir de '+n.abreEm]:n.lotado?['l','Lotado']:(n.vagas<INFO.max?['p','Últimas vagas']:['d','Disponível']);
       b.setAttribute('aria-label',n.label+' · '+v[1]);
-      b.innerHTML='<div class="tk'+(BANDAS[n.dia]&&BANDAS[n.dia].w?' wide':'')+'">'+tkHTML(n,v)+'</div>';
+      b.innerHTML='<div class="tk'+(!BANDAS[n.dia]||BANDAS[n.dia].w?' wide':'')+'">'+tkHTML(n,v)+'</div>';
       if(n.lotado||n.reservavel===false){b.disabled=true}else b.onclick=function(){abrir(n)};
       L.appendChild(b)});
     if(!NOITES.length)L.innerHTML='<p class="hint">Nenhuma noite disponível no momento.'+contato()+'</p>'}
@@ -231,10 +232,14 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   var BANDAS={18:{l:'ph18L.jpg',r:'ph18R.jpg',logo:'logo18.png',show:'21h'},19:{l:'ph19L.jpg',r:'ph19R.jpg',logo:'logo19.png',show:'22h'},20:{l:'ph20L.jpg',r:'ph20R.jpg',w:'ph20W.jpg',logo:'logo20.png',show:'22h'},21:{l:'ph21L.jpg',r:'ph21R.jpg',logo:'logo21.png',show:'22h'}};
   var MESES=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var LOGOD='data:image/png;base64,__LOGOD__';
+  var GEN={gen:1,show:'Ao vivo'};   /* noites sem arte própria (fora da semana de inauguração): ingresso só de texto */
   function tkHTML(n,vagas){
-    var b=BANDAS[n&&n.dia];if(!b)return '';
+    var b=BANDAS[n&&n.dia]||GEN;
     var m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·');
     var cel=vagas?'<div><small>Vagas</small><b class="st '+vagas[0]+'">'+vagas[1]+'</b></div>':'<div class="pv"><small>Entrada</small><b>R$ <span class="vl">'+esc(brl(INFO.valor||40))+'</span></b></div>';
+    if(b.gen)return '<div class="tk-in"><div class="tk-main"><div class="tk-top">Música ao vivo</div><div class="tk-logo"><div class="tk-nm">'+esc(at[0].trim())+'</div></div><div class="tk-gen">'+esc(n.estilo||(at[1]?at[1].trim():''))+'</div></div>'
+     +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt="Das Stammhaus Pub"><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div></div>'
+     +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+b.show+'</b></div>'+cel+'</div>';
     return (b.w?'':'<div class="tk-ph l" style="background-image:url('+IMG+b.l+')"></div><div class="tk-ph r" style="background-image:url('+IMG+b.r+')"></div>')
      +'<div class="tk-in"><div class="tk-main"><div class="tk-top">Semana de Inauguração</div><div class="tk-logo"><img src="'+IMG+b.logo+'" alt="'+esc(at[0].trim())+'"></div>'
      +(String(n.dia)==='21'?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+esc(at[1]?at[1].trim():'')+'</div></div>'
@@ -242,8 +247,8 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
      +(b.w?'<div class="tk-wp" style="background-image:url('+IMG+b.w+')"></div>':'')+'</div>'
      +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+b.show+'</b></div>'+cel+'</div>'}
   function ticket(){
-    var b=BANDAS[N&&N.dia],t=$('tk');if(!b){t.classList.add('hide');return}
-    t.classList.toggle('wide',!!b.w);t.innerHTML=tkHTML(N);t.classList.remove('hide')}
+    var b=BANDAS[N&&N.dia]||GEN,t=$('tk');if(!N){t.classList.add('hide');return}
+    t.classList.toggle('wide',!!b.w||!!b.gen);t.innerHTML=tkHTML(N);t.classList.remove('hide')}
 
   /* ---- FORMULÁRIO ---- */
   function abrir(n){
