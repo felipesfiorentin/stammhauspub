@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 15},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 16},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
   setNumberFormat(){return this},clearContent(){for(let i=0;i<nr;i++)for(let j=0;j<nc;j++){if(s.rows[r-1+i])s.rows[r-1+i][c-1+j]=""}return this},setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
@@ -56,11 +56,11 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(SP('2026-12-02')==='20:30'&&SP('2026-12-03')==='20:30'&&SP('2026-12-04')==='21:30'&&SP('2026-12-05')==='21:30'&&SP('2026-12-06')==='','padrão: qua/qui 20:30, sex/sáb 21:30, demais sem padrão');
  sal('2026-12-02','Banda Quarta',{aberto:true});sal('2026-12-04','Banda Sexta',{aberto:true});
  ok(N('2026-12-02').show==='20:30'&&N('2026-12-04').show==='21:30'&&!N('2026-12-04').showCustom,'noites novas herdam o horário padrão');
- ok(R(w.pub.dados()).noites.find(x=>x.label.includes('04/12')).show==='21:30','site recebe o horário do show');
+ w.pub.cacheLimpa_();ok(R(w.pub.dados()).noites.find(x=>x.label.includes('04/12')).show==='21:30','site recebe o horário do show');
  // ajuste
  let e=sal('2026-12-04','Banda Sexta',{aberto:true,show:'22:00'});ok(e.ok!==false&&N('2026-12-04').show==='22:00'&&N('2026-12-04').showCustom==='22:00'&&N('2026-12-04').showPadrao==='21:30','horário ajustado para 22:00');
  const row=shr().find(r=>r[1]==='2026-12-04'||String(r[1]).startsWith('2026-12-04'));ok(row&&row[14]==='22:00','gravado na coluna O da planilha');
- ok(R(w.pub.dados()).noites.find(x=>x.label.includes('04/12')).show==='22:00','site mostra o ajuste');
+ w.pub.cacheLimpa_();ok(R(w.pub.dados()).noites.find(x=>x.label.includes('04/12')).show==='22:00','site mostra o ajuste');
  e=sal('2026-12-04','Banda Sexta',{aberto:true,show:'21:30'});ok(N('2026-12-04').showCustom===''&&N('2026-12-04').show==='21:30','igual ao padrão volta a "padrão" (vazio)');
  e=sal('2026-12-04','Banda Sexta',{aberto:true,show:'20h45'});ok(N('2026-12-04').show==='20:45','aceita 20h45');
  e=sal('2026-12-04','Banda Sexta',{aberto:true,show:'25:00'});ok(e.ok===false&&/Horário do show/.test(e.msg),'horário inválido recusado');

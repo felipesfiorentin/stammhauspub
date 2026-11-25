@@ -103,7 +103,8 @@ function cfg_() {
 }
 
 /* Lotação manual por noite: Programacao, coluna L ("lotação desta noite"). Vazio = usa teto_por_noite da Config. */
-var PROG_COL_TETO = 12, PROG_COL_REF = 13, PROG_COL_SIT = 14, PROG_COL_SHOW = 15;   // 15 = horário do show (HH:MM; vazio = padrão pelo dia da semana)
+var PROG_COL_TETO = 12, PROG_COL_REF = 13, PROG_COL_SIT = 14, PROG_COL_SHOW = 15, PROG_COL_VAL = 16;   // 16 = valor da entrada desta noite (R$; vazio = valor_ingresso da Config, padrão 40)
+//   // 15 = horário do show (HH:MM; vazio = padrão pelo dia da semana)
 /* padrão do show: quarta e quinta 20:30; sexta e sábado 21:30 (outros dias: sem padrão) */
 function showPadrao_(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); if (!m) return ''; var w = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay(); return (w === 3 || w === 4) ? '20:30' : (w === 5 || w === 6) ? '21:30' : ''; }
 function showNorm_(v) { var m = /^\s*(\d{1,2})\s*[:hH]\s*(\d{2})?\s*$/.exec(String(v == null ? '' : v)); if (!m) return ''; var h = +m[1], mi = m[2] ? +m[2] : 0; return h > 23 || mi > 59 ? '' : ('0' + h).slice(-2) + ':' + ('0' + mi).slice(-2); }   // 13 = refeição (SIM/vazio), 14 = situação (ABERTO/FECHADO/vazio = padrão pelo dia da semana)
@@ -122,6 +123,8 @@ function tetosExcecao_() {
   } catch (e) {}
   return m;
 }
+/* valor da entrada de uma noite: o da coluna P da Programacao; vazio = valor_ingresso da Config (padrão 40) */
+function valorDe_(cfg, p) { return (p && p.valorCustom) || cfg.valor; }
 function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
@@ -223,10 +226,10 @@ function prog_() {
   var sh = aba_(ABA.PROG), n = sh.getLastRow(), m = {};
   if (n < 2) return m;
   var tz = TZ; try { tz = ss_().getSpreadsheetTimeZone() || TZ; } catch (e0) {}
-  var ext = []; try { var mcx = sh.getMaxColumns(); if (mcx >= PROG_COL_REF) ext = sh.getRange(2, PROG_COL_REF, n - 1, Math.min(3, mcx - PROG_COL_TETO)).getValues(); } catch (e1) {}
+  var ext = []; try { var mcx = sh.getMaxColumns(); if (mcx >= PROG_COL_REF) ext = sh.getRange(2, PROG_COL_REF, n - 1, Math.min(4, mcx - PROG_COL_TETO)).getValues(); } catch (e1) {}
   sh.getRange(2, 1, n - 1, 6).getValues().forEach(function (r, ix) {
     if (!r[0]) return;
-    var key = Number(r[0]), v = r[1], p = null, ee = ext[ix] || ['', '', ''];
+    var key = Number(r[0]), v = r[1], p = null, ee = ext[ix] || ['', '', '', ''];
     if (Object.prototype.toString.call(v) === '[object Date]') {
       /* a data da célula é um instante à meia-noite no fuso DA PLANILHA; formatar em outro fuso desloca o dia.
          autocorrição: a chave (dia do mês ou AAAAMMDD) é a verdade; se o fuso deslocou o dia, testa ±12h */
@@ -249,6 +252,7 @@ function prog_() {
       refeicao: /^S/i.test(String(ee[0] || '').trim())
     };
     m[key].showCustom = showNorm_(ee[2]);
+    var vn = Number(String(ee[3] == null ? '' : ee[3]).replace(',', '.')); m[key].valorCustom = isFinite(vn) && vn > 0 && String(ee[3]).trim() !== '' ? Math.round(vn * 100) / 100 : '';
     var sit = String(ee[1] || '').trim().toUpperCase(), isoP = m[key].iso;
     m[key].aberto = sit === 'FECHADO' ? false : sit === 'ABERTO' ? true : (m[key].atracao ? true : !padraoFechado_(isoP));
     m[key].showPadrao = showPadrao_(isoP); m[key].show = m[key].showCustom || m[key].showPadrao;
@@ -388,7 +392,7 @@ function dados_() {
   var conv = dias.length ? convLeve_() : [], confs = dias.length ? confs_() : [], resv = dias.length ? reservas_() : [];
   var noites = dias.map(function (d) {
     var p = prog[d], c = contagem_(d, cfg, conv, confs, resv);
-    return {dia: d, iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
+    return {dia: d, iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, valor: valorDe_(cfg, p), reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
   });
   var out = {ok: true, hoje: hoje, noites: noites, info: pubInfo_(cfg)};
   cachePut_('dados_v2', out, 25); return out;
@@ -416,7 +420,7 @@ function validarReserva_(p, cfg, prog) {
 
 function resumoRes_(prot, dia, prog, pessoas, cfg) {
   var p = prog[dia] || {};
-  return {protocolo: prot, dia: dia, diaLabel: p.label || '', atracao: p.atracao || '', pessoas: pessoas, valor: cfg.valor, ate: cfg.reservaAte};
+  return {protocolo: prot, dia: dia, diaLabel: p.label || '', atracao: p.atracao || '', pessoas: pessoas, valor: valorDe_(cfg, p), ate: cfg.reservaAte};
 }
 
 function reservar_(p) {
@@ -560,7 +564,7 @@ function desenharModelo_(s, p, cfg) {
   caixa_(s, R, 60, 200, ING.W - 120, 60, '#EAE7DA', '{{NOME}}', 40, 'Playfair Display', true, A.CENTER);
   caixa_(s, R, 60, 275, ING.W - 120, 36, '#B47E00', '{{DIA}}', 26, 'Inter', true, A.CENTER);
   caixa_(s, R, 60, 315, ING.W - 120, 34, '#EAE7DA', '{{ATRACAO}}', 22, 'Inter', false, A.CENTER);
-  caixa_(s, R, 60, 380, ING.W - 120, 30, '#EAE7DA', 'Protocolo {{PROT}} · válido até ' + (cfg.reservaAte || '20h') + ' · R$ ' + cfg.valor.toFixed(2).replace('.', ',') + ' na comanda', 18, 'Inter', false, A.CENTER);
+  caixa_(s, R, 60, 380, ING.W - 120, 30, '#EAE7DA', 'Protocolo {{PROT}} · válido até ' + (cfg.reservaAte || '20h') + ' · R$ {{VALOR}} na comanda', 18, 'Inter', false, A.CENTER);
   caixa_(s, R, 60, 440, ING.W - 120, 30, '#B47E00', 'O QUE É BOM RESISTE AO TEMPO.', 18, 'Playfair Display', true, A.CENTER);
 }
 
@@ -573,7 +577,7 @@ function ingressoImagem_(dia, nome, prot, prog) {
   var cop = DriveApp.getFileById(modelo).makeCopy('tmp ingresso ' + prot + ' ' + waSlug_(nome)), id = cop.getId();
   try {
     var pres = SlidesApp.openById(id), s = pres.getSlides()[0], p = prog[dia] || {};
-    s.replaceAllText('{{NOME}}', nome); s.replaceAllText('{{DIA}}', p.label || ('Noite ' + dia)); s.replaceAllText('{{ATRACAO}}', p.atracao || ''); s.replaceAllText('{{PROT}}', prot);
+    s.replaceAllText('{{NOME}}', nome); s.replaceAllText('{{DIA}}', p.label || ('Noite ' + dia)); s.replaceAllText('{{ATRACAO}}', p.atracao || ''); s.replaceAllText('{{PROT}}', prot); s.replaceAllText('{{VALOR}}', Number(valorDe_(cfg_(), p)).toFixed(2).replace('.', ','));
     pres.saveAndClose(); Utilities.sleep(1500);
     var th = UrlFetchApp.fetch('https://slides.googleapis.com/v1/presentations/' + id + '/pages/' + pres.getSlides()[0].getObjectId() + '/thumbnail?thumbnailProperties.thumbnailSize=LARGE&thumbnailProperties.mimeType=PNG',
       {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}});

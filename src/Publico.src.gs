@@ -56,7 +56,7 @@ function dados_() {
   var conv = dias.length ? convLeve_() : [], confs = dias.length ? confs_() : [], resv = dias.length ? reservas_() : [];
   var noites = dias.map(function (d) {
     var p = prog[d], c = contagem_(d, cfg, conv, confs, resv);
-    return {dia: d, iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
+    return {dia: d, iso: p.iso, label: p.label, atracao: p.atracao, estilo: p.estilo, show: p.show, valor: valorDe_(cfg, p), reservavel: true, lotado: c.lotado, vagas: Math.min(c.restantes, cfg.maxPessoas)};
   });
   var out = {ok: true, hoje: hoje, noites: noites, info: pubInfo_(cfg)};
   cachePut_('dados_v2', out, 25); return out;
@@ -84,7 +84,7 @@ function validarReserva_(p, cfg, prog) {
 
 function resumoRes_(prot, dia, prog, pessoas, cfg) {
   var p = prog[dia] || {};
-  return {protocolo: prot, dia: dia, diaLabel: p.label || '', atracao: p.atracao || '', pessoas: pessoas, valor: cfg.valor, ate: cfg.reservaAte};
+  return {protocolo: prot, dia: dia, diaLabel: p.label || '', atracao: p.atracao || '', pessoas: pessoas, valor: valorDe_(cfg, p), ate: cfg.reservaAte};
 }
 
 function reservar_(p) {

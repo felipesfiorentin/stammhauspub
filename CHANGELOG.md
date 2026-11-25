@@ -1,5 +1,8 @@
 # Histórico de mudanças
 
+## 2026-11-24
+- Valor da entrada por noite: campo "Valor da entrada (R$)" na edição da programação (coluna P da aba Programacao); vazio = padrão 40 (`valor_ingresso`). Vale para o site (lista e reserva), resumo da reserva, texto do WhatsApp do painel, receita estimada e ingresso (marcador `{{VALOR}}` nos modelos novos). O valor acompanha a atração ao mudar de data.
+
 ## 2026-11-23 (3)
 - Página pública de reservas mais rápida: carrega só as noites abertas de hoje até +30 dias (sem passado e sem noites distantes); resposta em cache de 25 s (limpo a cada reserva/cancelamento); `?p=programacao` com a mesma janela.
 - PC (≥900 px): calendário domingo→sábado, clicável; celular: lista vertical.
