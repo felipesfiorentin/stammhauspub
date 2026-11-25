@@ -1,5 +1,8 @@
 # Histórico de mudanças
 
+## 2026-11-24 (2)
+- Valor da entrada 0 = grátis (diferente de vazio, que usa o padrão 40): o site mostra "entrada grátis" na lista e no calendário e "Entrada gratuita nesta noite" na reserva; texto de WhatsApp do painel e ingresso (modelos novos) também.
+
 ## 2026-11-24
 - Valor da entrada por noite: campo "Valor da entrada (R$)" na edição da programação (coluna P da aba Programacao); vazio = padrão 40 (`valor_ingresso`). Vale para o site (lista e reserva), resumo da reserva, texto do WhatsApp do painel, receita estimada e ingresso (marcador `{{VALOR}}` nos modelos novos). O valor acompanha a atração ao mudar de data.
 

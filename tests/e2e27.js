@@ -59,5 +59,10 @@ const R=x=>JSON.parse(JSON.stringify(x));
  r=R(w.guest.gDiaMover(K,'2026-12-09','2026-12-10'));ok(r.ok!==false,'mover dia');
  e=R(w.guest.painel(K));ok(e.noites.find(x=>x.iso==='2026-12-10').valor===55.5&&e.noites.find(x=>x.iso==='2026-12-09').valor===40,'valor acompanha a atração ao mudar de data');
  r=R(w.guest.gDiaSalvar(K,'2026-12-10','Banda Preco','Rock',true,Object.assign({aberto:true,valor:''},E0)));e=R(w.guest.painel(K));ok(e.noites.find(x=>x.iso==='2026-12-10').valor===40,'vazio volta ao padrão 40');
+ r=R(w.guest.gDiaSalvar(K,'2026-12-10','Banda Preco','Rock',true,Object.assign({aberto:true,valor:'0'},E0)));ok(r.ok!==false,'aceita valor 0');
+ e=R(w.guest.painel(K));n=e.noites.find(x=>x.iso==='2026-12-10');ok(n.valor===0&&n.valorCustom===0&&n.receita===0,'painel: valor 0 (grátis), distinto de vazio');
+ w.pub.cacheLimpa_();d=R(w.pub.dados()).noites.find(x=>x.iso==='2026-12-10');ok(d&&d.valor===0,'público recebe valor 0');
+ let rs0=R(w.pub.reservar({dia:20261210,pessoas:[{nome:'Maria Souza',tel:'(42) 99100-0002'}],cli:'c2'}));ok(rs0.ok&&rs0.resumo.valor===0,'resumo da reserva grátis = 0');
+ r=R(w.guest.gDiaSalvar(K,'2026-12-10','Banda Preco','Rock',true,Object.assign({aberto:true,valor:''},E0)));e=R(w.guest.painel(K));ok(e.noites.find(x=>x.iso==='2026-12-10').valor===40,'vazio volta a 40 depois de 0');
  console.log(out.join('\n'));process.exit(0)
 })();

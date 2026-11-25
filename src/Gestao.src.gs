@@ -461,7 +461,7 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {   // contrato.teto
         if (cv[1] !== '' && cv[1] !== Math.floor(cv[1])) return {ok: false, code: 'invalido', campo: 'contrato', msg: 'Nº de integrantes deve ser um número inteiro.'};
       }
       var valV = null;
-      if (contrato && contrato.valor !== undefined) { valV = gNum_(contrato.valor === null ? '' : contrato.valor); if (valV !== valV || valV === 0 || valV > 1000) return {ok: false, code: 'invalido', campo: 'valor', msg: 'Valor da entrada: informe um valor entre 0,01 e 1.000 (ex.: 40 ou 35,50), ou deixe vazio para usar o padrão.'}; }
+      if (contrato && contrato.valor !== undefined) { valV = gNum_(contrato.valor === null ? '' : contrato.valor); if (valV !== valV || valV > 1000) return {ok: false, code: 'invalido', campo: 'valor', msg: 'Valor da entrada: informe um valor entre 0 e 1.000 (0 = grátis; ex.: 40 ou 35,50), ou deixe vazio para usar o padrão.'}; }
       var refV = contrato && contrato.refeicao !== undefined ? (contrato.refeicao ? 'SIM' : '') : null, shV = contrato && contrato.show !== undefined ? String(contrato.show || '').trim() : null, sitV = contrato && contrato.aberto !== undefined ? (contrato.aberto ? 'ABERTO' : 'FECHADO') : null;
       var prog = prog_(), key = chaveDeIso_(iso, prog), sh = aba_(ABA.PROG), pubv = pub ? 'SIM' : 'NÃO', ex = prog[key];
       if (shV !== null && shV !== '' && !showNorm_(shV)) return {ok: false, code: 'invalido', campo: 'show', msg: 'Horário do show inválido. Use o formato 20:30.'};
@@ -473,7 +473,7 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {   // contrato.teto
         if (cv) sh.getRange(ex.linha, 7, 1, 5).setValues([cv]);
         if (refV !== null) sh.getRange(ex.linha, PROG_COL_REF).setValue(refV);
         if (shV !== null) { sh.getRange(ex.linha, PROG_COL_SHOW).setNumberFormat('@').setValue(shV); if (shV !== ex.showCustom) aud_(a, 'Horário do show', iso + ': ' + (shV || 'padrão (' + (ex.showPadrao || '—') + ')')); }
-        if (valV !== null) { sh.getRange(ex.linha, PROG_COL_VAL).setValue(valV); if (valV !== ex.valorCustom) aud_(a, 'Valor da entrada', iso + ': ' + (ex.valorCustom || 'padrão') + ' → ' + (valV === '' ? 'padrão' : valV)); }
+        if (valV !== null) { sh.getRange(ex.linha, PROG_COL_VAL).setValue(valV); if (valV !== ex.valorCustom) aud_(a, 'Valor da entrada', iso + ': ' + (ex.valorCustom === '' ? 'padrão' : ex.valorCustom) + ' → ' + (valV === '' ? 'padrão' : valV)); }
         if (sitV !== null) { if (sitV === 'FECHADO' && ex.aberto || sitV === 'ABERTO' && !ex.aberto) aud_(a, sitV === 'FECHADO' ? 'Fechou o dia' : 'Abriu o dia', iso); sh.getRange(ex.linha, PROG_COL_SIT).setValue(sitV); }
         if (tt !== null) { var tAnt = tetoDe_(cfg_(), key); sh.getRange(ex.linha, PROG_COL_TETO).setValue(tt); aud_(a, 'Lotação da noite', iso + ': ' + tAnt + ' → ' + (tt === '' ? 'padrão' : tt)); }
         aud_(a, 'Editou programação', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv + (cv ? ' · contratação atualizada' : ''));
@@ -484,7 +484,7 @@ function gDiaSalvar(k, iso, atracao, estilo, pub, contrato) {   // contrato.teto
         if (cv) sh.getRange(nl, 7, 1, 5).setValues([cv]);
         if (refV) sh.getRange(nl, PROG_COL_REF).setValue(refV);
         if (shV) sh.getRange(nl, PROG_COL_SHOW).setNumberFormat('@').setValue(shV);
-        if (valV) { sh.getRange(nl, PROG_COL_VAL).setValue(valV); aud_(a, 'Valor da entrada', iso + ': padrão → ' + valV); }
+        if (valV !== null && valV !== '') { sh.getRange(nl, PROG_COL_VAL).setValue(valV); aud_(a, 'Valor da entrada', iso + ': padrão → ' + valV); }
         if (sitV !== null) sh.getRange(nl, PROG_COL_SIT).setValue(sitV);
         if (tt !== null && tt !== '') { sh.getRange(nl, PROG_COL_TETO).setValue(tt); aud_(a, 'Lotação da noite', iso + ': padrão → ' + tt); }
         aud_(a, 'Abriu dia', iso + ': "' + atracao + '" · ' + estilo + ' · reservas do público ' + pubv + (cv ? ' · com contratação' : ''));

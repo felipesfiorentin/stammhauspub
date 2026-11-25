@@ -54,7 +54,7 @@ function desenharModelo_(s, p, cfg) {
   caixa_(s, R, 60, 200, ING.W - 120, 60, '#EAE7DA', '{{NOME}}', 40, 'Playfair Display', true, A.CENTER);
   caixa_(s, R, 60, 275, ING.W - 120, 36, '#B47E00', '{{DIA}}', 26, 'Inter', true, A.CENTER);
   caixa_(s, R, 60, 315, ING.W - 120, 34, '#EAE7DA', '{{ATRACAO}}', 22, 'Inter', false, A.CENTER);
-  caixa_(s, R, 60, 380, ING.W - 120, 30, '#EAE7DA', 'Protocolo {{PROT}} · válido até ' + (cfg.reservaAte || '20h') + ' · R$ {{VALOR}} na comanda', 18, 'Inter', false, A.CENTER);
+  caixa_(s, R, 60, 380, ING.W - 120, 30, '#EAE7DA', 'Protocolo {{PROT}} · válido até ' + (cfg.reservaAte || '20h') + ' · {{VALOR}}', 18, 'Inter', false, A.CENTER);
   caixa_(s, R, 60, 440, ING.W - 120, 30, '#B47E00', 'O QUE É BOM RESISTE AO TEMPO.', 18, 'Playfair Display', true, A.CENTER);
 }
 
@@ -67,7 +67,7 @@ function ingressoImagem_(dia, nome, prot, prog) {
   var cop = DriveApp.getFileById(modelo).makeCopy('tmp ingresso ' + prot + ' ' + waSlug_(nome)), id = cop.getId();
   try {
     var pres = SlidesApp.openById(id), s = pres.getSlides()[0], p = prog[dia] || {};
-    s.replaceAllText('{{NOME}}', nome); s.replaceAllText('{{DIA}}', p.label || ('Noite ' + dia)); s.replaceAllText('{{ATRACAO}}', p.atracao || ''); s.replaceAllText('{{PROT}}', prot); s.replaceAllText('{{VALOR}}', Number(valorDe_(cfg_(), p)).toFixed(2).replace('.', ','));
+    s.replaceAllText('{{NOME}}', nome); s.replaceAllText('{{DIA}}', p.label || ('Noite ' + dia)); s.replaceAllText('{{ATRACAO}}', p.atracao || ''); s.replaceAllText('{{PROT}}', prot); var vl = Number(valorDe_(cfg_(), p)); s.replaceAllText('{{VALOR}}', vl === 0 ? 'entrada gratuita' : 'R$ ' + vl.toFixed(2).replace('.', ',') + ' na comanda');
     pres.saveAndClose(); Utilities.sleep(1500);
     var th = UrlFetchApp.fetch('https://slides.googleapis.com/v1/presentations/' + id + '/pages/' + pres.getSlides()[0].getObjectId() + '/thumbnail?thumbnailProperties.thumbnailSize=LARGE&thumbnailProperties.mimeType=PNG',
       {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}});

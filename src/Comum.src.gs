@@ -121,7 +121,7 @@ function tetosExcecao_() {
   return m;
 }
 /* valor da entrada de uma noite: o da coluna P da Programacao; vazio = valor_ingresso da Config (padrão 40) */
-function valorDe_(cfg, p) { return (p && p.valorCustom) || cfg.valor; }
+function valorDe_(cfg, p) { return (p && p.valorCustom !== '' && p.valorCustom != null) ? p.valorCustom : cfg.valor; }   // 0 = grátis
 function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
@@ -249,7 +249,7 @@ function prog_() {
       refeicao: /^S/i.test(String(ee[0] || '').trim())
     };
     m[key].showCustom = showNorm_(ee[2]);
-    var vn = Number(String(ee[3] == null ? '' : ee[3]).replace(',', '.')); m[key].valorCustom = isFinite(vn) && vn > 0 && String(ee[3]).trim() !== '' ? Math.round(vn * 100) / 100 : '';
+    var vn = Number(String(ee[3] == null ? '' : ee[3]).replace(',', '.')); m[key].valorCustom = isFinite(vn) && vn >= 0 && String(ee[3] == null ? '' : ee[3]).trim() !== '' ? Math.round(vn * 100) / 100 : '';
     var sit = String(ee[1] || '').trim().toUpperCase(), isoP = m[key].iso;
     m[key].aberto = sit === 'FECHADO' ? false : sit === 'ABERTO' ? true : (m[key].atracao ? true : !padraoFechado_(isoP));
     m[key].showPadrao = showPadrao_(isoP); m[key].show = m[key].showCustom || m[key].showPadrao;
