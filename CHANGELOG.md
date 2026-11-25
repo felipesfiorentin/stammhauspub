@@ -1,5 +1,8 @@
 # Histórico de mudanças
 
+## 2026-11-24 (4)
+- Consultar/cancelar reserva: botão "Adicionar mais pessoas" (rota `adicionarPessoas`, exige nome+celular do titular). Mantém protocolo, noite e ambiente; respeita máximo por reserva, vagas e duplicidade de nome/celular; novas pessoas entram na fila de WhatsApp. Teste: e2e30.
+
 ## 2026-11-24 (3)
 - Tickets da programação: barra inferior com 4 campos iguais (Abertura, Show, Entrada, Vagas), fonte ajustada para caber no celular.
 - Artes dos tickets: prontas (Rock Grande, Diego Küchler) em assets/cards; demais atrações buscam dinamicamente na pasta do Drive (rota `arte`, por nome do artista, cache; logo + 2 fotos; sem pasta/imagem = ticket de texto).

@@ -62,7 +62,8 @@ function dados_() {
   cachePut_('dados_v2', out, 25); return out;
 }
 
-function validarReserva_(p, cfg, prog) {
+function validarReserva_(p, cfg, prog, off) {
+  off = off || 0;
   var dia = Number(p.dia);
   if (!prog[dia] || !prog[dia].pub || !prog[dia].aberto) return {campo: 'geral', msg: 'Noite inválida. Escolha uma das noites da programação.'};
   var hojeV = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
@@ -71,9 +72,9 @@ function validarReserva_(p, cfg, prog) {
   if (ps.length < 1 || ps.length > cfg.maxPessoas) return {campo: 'qtd', msg: 'Cada reserva é de 1 a ' + cfg.maxPessoas + ' pessoas.'};
   var out = [], tels = {}, nomes = {};
   for (var i = 0; i < ps.length; i++) {
-    var n = limpaNome_(ps[i] && ps[i].nome), t = String(ps[i] && ps[i].tel || '').trim(), q = i === 0 ? 'Você' : 'Pessoa ' + (i + 1);
-    if (!NOME_RE.test(n) || n.split(' ').length < 2) return {campo: 'nome' + i, msg: (i === 0 ? 'Informe o seu nome completo (nome e sobrenome).' : 'Informe o nome completo da pessoa ' + (i + 1) + ' (nome e sobrenome).')};
-    if (!TEL_RE.test(t)) return {campo: 'tel' + i, msg: (i === 0 ? 'Informe o seu celular' : 'Informe o celular da pessoa ' + (i + 1)) + ' no formato (42) 99999-9999.'};
+    var n = limpaNome_(ps[i] && ps[i].nome), t = String(ps[i] && ps[i].tel || '').trim(), q = i + off === 0 ? 'Você' : 'Pessoa ' + (i + off + 1);
+    if (!NOME_RE.test(n) || n.split(' ').length < 2) return {campo: 'nome' + i, msg: (i + off === 0 ? 'Informe o seu nome completo (nome e sobrenome).' : 'Informe o nome completo da pessoa ' + (i + off + 1) + ' (nome e sobrenome).')};
+    if (!TEL_RE.test(t)) return {campo: 'tel' + i, msg: (i + off === 0 ? 'Informe o seu celular' : 'Informe o celular da pessoa ' + (i + off + 1)) + ' no formato (42) 99999-9999.'};
     var d = digitos_(t), nn = normNome_(n);
     if (tels[d]) return {campo: 'tel' + i, msg: 'Cada pessoa precisa de um número de celular próprio.'};
     if (nomes[nn]) return {campo: 'nome' + i, msg: 'Este nome aparece duas vezes na reserva.'};
@@ -141,6 +142,47 @@ function abrirReserva_(nome, tel) {
   return {ok: true, resumos: g.map(function (rows) {
     return resumoRes_(rows[0].prot, rows[0].dia, prog, rows.map(function (r) { return {nome: r.nome, tel: r.tel}; }), cfg, rows[0].andar);
   })};
+}
+
+function adicionarPessoas_(prot, nome, tel, pessoas, cliId) {
+  if (!limite_('rg', 400, 60) || !limite_('ra' + cli_(digitos_(tel)), 8, 900)) return {ok: false, code: 'limite'};
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var grupo = achaReservas_(nome, tel).filter(function (g) { return g[0].prot === String(prot).trim().toUpperCase(); })[0];
+    if (!grupo) return {ok: false, code: 'nao_achou'};
+    var cfg = cfg_(), prog = prog_(), dia = grupo[0].dia, ja = grupo.length, andar = grupo[0].andar || '';
+    var pa = {dia: dia, pessoas: pessoas, andar: andar};
+    if (ja >= cfg.maxPessoas) return {ok: false, code: 'invalido', campo: 'geral', msg: 'Esta reserva já está com o máximo de ' + cfg.maxPessoas + ' pessoas. Para mais, fale com a nossa equipe.'};
+    var cfg2 = {}; for (var k in cfg) cfg2[k] = cfg[k]; cfg2.maxPessoas = cfg.maxPessoas - ja;
+    var v = validarReserva_(pa, cfg2, prog, ja);
+    if (!v.pessoas) return {ok: false, code: 'invalido', campo: v.campo, msg: v.msg};
+    var conv = convLeve_(), confs = confs_(), resv = reservas_(), cnt = contagem_(dia, cfg, conv, confs, resv), n = v.pessoas.length;
+    if (cnt.restantes <= 0) return {ok: false, code: 'lotado'};
+    if (n > cnt.restantes) return {ok: false, code: 'sem_vagas', restantes: cnt.restantes};
+    var usadosTel = {}, usadosNome = {};
+    resv.forEach(function (r) { if (r.dia === dia && r.status === 'Confirmado') { usadosTel[digitos_(r.tel)] = 1; usadosNome[normNome_(r.nome)] = 1; } });
+    confs.forEach(function (c) {
+      if (c.dia !== dia || c.status !== 'Confirmado') return;
+      usadosTel[digitos_(c.titTel)] = 1; if (c.acTel) usadosTel[digitos_(c.acTel)] = 1;
+      usadosNome[normNome_(c.titNome)] = 1; if (c.acNome) usadosNome[normNome_(c.acNome)] = 1;
+    });
+    for (var i = 0; i < n; i++) {
+      if (usadosTel[digitos_(v.pessoas[i].tel)]) return {ok: false, code: 'ja_consta', campo: 'tel' + i, msg: 'Este celular já consta em uma reserva ou confirmação para esta noite.'};
+      if (usadosNome[normNome_(v.pessoas[i].nome)]) return {ok: false, code: 'ja_consta', campo: 'nome' + i, msg: 'Este nome já consta em uma reserva ou confirmação para esta noite.'};
+    }
+    var sh = aba_(ABA.RES), linha = proximaLinha_(sh), agora = new Date();
+    if (linha + n - 1 > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
+    var rows = v.pessoas.map(function (x, i) { return [agora, grupo[0].prot, dia, ja + i + 1, x.nome, x.tel, 'Confirmado', grupo[0].tel, 'Sim (aceite ao reservar)', '', agora]; });
+    sh.getRange(linha, 1, n, 11).setValues(rows);
+    if (andar) { if (sh.getMaxColumns() < RES_COL_ANDAR) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ANDAR - sh.getMaxColumns()); sh.getRange(linha, RES_COL_ANDAR, n, 1).setValues(rows.map(function () { return [andar]; })); }
+    SpreadsheetApp.flush();
+    if (String(sh.getRange(linha, 2).getValue()) !== grupo[0].prot || String(sh.getRange(linha + n - 1, 5).getValue()) !== v.pessoas[n - 1].nome) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
+    atualizarPainelSeguro_();
+    enfileirarWhats_('R', grupo[0].prot, dia, v.pessoas);
+    cacheLimpa_();
+    var todas = grupo.map(function (r) { return {nome: r.nome, tel: r.tel}; }).concat(v.pessoas);
+    return {ok: true, resumo: resumoRes_(grupo[0].prot, dia, prog, todas, cfg, andar)};
+  } finally { lock.releaseLock(); }
 }
 
 function cancelarReserva_(prot, nome, tel) {
@@ -232,10 +274,12 @@ function dados()                   { return api_('dados',    dados_,           a
 function reservar(p)               { return api_('reservar', reservar_,        arguments); }
 function abrirReserva(nome, tel)   { return api_('abrir',    abrirReserva_,    arguments); }
 function cancelarReserva(prot, nome, tel){ return api_('cancelar', cancelarReserva_, arguments); }
+function adicionarPessoas(prot, nome, tel, pessoas){ return api_('adicionar', adicionarPessoas_, arguments); }
 
 /* Entrada para a página estática do site (GitHub Pages): mesma API do google.script.run, só as funções públicas. */
 var ROTAS_ = {dados: function (a) { return dados.apply(null, a); }, arte: function (a) { return arte.apply(null, a); }, reservar: function (a) { return reservar.apply(null, a); },
-              abrirReserva: function (a) { return abrirReserva.apply(null, a); }, cancelarReserva: function (a) { return cancelarReserva.apply(null, a); }};
+              abrirReserva: function (a) { return abrirReserva.apply(null, a); }, cancelarReserva: function (a) { return cancelarReserva.apply(null, a); },
+              adicionarPessoas: function (a) { return adicionarPessoas.apply(null, a); }};
 function doPost(e) {
   var out;
   try {
