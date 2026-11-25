@@ -607,6 +607,13 @@ function arte_(atracao) {
   cachePutBig_(ck, JSON.stringify(out), 1800); return out;
 }
 
+/* Executar UMA vez no editor: pede a autorização do Drive/Internet usada pela busca de artes. */
+function autorizarArtes() {
+  var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1&q=' + encodeURIComponent("'" + ARTES_PASTA + "' in parents"), {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}, muteHttpExceptions: true});
+  DriveApp.getFolderById(ARTES_PASTA).getName();
+  return r.getResponseCode();
+}
+
 function arte(nome)                { return api_('arte',     arte_,            arguments); }
 function dados()                   { return api_('dados',    dados_,           arguments); }
 function reservar(p)               { return api_('reservar', reservar_,        arguments); }
