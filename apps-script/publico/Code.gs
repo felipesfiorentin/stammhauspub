@@ -412,13 +412,12 @@ function validarReserva_(p, cfg, prog, off) {
   if (ps.length < 1 || ps.length > cfg.maxPessoas) return {campo: 'qtd', msg: 'Cada reserva é de 1 a ' + cfg.maxPessoas + ' pessoas.'};
   var out = [], tels = {}, nomes = {};
   for (var i = 0; i < ps.length; i++) {
-    var n = limpaNome_(ps[i] && ps[i].nome), t = String(ps[i] && ps[i].tel || '').trim(), q = i + off === 0 ? 'Você' : 'Pessoa ' + (i + off + 1);
+    var n = limpaNome_(ps[i] && ps[i].nome), t = i + off === 0 ? String(ps[i] && ps[i].tel || '').trim() : '', q = i + off === 0 ? 'Você' : 'Pessoa ' + (i + off + 1);
     if (!NOME_RE.test(n) || n.split(' ').length < 2) return {campo: 'nome' + i, msg: (i + off === 0 ? 'Informe o seu nome completo (nome e sobrenome).' : 'Informe o nome completo da pessoa ' + (i + off + 1) + ' (nome e sobrenome).')};
-    if (!TEL_RE.test(t)) return {campo: 'tel' + i, msg: (i + off === 0 ? 'Informe o seu celular' : 'Informe o celular da pessoa ' + (i + off + 1)) + ' no formato (42) 99999-9999.'};
+    if (i + off === 0 && !TEL_RE.test(t)) return {campo: 'tel' + i, msg: (i + off === 0 ? 'Informe o seu celular' : 'Informe o celular da pessoa ' + (i + off + 1)) + ' no formato (42) 99999-9999.'};
     var d = digitos_(t), nn = normNome_(n);
-    if (tels[d]) return {campo: 'tel' + i, msg: 'Cada pessoa precisa de um número de celular próprio.'};
     if (nomes[nn]) return {campo: 'nome' + i, msg: 'Este nome aparece duas vezes na reserva.'};
-    tels[d] = 1; nomes[nn] = 1; out.push({nome: n, tel: t});
+    nomes[nn] = 1; out.push({nome: n, tel: t});
   }
   var andar = String(p.andar == null ? '' : p.andar).trim() === '' ? '' : andarNorm_(p.andar);
   if (String(p.andar == null ? '' : p.andar).trim() !== '' && !andar) return {campo: 'andar', msg: 'Escolha o ambiente: Térreo ou Andar superior.'};
@@ -442,14 +441,14 @@ function reservar_(p) {
     if (n > cnt.restantes) return {ok: false, code: 'sem_vagas', restantes: cnt.restantes};
     // já consta na noite? (reserva do público ou confirmação de convidado, por celular ou nome)
     var usadosTel = {}, usadosNome = {};
-    resv.forEach(function (r) { if (r.dia === v.dia && r.status === 'Confirmado') { usadosTel[digitos_(r.tel)] = 1; usadosNome[normNome_(r.nome)] = 1; } });
+    resv.forEach(function (r) { if (r.dia === v.dia && r.status === 'Confirmado') { if (digitos_(r.tel)) usadosTel[digitos_(r.tel)] = 1; usadosNome[normNome_(r.nome)] = 1; } });
     confs.forEach(function (c) {
       if (c.dia !== v.dia || c.status !== 'Confirmado') return;
       usadosTel[digitos_(c.titTel)] = 1; if (c.acTel) usadosTel[digitos_(c.acTel)] = 1;
       usadosNome[normNome_(c.titNome)] = 1; if (c.acNome) usadosNome[normNome_(c.acNome)] = 1;
     });
     for (var i = 0; i < n; i++) {
-      if (usadosTel[digitos_(v.pessoas[i].tel)]) return {ok: false, code: 'ja_consta', campo: 'tel' + i, msg: 'Este celular já consta em uma reserva ou confirmação para esta noite. Se for seu, fale com a nossa equipe.'};
+      if (digitos_(v.pessoas[i].tel) && usadosTel[digitos_(v.pessoas[i].tel)]) return {ok: false, code: 'ja_consta', campo: 'tel' + i, msg: 'Este celular já consta em uma reserva ou confirmação para esta noite. Se for seu, fale com a nossa equipe.'};
       if (usadosNome[normNome_(v.pessoas[i].nome)]) return {ok: false, code: 'ja_consta', campo: 'nome' + i, msg: 'Este nome já consta em uma reserva ou confirmação para esta noite. Se for você, fale com a nossa equipe.'};
     }
     var sh = aba_(ABA.RES), linha = proximaLinha_(sh), prot = 'R' + linha, agora = new Date();
@@ -460,7 +459,7 @@ function reservar_(p) {
     SpreadsheetApp.flush();
     if (String(sh.getRange(linha, 2).getValue()) !== prot || String(sh.getRange(linha + n - 1, 5).getValue()) !== v.pessoas[n - 1].nome) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     atualizarPainelSeguro_();
-    enfileirarWhats_('R', prot, v.dia, v.pessoas);
+    enfileirarWhats_('R', prot, v.dia, v.pessoas.filter(function (x) { return digitos_(x.tel); }));
     cacheLimpa_();
     return {ok: true, resumo: resumoRes_(prot, v.dia, prog, v.pessoas, cfg, v.andar)};
   } finally { lock.releaseLock(); }
@@ -500,14 +499,14 @@ function adicionarPessoas_(prot, nome, tel, pessoas, cliId) {
     if (cnt.restantes <= 0) return {ok: false, code: 'lotado'};
     if (n > cnt.restantes) return {ok: false, code: 'sem_vagas', restantes: cnt.restantes};
     var usadosTel = {}, usadosNome = {};
-    resv.forEach(function (r) { if (r.dia === dia && r.status === 'Confirmado') { usadosTel[digitos_(r.tel)] = 1; usadosNome[normNome_(r.nome)] = 1; } });
+    resv.forEach(function (r) { if (r.dia === dia && r.status === 'Confirmado') { if (digitos_(r.tel)) usadosTel[digitos_(r.tel)] = 1; usadosNome[normNome_(r.nome)] = 1; } });
     confs.forEach(function (c) {
       if (c.dia !== dia || c.status !== 'Confirmado') return;
       usadosTel[digitos_(c.titTel)] = 1; if (c.acTel) usadosTel[digitos_(c.acTel)] = 1;
       usadosNome[normNome_(c.titNome)] = 1; if (c.acNome) usadosNome[normNome_(c.acNome)] = 1;
     });
     for (var i = 0; i < n; i++) {
-      if (usadosTel[digitos_(v.pessoas[i].tel)]) return {ok: false, code: 'ja_consta', campo: 'tel' + i, msg: 'Este celular já consta em uma reserva ou confirmação para esta noite.'};
+      if (digitos_(v.pessoas[i].tel) && usadosTel[digitos_(v.pessoas[i].tel)]) return {ok: false, code: 'ja_consta', campo: 'tel' + i, msg: 'Este celular já consta em uma reserva ou confirmação para esta noite.'};
       if (usadosNome[normNome_(v.pessoas[i].nome)]) return {ok: false, code: 'ja_consta', campo: 'nome' + i, msg: 'Este nome já consta em uma reserva ou confirmação para esta noite.'};
     }
     var sh = aba_(ABA.RES), linha = proximaLinha_(sh), agora = new Date();
@@ -518,7 +517,6 @@ function adicionarPessoas_(prot, nome, tel, pessoas, cliId) {
     SpreadsheetApp.flush();
     if (String(sh.getRange(linha, 2).getValue()) !== grupo[0].prot || String(sh.getRange(linha + n - 1, 5).getValue()) !== v.pessoas[n - 1].nome) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     atualizarPainelSeguro_();
-    enfileirarWhats_('R', grupo[0].prot, dia, v.pessoas);
     cacheLimpa_();
     var todas = grupo.map(function (r) { return {nome: r.nome, tel: r.tel}; }).concat(v.pessoas);
     return {ok: true, resumo: resumoRes_(grupo[0].prot, dia, prog, todas, cfg, andar)};

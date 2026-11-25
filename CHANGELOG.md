@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## 2026-11-24 (5)
+- Reserva pública: quantidade de pessoas agora é digitada (1 até o máximo/vagas); pede só o celular do TITULAR e o nome completo das demais pessoas (celular das demais fica vazio na planilha; só o titular entra na fila de WhatsApp). "Adicionar pessoas" na consulta também pede só nomes.
+- Gestão interna: "Incluir pessoas" na reserva aceita vários nomes de uma vez (um por linha, celular opcional após ";"), função `gReservaPessoas`; valida tudo antes de gravar.
+- Testes atualizados (e2e2/4/7/11/21/30).
+
 ## 2026-11-24 (4)
 - Consultar/cancelar reserva: botão "Adicionar mais pessoas" (rota `adicionarPessoas`, exige nome+celular do titular). Mantém protocolo, noite e ambiente; respeita máximo por reserva, vagas e duplicidade de nome/celular; novas pessoas entram na fila de WhatsApp. Teste: e2e30.
 

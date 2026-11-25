@@ -60,7 +60,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  await pg.setViewportSize({width:1280,height:900});await pg.reload();await pg.waitForSelector('#cal .cd.ev');
  const cal=await pg.evaluate(()=>({ev:document.querySelectorAll('#cal .cd.ev').length,cells:document.querySelectorAll('#cal .cd').length,hd:[...document.querySelectorAll('.cal-h span')].map(x=>x.textContent).join(','),lista:document.querySelectorAll('#noites .noite').length,w:document.querySelector('.wrap').getBoundingClientRect().width}));
  ok(cal.hd==='DOM,SEG,TER,QUA,QUI,SEX,SÁB'&&cal.ev>=2&&cal.cells%7===0&&cal.lista===0&&cal.w>800,'PC: calendário domingo→sábado, '+cal.ev+' atrações, sem lista, container largo ('+Math.round(cal.w)+'px)');
- await pg.click('#cal .cd.ev');await pg.waitForSelector('#qtd button');ok(await pg.$('#s-form:not(.hide)')!==null,'PC: clicar na atração abre a reserva');
+ await pg.click('#cal .cd.ev');await pg.waitForSelector('#qtd input');ok(await pg.$('#s-form:not(.hide)')!==null,'PC: clicar na atração abre a reserva');
  await pg.setViewportSize({width:390,height:800});await pg.reload();await pg.waitForSelector('#noites .noite');
  const mob=await pg.evaluate(()=>({lista:document.querySelectorAll('#noites .noite').length,cal:document.querySelectorAll('#cal .cd').length,w:document.querySelector('.wrap').getBoundingClientRect().width}));
  ok(mob.lista>=2&&mob.cal===0&&mob.w<=390,'celular: lista vertical sem calendário');

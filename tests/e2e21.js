@@ -60,6 +60,12 @@ const R=x=>JSON.parse(JSON.stringify(x));
  const big=[];for(let i=0;i<301;i++)big.push(P('Pessoa Grande'+i+' Silva',''));ok(R(w.guest.gReservaNova(K,20,big,true)).code==='invalido','teto de segurança de 300');
  const prot=novas[0][1];
  e=R(w.guest.gReservaPessoa(K,prot,'','Adicionada Sem Fone',  '',true));ok(e.ok!==false&&resv().filter(r=>r[1]===prot).length===13,'incluir pessoa em reserva existente sem celular e acima do limite');
+ e=R(w.guest.gReservaPessoas(K,prot,[{nome:'Lote Um Silva',tel:''},{nome:'Lote Dois Silva',tel:'(42) 99700-0077'},{nome:'Lote Tres Silva',tel:''}],true));
+ ok(e.ok!==false&&resv().filter(r=>r[1]===prot).length===16,'gestão: vários nomes de uma vez numa reserva (3 linhas)');
+ const lt=resv().filter(r=>r[1]===prot).slice(-3);ok(lt[0][3]===14&&lt[2][3]===16&&lt[1][5]==='(42) 99700-0077'&&lt[0][5]===''&&lt[0][6]==='Confirmado','sequência continua (14..16), celular opcional por linha');
+ e=R(w.guest.gReservaPessoas(K,prot,[{nome:'Novo Nome Silva',tel:''},{nome:'Lote Um Silva',tel:''}],true));ok(e.code==='invalido'&&/Linha 2/.test(e.msg)&&resv().filter(r=>r[1]===prot).length===16,'nome repetido na reserva: recusa o pedido inteiro, nada gravado');
+ e=R(w.guest.gReservaPessoas(K,prot,[{nome:'Sozinho',tel:''}],true));ok(e.code==='invalido'&&/Linha 1/.test(e.msg),'cada linha exige nome e sobrenome');
+ e=R(w.guest.gReservaPessoas(K,prot,[],true));ok(e.code==='invalido','lista vazia recusada');
  // painel
  let pg=await pagina(w.guest,'/tmp/out/convidados/Painel.html',h=>h.replace("try{SES=sessionStorage.getItem('sh_ses')}catch(e){}","SES="+JSON.stringify(K)+";"));
  await pg.waitForSelector('.dc.ev');await pg.evaluate(()=>novaRes());await pg.waitForSelector('#nq');

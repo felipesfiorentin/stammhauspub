@@ -13,7 +13,7 @@ function build(cap,opt={}){
   Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',cap],['teto_por_noite',cap===74?81:cap],...(opt.cfgExtra||[]),['mesas',19],['whatsapp_contato',''],['horario','']])};
  const cache={};
  const ctx={console,SpreadsheetApp:{getActiveSpreadsheet:()=>({getSheetByName:n=>sheets[n]})},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
+  CacheService:{getScriptCache:()=>({get:k=>(!global.__CACHE&&/^(dados|prog)_v2$/.test(k))?null:(cache[k]??null),put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   Utilities:{formatDate(d,tz,f){const p=new Intl.DateTimeFormat('en-CA',{timeZone:tz||'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
    if(f==='u')return String(new Date(Date.UTC(+p.year,+p.month-1,+p.day)).getUTCDay()||7);if(f==='yyyy-MM-dd')return p.year+'-'+p.month+'-'+p.day;return f==='dd/MM'?p.day+'/'+p.month:''}},

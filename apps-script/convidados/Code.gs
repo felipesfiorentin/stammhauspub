@@ -1333,6 +1333,40 @@ function gReservaPessoa(k, prot, linha, nome, tel, forcar) {
   }, arguments);
 }
 
+function gNomeChave_(n) { return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+/* adicionar várias pessoas de uma vez a uma reserva: lista [{nome, tel?}] */
+function gReservaPessoas(k, prot, lista, forcar) {
+  return api_('gReservaPessoas', function () {
+    return gMut_(k, 'rpessoas', function (a) {
+      var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
+      lista = (lista || []).filter(function (x) { return x && (String(x.nome || '').trim() || String(x.tel || '').trim()); });
+      if (!lista.length) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe ao menos um nome.'};
+      if (lista.length > 30) return {ok: false, code: 'invalido', campo: 'nome', msg: 'No máximo 30 pessoas por vez.'};
+      var usTel = {}, usNome = {}, novos = [];
+      rows.forEach(function (r) { if (digitos_(r.tel)) usTel[digitos_(r.tel)] = 1; usNome[gNomeChave_(r.nome)] = 1; });
+      for (var i = 0; i < lista.length; i++) {
+        var nome = limpaNome_(lista[i].nome), tel = gTelFmt_(lista[i].tel), q = 'Linha ' + (i + 1) + ': ';
+        if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: q + 'informe nome e sobrenome.'};
+        if (!gTelOk_(tel, false)) return {ok: false, code: 'invalido', campo: 'tel', msg: q + 'celular no formato (42) 99999-9999 (ou deixe em branco).'};
+        if (digitos_(tel) && usTel[digitos_(tel)]) return {ok: false, code: 'invalido', campo: 'tel', msg: q + 'cada pessoa precisa de um celular próprio.'};
+        if (usNome[gNomeChave_(nome)]) return {ok: false, code: 'invalido', campo: 'nome', msg: q + 'este nome já consta na reserva.'};
+        if (digitos_(tel)) usTel[digitos_(tel)] = 1; usNome[gNomeChave_(nome)] = 1;
+        novos.push({nome: nome, tel: tel});
+      }
+      var bl = gLotado_(rows[0].dia, novos.length, forcar); if (bl) return bl;
+      var sh = aba_(ABA.RES), agora = new Date(), nl = proximaLinha_(sh), n0 = Math.max.apply(null, rows.map(function (r) { return r.n; }));
+      if (nl + novos.length - 1 > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
+      var out = novos.map(function (x, i) { return [agora, String(prot), rows[0].dia, n0 + i + 1, x.nome, x.tel, 'Confirmado', rows[0].titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora]; });
+      sh.getRange(nl, 1, novos.length, 11).setValues(out);
+      var andar = rows[0].andar || '';
+      if (andar) { if (sh.getMaxColumns() < RES_COL_ANDAR) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ANDAR - sh.getMaxColumns()); sh.getRange(nl, RES_COL_ANDAR, novos.length, 1).setValues(novos.map(function () { return [andar]; })); }
+      enfileirarWhats_('R', String(prot), rows[0].dia, novos);
+      aud_(a, 'Incluiu pessoas na reserva', prot + ': ' + novos.map(function (x) { return x.nome; }).join(', ') + (forcar ? ' [forçado]' : ''));
+      return {ok: true, n: novos.length};
+    });
+  }, arguments);
+}
+
 function gReservaRemoverPessoa(k, prot, linha) {
   return api_('gReservaRemoverPessoa', function () {
     return gMut_(k, 'rrem', function (a) {

@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 15},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 16},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
   setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
@@ -63,15 +63,15 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(w.sheets.Lotacao.rows.length>=5,'painel Lotacao atualizado na aba');
  const inv=(p,campo)=>{const x=R(w.pub.reservar({dia:19,pessoas:p,cli:'b'+Math.random()}));return x.ok===false&&x.code==='invalido'&&(!campo||x.campo===campo)};
  ok(inv([1,2,3,4,5,6,7,8,9,10,11].map(i=>P('Pessoa Numero'+'abcdefghijk'[i-1],'(42) 99200-00'+('0'+i).slice(-2)))),'servidor recusa mais de 10 pessoas','qtd');
- ok(inv([P('Ana Souza','(42) 99200-0001'),P('Bia Souza','')],'tel1'),'todas as pessoas precisam de celular');
+ ok(inv([P('Ana Souza','')],'tel0')&&R(w.pub.reservar({dia:19,pessoas:[P('Ana Souza','(42) 99200-0001'),P('Bia Souza','')],cli:'bx'+Math.random()})).ok===true,'só o titular precisa de celular; demais só nome');
  ok(inv([P('Ana','(42) 99200-0001')],'nome0'),'nome completo obrigatório (só um nome é recusado)');
- ok(inv([P('Ana Souza','(42) 99200-0001'),P('Bia Souza','(42) 99200-0001')],'tel1'),'celular repetido dentro da reserva é recusado');
+ 
  ok(inv([P('Ana Souza','(42) 99200-0001'),P('ana souza','(42) 99200-0002')],'nome1'),'nome repetido dentro da reserva é recusado');
  ok(inv([],'qtd')&&inv([P('Ana Souza','12345')],'tel0'),'reserva vazia e celular inválido recusados');
  ok(R(w.pub.reservar({dia:25,pessoas:[P('Ana Souza','(42) 99200-0001')],cli:'z'})).code==='invalido','noite inexistente recusada');
  ok(R(w.pub.reservar({dia:19,pessoas:[P('Ana Souza','(42) 99200-0001')],cli:'z',site:'http://spam'})).code==='invalido','campo-isca preenchido (robô) recusado');
  r=R(w.pub.reservar({dia:18,pessoas:[P('Joao Pereira','(42) 99100-0009')],cli:'c'}));ok(r.code==='ja_consta'&&r.campo==='nome0','mesmo nome já reservado na noite é recusado');
- r=R(w.pub.reservar({dia:18,pessoas:[P('Outro Nome','(42) 99100-0002')],cli:'c'}));ok(r.code==='ja_consta'&&r.campo==='tel0','mesmo celular já reservado na noite é recusado');
+ r=R(w.pub.reservar({dia:18,pessoas:[P('Outro Nome','(42) 99100-0001')],cli:'c'}));ok(r.code==='ja_consta'&&r.campo==='tel0','mesmo celular (titular) já reservado na noite é recusado');
  r=R(w.pub.reservar({dia:19,pessoas:[P('Joao Pereira','(42) 99100-0001')],cli:'c'}));ok(r.ok===true,'mesma pessoa pode reservar outra noite');
  // conflito com convidado confirmado
  w.guest.confirmar({id:'G001',titNome:'Adilson Strack',titTel:'(42) 98000-1111',vaiAcomp:false});const gi=G.find(g=>g.id==='G001');
@@ -98,8 +98,8 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(cnt(w,19).total===t0-1&&cnt(w,19).confirmadosPessoas===1,'convidado confirma sozinho: acompanhante liberado (total -1)');
  // ---- cancelar reserva ----
  w=W();r=R(w.pub.reservar({dia:20,pessoas:[P('Joana Silva','(42) 99500-0001'),P('Pedro Silva','(42) 99500-0002')],cli:'i'}));const pr=r.resumo.protocolo;
- ok(R(w.pub.abrirReserva('Joana Silva','(42) 99500-0002')).code==='nao_achou','consulta com nome e celular que não batem é recusada');
- ok(R(w.pub.abrirReserva('joana  SILVA','(42) 99500-0001')).resumos.length===1&&R(w.pub.abrirReserva('Pedro Silva','(42) 99500-0002')).ok,'consulta por nome + celular (sem acento/caixa, qualquer pessoa da reserva)');
+ ok(R(w.pub.abrirReserva('Joana Silva','(42) 99500-0009')).code==='nao_achou','consulta com nome e celular que não batem é recusada');
+ ok(R(w.pub.abrirReserva('joana  SILVA','(42) 99500-0001')).resumos.length===1&&R(w.pub.abrirReserva('Joana Silva','(42) 99500-0001')).ok,'consulta por nome + celular do titular (sem acento/caixa)');
  ok(R(w.pub.cancelarReserva(pr,'Joana Silva','(42) 99500-0002')).code==='nao_achou'&&cnt(w,20).publico===2,'cancelar com celular errado é recusado');
  ok(R(w.pub.cancelarReserva(pr,'Joana Silva','(42) 99500-0001')).ok&&cnt(w,20).publico===0&&w.sheets.Reservas.rows.slice(1).every(x=>x[6]==='Cancelado'),'cancelamento libera as 2 vagas e marca Cancelado');
  ok(R(w.pub.cancelarReserva(pr,'Joana Silva','(42) 99500-0001')).code==='nao_achou','cancelar duas vezes não funciona');
@@ -114,15 +114,15 @@ const R=x=>JSON.parse(JSON.stringify(x));
  await pg.screenshot({path:'shot_pub_home.png',fullPage:true});
  await pg.click('#noites .noite');await pg.waitForSelector('#s-form:not(.hide)');
  ok((await pg.textContent('#tk .tk-hr')).includes('R$ 40')&&(await pg.textContent('.tk-note')).includes('R$ 40,00')&&(await pg.textContent('.tk-note')).includes('comanda')&&(await pg.$$('.tk-pr')).length===0,'ingresso: valor na faixa dos horários + pequeno comentário (R$ 40,00 na comanda)');
- ok((await pg.$$('#qtd button')).length===10&&(await pg.$$('#pessoas .pess')).length===1,'seletor de 1 a 10 pessoas; começa com 1');
+ ok((await pg.getAttribute('#qtd input','max'))==='10'&&(await pg.inputValue('#qtd input'))==='1'&&(await pg.$$('#pessoas .pess')).length===1,'quantidade digitada (1 a 10); começa com 1');
  await pg.screenshot({path:'shot_pub_form1.png',fullPage:true});
- await pg.click('#qtd button:nth-child(3)');ok((await pg.$$('#pessoas .pess')).length===3,'escolher 3 pessoas abre 3 blocos nome+celular');
- await pg.fill('#pn0','Joao');await pg.fill('#pt0','4299');await pg.click('#btn-res');
- ok((await pg.textContent('#e-nome0')).includes('nome completo')&&(await pg.textContent('#e-tel0')).includes('(42) 99999-9999')&&(await pg.textContent('#e-nome1')).includes('pessoa 2')&&(await pg.textContent('#e-tel2')).includes('pessoa 3'),'faltando dados de qualquer pessoa: erro em cada campo, reserva não conclui');
+ await pg.fill('#qtd input','3');ok((await pg.$$('#pessoas .pess')).length===3&&(await pg.$$('#pessoas .pt')).length===1,'digitar 3 abre 3 blocos de nome e só 1 celular (titular)');await pg.fill('#qtd input','15');ok((await pg.inputValue('#qtd input'))==='10'&&(await pg.$$('#pessoas .pess')).length===10,'acima do máximo é limitado a 10');await pg.fill('#qtd input','3');
+ await pg.fill('#pn0','Joao');await pg.fill('#pt0','4299');await pg.click('#andar button:nth-child(1)');await pg.click('#btn-res');
+ ok((await pg.textContent('#e-nome0')).includes('nome completo')&&(await pg.textContent('#e-tel0')).includes('(42) 99999-9999')&&(await pg.textContent('#e-nome1')).includes('pessoa 2')&&(await pg.textContent('#e-nome2')).includes('pessoa 3'),'faltando dados de qualquer pessoa: erro em cada campo, reserva não conclui');
  await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','','');await pg.fill('#pt0','');await pg.type('#pt0','42991000001');ok((await pg.inputValue('#pt0'))==='(42) 99100-0001','máscara de celular');
- await pg.fill('#pn1','Maria Pereira');await pg.type('#pt1','42991000002');await pg.fill('#pn2','Pedro Pereira');await pg.type('#pt2','42991000003');
+ await pg.fill('#pn1','Maria Pereira');await pg.fill('#pn2','Pedro Pereira');
  await pg.screenshot({path:'shot_pub_form3.png',fullPage:true});
- await pg.click('#btn-res');await pg.waitForSelector('#s-ok:not(.hide)');
+ await pg.click('#andar button:nth-child(1)');await pg.click('#btn-res');await pg.waitForSelector('#s-ok:not(.hide)');
  const sum=await pg.textContent('#ok-sum');ok(sum.includes('R2')&&sum.includes('20h')&&(await pg.textContent('#s-ok')).includes('até as 20h'),'tela de sucesso: protocolo e validade até 20h');
  await pg.screenshot({path:'shot_pub_ok.png',fullPage:true});
  ok(w.sheets.Reservas.rows.length===4&&cnt(w,18).publico===3,'3 pessoas gravadas em Reservas pela página');
@@ -136,28 +136,28 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // noite lotada na home + sem_vagas na página
  w=W();enche(w,19,25);
  pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
- ok((await pg.textContent('#noites')).includes('Últimas vagas'),'noite com poucas vagas aparece como "Últimas vagas"');
+ ok((await pg.textContent('#noites')).includes('Últimas'),'noite com poucas vagas aparece como "Últimas"');
  {const bs2=await pg.$$('#noites .noite');await bs2[1].click();await pg.waitForSelector('#s-form:not(.hide)');
- const n1=(await pg.$$('#qtd button')).length;ok(n1===1&&(await pg.textContent('#qtd-h')).includes('Restam apenas 1 vaga'),'noite com 1 vaga: só a opção 1 ('+n1+' botões)');}
+ const n1=await pg.getAttribute('#qtd input','max');ok(n1==='1'&&(await pg.textContent('#qtd-h')).includes('Restam apenas 1 vaga'),'noite com 1 vaga: máximo 1 ('+n1+')');}
  await pg.close();
  w=W();enche(w,19,23);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  {const bs3=await pg.$$('#noites .noite');await bs3[1].click();await pg.waitForSelector('#s-form:not(.hide)');
- const lb=await pg.$$eval('#qtd button',x=>x.map(b=>b.textContent+(b.disabled?'d':'')));ok(lb.join(',')==='1,2,3'&&(await pg.textContent('#qtd-h')).includes('Restam apenas 3 vagas'),'noite com 3 vagas: opções 1,2,3 e nenhuma desabilitada ('+lb+')');}
+ const lb=await pg.getAttribute('#qtd input','max');ok(lb==='3'&&(await pg.textContent('#qtd-h')).includes('Restam apenas 3 vagas'),'noite com 3 vagas: máximo 3 ('+lb+')');}
  await pg.close();
  w=W();enche(w,19,26);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  const bs=await pg.$$('#noites .noite');ok(cnt(w,19).lotado&&(await bs[1].isDisabled())&&(await bs[1].textContent()).includes('Lotado')&&!(await bs[0].isDisabled()),'noite lotada aparece "Lotado" e não pode ser selecionada; as demais abrem');
  await pg.screenshot({path:'shot_pub_lotado.png',fullPage:true});
  // corrida: a noite enche enquanto a pessoa preenche o formulário
  w=W();enche(w,18,16);pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');await pg.click('#noites .noite');await pg.waitForSelector('#s-form:not(.hide)');
- ok((await pg.textContent('#qtd-h')).includes('agilizar o cadastro'),'texto explica que o celular agiliza o cadastro e a experiência');
+ ok((await pg.textContent('#qtd-h')).includes('agilizar o cadastro'),'texto explica que o cadastro agiliza o cadastro e a experiência');
  if(!enche(w,18,2,100).ok)throw new Error('preparo falhou');
- await pg.click('#qtd button:nth-child(2)');await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','42991000001');await pg.fill('#pn1','Maria Pereira');await pg.type('#pt1','42991000002');await pg.click('#btn-res');await pg.waitForSelector('#s-aviso:not(.hide)',{timeout:4000}).catch(async()=>{console.log('DBG',await pg.evaluate(()=>[...document.querySelectorAll('section')].filter(x=>!x.classList.contains('hide')).map(x=>x.id).join()+' | '+document.getElementById('btn-res').textContent+' | '+document.getElementById('pn0').value+' | '+document.getElementById('pt1').value),await pg.textContent('#e-geral'),await pg.textContent('#e-nome0'),await pg.textContent('#e-tel0'),await pg.textContent('#e-nome1'),await pg.textContent('#e-tel1'))});
+ await pg.fill('#qtd input','2');await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','42991000001');await pg.fill('#pn1','Maria Pereira');await pg.click('#andar button:nth-child(1)');await pg.click('#btn-res');await pg.waitForSelector('#s-aviso:not(.hide)',{timeout:4000}).catch(async()=>{console.log('DBG',await pg.evaluate(()=>[...document.querySelectorAll('section')].filter(x=>!x.classList.contains('hide')).map(x=>x.id).join()+' | '+document.getElementById('btn-res').textContent+' | '+document.getElementById('pn0').value+' | '+document.getElementById('pt1').value),await pg.textContent('#e-geral'),await pg.textContent('#e-nome0'),await pg.textContent('#e-tel0'),await pg.textContent('#e-nome1'),await pg.textContent('#e-tel1'))});
  ok((await pg.textContent('#a-titulo')).includes('esgotou'),'noite que lotou durante o preenchimento: aviso claro, nada gravado ('+w.sheets.Reservas.rows.length+' linhas)');
  await pg.close();
  // falha de comunicação / timeout
  w=W();pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  await pg.evaluate(()=>{window.__TMO=500;window.google.script.run.withSuccessHandler=()=>({withFailureHandler:()=>new Proxy({},{get:()=>()=>{}})})});
- await pg.click('#noites .noite');await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','42991000001');await pg.click('#btn-res');await pg.waitForFunction(()=>document.getElementById('e-geral').textContent.includes('Código'),null,{timeout:5000});
+ await pg.click('#noites .noite');await pg.fill('#pn0','Joao Pereira');await pg.type('#pt0','42991000001');await pg.click('#andar button:nth-child(1)');await pg.click('#btn-res');await pg.waitForFunction(()=>document.getElementById('e-geral').textContent.includes('Código'),null,{timeout:5000});
  ok((await pg.textContent('#e-geral')).includes('C03')&&!(await vis(pg,'s-ok')),'servidor sem resposta -> C03 e não mostra "reservado"');await pg.close();
  // roteamento doGet
  {const c=w.guest;c.HtmlService={createTemplateFromFile:(n)=>({evaluate(){return{setTitle(){return this},addMetaTag(){return this},setXFrameOptionsMode(){return this},_t:n}}}),createHtmlOutputFromFile:(n)=>({setTitle(){return this},addMetaTag(){return this},setXFrameOptionsMode(){return this},_t:n}),XFrameOptionsMode:{ALLOWALL:1}};

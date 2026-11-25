@@ -75,8 +75,8 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // página
  let pg=await pagina(w.pub,'/tmp/out/publico/Index.html');await pg.waitForSelector('#noites .noite');
  ok(/20h30|21h30|22h15|Ao vivo/.test(await pg.textContent('#noites')),'ingresso mostra horário do show');
- await pg.click('#noites .noite:first-child');await pg.waitForSelector('#qtd button');
- ok(await pg.$$eval('#qtd button',a=>a.length)===10,'seletor oferece até 10');
+ await pg.click('#noites .noite:first-child');await pg.waitForSelector('#qtd input');
+ ok((await pg.getAttribute('#qtd input','max'))==='10','quantidade aceita até 10');
  ok(/mais de 10 pessoas/.test(await pg.textContent('#qtd-h'))&&await pg.$eval('#qtd-h a',a=>decodeURIComponent(a.href).includes('wa.me/')&&decodeURIComponent(a.href).includes('10 pessoas')),'aviso: acima de 10, WhatsApp');
  // painel
  pg=await pagina(w.guest,'/tmp/out/convidados/Painel.html',h=>h.replace("try{SES=sessionStorage.getItem('sh_ses')}catch(e){}","SES="+JSON.stringify(K)+";"));

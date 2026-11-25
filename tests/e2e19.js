@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 15},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 16},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
   setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
@@ -12,7 +12,7 @@ function mundo(cfgExtra=[]){
  const cache={};let uu=0;const triggers=[];
  const mkctx=(files)=>{const ctx={Date:global.Date,console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
+  CacheService:{getScriptCache:()=>({get:k=>(!global.__CACHE&&/^(dados|prog)_v2$/.test(k))?null:(cache[k]??null),put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   ScriptApp:{getService:()=>({getUrl:()=>'https://script.google.com/macros/s/TESTE/exec'}),getProjectTriggers:()=>triggers,newTrigger:(f)=>({timeBased:()=>({everyMinutes:()=>({create:()=>triggers.push({getHandlerFunction:()=>f})})})})},
   HtmlService:{},
@@ -57,7 +57,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  await pgA.goto('file:///tmp/pg2.html');await pgA.waitForSelector('#noites .noite');
  ok((await pgA.$$('#noites .noite')).length>=3&&/^dados:text\/plain/.test(usos[0])&&await pgA.evaluate(()=>typeof window.google==='undefined'),'página estática lista as noites via fetch POST text/plain, sem google.script.run');
  await pgA.click('#noites .noite');await pgA.waitForSelector('#s-form:not(.hide)');
- await pgA.fill('#pn0','Joao Pereira');await pgA.type('#pt0','42991000009');await pgA.click('#btn-res');await pgA.waitForSelector('#s-ok:not(.hide)',{timeout:5000}).catch(()=>{});
+ await pgA.fill('#pn0','Joao Pereira');await pgA.type('#pt0','42991000009');await pgA.click('#andar button:nth-child(2)');await pgA.click('#btn-res');await pgA.waitForSelector('#s-ok:not(.hide)',{timeout:5000}).catch(()=>{});
  ok(usos.some(u=>/^reservar:text\/plain/.test(u))&&(await pgA.$eval('#s-ok',e=>!e.classList.contains('hide')))&&w.sheets.Reservas.rows.length===2,'reserva feita pela página estática grava na planilha');
  await pgA.close();
  // convidados: página estática

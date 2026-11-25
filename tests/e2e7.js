@@ -1,18 +1,18 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 12},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 16},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
-  setNumberFormat(){return this},setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
+  setNumberFormat(){return this},clearContent(){for(let i=0;i<nr;i++)for(let j=0;j<nc;j++){if(s.rows[r-1+i])s.rows[r-1+i][c-1+j]=""}return this},setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
 function mundo(cfgExtra=[]){
  const sheets={Convidados:mkSheet([['id','nome','dia','estilo','grupo','acomp','busca'],...G.map(g=>[g.id,g.nome,g.dia,g.estilo,g.grupo,g.acomp,g.busca])]),
   Confirmacoes:mkSheet([['h']]),
   Programacao:mkSheet([['Dia','Data','Atração','Estilo','Instagram'],[18,new Date('2026-11-18T00:00:00-03:00'),'Lonesome Capitain · Country & Folk','Formal','@a'],[19,new Date('2026-11-19T00:00:00-03:00'),'Os Bauretz · Soul, Disco & MPB','MPB','@b'],[20,new Date('2026-11-20T00:00:00-03:00'),'Hardways · Classic Rock','Rock','@c'],[21,new Date('2026-11-21T00:00:00-03:00'),'Rodrigo Seidel e banda · Pop Rock','Pop Rock','@d']]),
   Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',74],['mesas',19],['whatsapp_contato',''],['horario',''],...cfgExtra])};
  const cache={};let uu=0;const triggers=[];
- const mkctx=(files)=>{const ctx={console,
+ const mkctx=(files)=>{const ctx={Date:global.Date,console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
+  CacheService:{getScriptCache:()=>({get:k=>(!global.__CACHE&&/^(dados|prog)_v2$/.test(k))?null:(cache[k]??null),put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   ScriptApp:{getService:()=>({getUrl:()=>'https://script.google.com/macros/s/TESTE/exec'}),getProjectTriggers:()=>triggers,newTrigger:(f)=>({timeBased:()=>({everyMinutes:()=>({create:()=>triggers.push({getHandlerFunction:()=>f})})})})},
   HtmlService:{},
@@ -32,7 +32,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // monta mundo com público lendo o mesmo ss
  function W(cfg){const w=mundo(cfg);
   const ss=w.guest.SpreadsheetApp.getActiveSpreadsheet();
-  const ctx={...w.pub};const pctx=vm.createContext({console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
+  const ctx={...w.pub};const pctx=vm.createContext({Date:global.Date,console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
   vm.runInContext(pubSrc,pctx);w.pub=pctx;w.guest.prepararReservas();return w}
  const br=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
  async function pagina(ctx,arq,sub){const pg=await br.newPage({viewport:{width:390,height:844}});
@@ -62,7 +62,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  ok(tx.includes('Olá, Maria!')&&tx.includes('Protocolo: '+cc.prot)&&tx.includes('Sua presença')&&!tx.includes('R$'),'texto do convidado: nome, protocolo, sem valor');
  await pg.click('[data-tab="res"]');await pg.waitForSelector('.res');
  hs=await pg.$$eval('a.zap',a=>a.map(x=>x.href));
- ok(hs.length===2&&hs[0].includes('wa.me/5542996000001'),'reserva: botão por pessoa');
+ ok(hs.length===1&&hs[0].includes('wa.me/5542996000001'),'reserva: botão só do titular (demais sem celular)');
  const tr=decodeURIComponent(hs[0].split('text=')[1]);
  ok(tr.includes('Sua reserva')&&tr.includes('Protocolo: R')&&tr.includes('até as 20h')&&tr.includes('R$ 40,00'),'texto da reserva: validade e valor');
  await pg.close();await br.close();console.log(out.join('\n'));

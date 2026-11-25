@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const vm=require('vm'),fs=require('fs');
 const G=require('./convidados.json');
-const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 12},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
+const mkSheet=(rows)=>({rows,getLastRow(){return this.rows.length},getMaxRows(){return 5000},getMaxColumns(){return 16},insertColumnsAfter(){},getLastColumn(){return 12},insertRowsAfter(){},
  getRange(r,c,nr=1,nc=1){const s=this;return{getValues(){return s.rows.slice(r-1,r-1+nr).map(x=>Array.from({length:nc},(_,i)=>(x||[])[c-1+i]??''))},
   setValues(v){v.forEach((row,i)=>{s.rows[r-1+i]=s.rows[r-1+i]||[];row.forEach((x,j)=>s.rows[r-1+i][c-1+j]=x)})},
   setValue(v){s.rows[r-1]=s.rows[r-1]||[];s.rows[r-1][c-1]=v},getValue(){return (s.rows[r-1]||[])[c-1]??''}}},appendRow(a){this.rows.push(a)}});
@@ -10,9 +10,9 @@ function mundo(cfgExtra=[]){
   Programacao:mkSheet([['Dia','Data','Atração','Estilo','Instagram'],[18,new Date('2026-11-18T00:00:00-03:00'),'Lonesome Capitain · Country & Folk','Formal','@a'],[19,new Date('2026-11-19T00:00:00-03:00'),'Os Bauretz · Soul, Disco & MPB','MPB','@b'],[20,new Date('2026-11-20T00:00:00-03:00'),'Hardways · Classic Rock','Rock','@c'],[21,new Date('2026-11-21T00:00:00-03:00'),'Rodrigo Seidel e banda · Pop Rock','Pop Rock','@d']]),
   Config:mkSheet([['Parâmetro','Valor'],['capacidade_por_noite',74],['mesas',19],['whatsapp_contato',''],['horario',''],...cfgExtra])};
  const cache={};let uu=0;const triggers=[];
- const mkctx=(files)=>{const ctx={console,
+ const mkctx=(files)=>{const ctx={Date:global.Date,console,
   SpreadsheetApp:{flush(){},getActiveSpreadsheet:()=>ss,openById:()=>ss},
-  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
+  CacheService:{getScriptCache:()=>({get:k=>(!global.__CACHE&&/^(dados|prog)_v2$/.test(k))?null:(cache[k]??null),put:(k,v)=>{cache[k]=v},remove:k=>{delete cache[k]}})},
   LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
   ScriptApp:{getService:()=>({getUrl:()=>'https://script.google.com/macros/s/TESTE/exec'}),getProjectTriggers:()=>triggers,newTrigger:(f)=>({timeBased:()=>({everyMinutes:()=>({create:()=>triggers.push({getHandlerFunction:()=>f})})})})},
   HtmlService:{},
@@ -32,7 +32,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // monta mundo com público lendo o mesmo ss
  function W(cfg){const w=mundo(cfg);
   const ss=w.guest.SpreadsheetApp.getActiveSpreadsheet();
-  const ctx={...w.pub};const pctx=vm.createContext({console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
+  const ctx={...w.pub};const pctx=vm.createContext({Date:global.Date,console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
   vm.runInContext(pubSrc,pctx);w.pub=pctx;w.guest.prepararReservas();return w}
  const br=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
  async function pagina(ctx,arq,sub){const pg=await br.newPage({viewport:{width:390,height:844}});
@@ -60,7 +60,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  // ligado: reserva com 3 pessoas -> 3 linhas, uma por celular
  w=W();ligar(w,'SIM');const E=preparaEnvio(w);
  let r=R(w.pub.reservar({dia:19,pessoas:[P('Joao Pereira','(42) 99100-0001'),P('Maria Pereira','(42) 99100-0002'),P('Pedro Pereira','(42) 99100-0003')],cli:'a'}));
- ok(r.ok&&sh(w,'Whats').length===4&&sh(w,'Whats').slice(1).every(x=>x[6]==='PENDENTE'&&x[1]==='R'&&x[3]===19),'reserva de 3 pessoas -> 3 itens na fila (um por celular)');
+ ok(r.ok&&sh(w,'Whats').length===2&&sh(w,'Whats').slice(1).every(x=>x[6]==='PENDENTE'&&x[1]==='R'&&x[3]===19),'reserva de 3 pessoas -> 1 item na fila (só o titular tem celular)');
  const prot=sh(w,'Whats')[1][2];
  // convidado confirma com acompanhante -> 2 itens
  const gc=G.find(g=>g.acomp===1);w.guest.confirmar({id:gc.id,titNome:gc.nome,titTel:'(42) 98000-0001',vaiAcomp:true,acNome:'Acomp Teste Souza',acTel:'(42) 98000-0002'});
@@ -71,7 +71,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
  let pr=R(w.pub.processarFilaWhats());const st=sh(w,'Whats').slice(1).map(x=>x[6]);
  ok(pr.ok&&st.every(s=>s==='ENVIADO')&&sh(w,'Whats')[1][8].startsWith('wamid'),'fila processada: todos ENVIADO com wamid ('+st.join(',')+')');
  const envio=E.chamadas.filter(c=>/\/messages$/.test(c.u)).map(c=>JSON.parse(c.o.payload));
- ok(envio.length===5&&envio[0].to==='5542991000001'&&envio[0].type==='template'&&envio[0].template.components[0].parameters[0].image.id.startsWith('MID')&&envio[0].template.components[1].parameters[0].text==='Joao'&&envio[0].template.components[1].parameters[3].text===prot,'payload do template: número 55+DDD, imagem por id, primeiro nome, protocolo');
+ ok(envio.length===3&&envio[0].to==='5542991000001'&&envio[0].type==='template'&&envio[0].template.components[0].parameters[0].image.id.startsWith('MID')&&envio[0].template.components[1].parameters[0].text==='Joao'&&envio[0].template.components[1].parameters[3].text===prot,'payload do template: número 55+DDD, imagem por id, primeiro nome, protocolo');
  ok(E.chamadas.every(c=>c.o.headers.Authorization==='Bearer tok'),'token enviado só no cabeçalho');
  ok(R(w.pub.processarFilaWhats()).feitos===0,'segunda rodada: nada a enviar (sem duplicar mensagens)');
  // falha: 3 tentativas -> FALHOU; reenviar pela gestão

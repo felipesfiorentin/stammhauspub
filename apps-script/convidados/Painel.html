@@ -75,11 +75,11 @@ button.s{padding:4px 9px;font-size:12.5px}a.zap{display:inline-block;padding:4px
 .tb td,.tb th{vertical-align:middle}
 .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600}
 .t-c{background:#1f5b33;color:#cdf3d3}.t-p{background:#6b5410;color:#ffe9a8}.t-n{background:#6a2a1c;color:#ffc9b9}
-input[type=text],input[type=search],input[type=password],select{background:#0a2016;color:var(--off);border:1.5px solid rgba(234,231,218,.3);border-radius:8px;padding:8px 10px;max-width:100%}
+input[type=text],input[type=search],input[type=password],select,textarea{background:#0a2016;color:var(--off);border:1.5px solid rgba(234,231,218,.3);border-radius:8px;padding:8px 10px;max-width:100%}
 .res{border:1px solid rgba(234,231,218,.15);border-radius:10px;padding:9px;margin:8px 0}
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px;z-index:9}
 .mod{background:#143a2a;border:1.5px solid var(--ouro);border-radius:14px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow:auto}
-.mod label,.lg label{display:block;font-size:12.5px;color:#cfcbbb;margin:9px 0 3px}.mod input,.mod select,.lg input{width:100%}
+.mod label,.lg label{display:block;font-size:12.5px;color:#cfcbbb;margin:9px 0 3px}.mod input,.mod select,.mod textarea,.lg input{width:100%;box-sizing:border-box;font:inherit}
 .warn{background:#5a3b0a;border-radius:8px;padding:8px 10px;margin:10px 0;font-size:13px}.bad{color:#ffb59f;font-size:13px;margin-top:8px}
 .aud{font-size:12.5px;color:#cfcbbb}.aud div{padding:3px 0;border-bottom:1px solid rgba(234,231,218,.08)}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ouro);color:#fff;padding:9px 16px;border-radius:10px;font-weight:600;z-index:10}
@@ -392,7 +392,7 @@ document.addEventListener('click',function(e){var t=e.target;
  if(a==='ed')modal('Editar convidado','<label>Nome no convite</label><input type="text" id="f1" value="'+esc(c.nome)+'"><label>Direito a acompanhante</label><select id="f2"><option value="0"'+(c.acomp?'':' selected')+'>Não</option><option value="1"'+(c.acomp?' selected':'')+'>Sim</option></select><label>Celular (WhatsApp)</label><input type="text" id="f3" value="'+esc(c.tel||'')+'" placeholder="(47) 99999-9999">','Salvar',function(f,cb){run('gEditarConvidado',[SES,id,{nome:val('f1'),acomp:Number(val('f2')),tel:val('f3')}],cb)});
  if(a==='rm')modal('Mudar reserva '+esc(r.prot)+' de noite','<label>Nova noite</label><select id="f1">'+opcoesDia(0,r.dia)+'</select>','Mover',function(f,cb){run('gReservaMover',[SES,id,Number(val('f1')),f],cb)});
  if(a==='rc')modal('Cancelar reserva '+esc(r.prot),'<p>'+r.pessoas.map(function(p){return esc(p.nome)}).join(', ')+'</p><p class="sub">A vaga é liberada na hora.</p>','Cancelar reserva',function(f,cb){run('gReservaCancelar',[SES,id],cb)});
- if(a==='rap')modal('Incluir pessoa na reserva '+esc(r.prot),'<label>Nome completo</label><input type="text" id="f1"><label>Celular (opcional)</label><input type="text" id="f2" placeholder="(42) 99999-9999">','Incluir',function(f,cb){run('gReservaPessoa',[SES,id,'',val('f1'),val('f2'),f],cb)});
+ if(a==='rap')modal('Incluir pessoas na reserva '+esc(r.prot),'<label>Nomes completos (um por linha)</label><textarea id="f1" rows="6" placeholder="Maria Souza&#10;João Pereira; (42) 99999-9999"></textarea><p class="sub">Celular é opcional: escreva depois de ponto e vírgula.</p>','Incluir',function(f,cb){var lista=val('f1').split(/\n/).map(function(x){var q=x.split(';');return{nome:(q[0]||'').trim(),tel:(q[1]||'').trim()}}).filter(function(x){return x.nome||x.tel});run('gReservaPessoas',[SES,id,lista,f],cb)});
  if(a==='rep'){var p=r.pessoas.filter(function(x){return String(x.linha)===l})[0];modal('Editar pessoa','<label>Nome completo</label><input type="text" id="f1" value="'+esc(p.nome)+'"><label>Celular (opcional)</label><input type="text" id="f2" value="'+esc(p.tel)+'">','Salvar',function(f,cb){run('gReservaPessoa',[SES,id,Number(l),val('f1'),val('f2'),f],cb)})}
  if(a==='rrp')modal('Remover pessoa da reserva','<p>Remover esta pessoa de '+esc(r.prot)+'?</p>','Remover',function(f,cb){run('gReservaRemoverPessoa',[SES,id,Number(l)],cb)});
 });
