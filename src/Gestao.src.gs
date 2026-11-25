@@ -89,7 +89,7 @@ function estadoGestao_(a) {
   resv.forEach(function (r) {
     if (r.status !== 'Confirmado') return;
     var g = gr[r.prot];
-    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, pessoas: []}; ordem.push(r.prot); }
+    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, andar: r.andar || '', pessoas: []}; ordem.push(r.prot); }
     g.pessoas.push({linha: r.linha, nome: r.nome, tel: r.tel});
   });
   var aud = [], sa = ss_().getSheetByName('Auditoria'), na = sa ? sa.getLastRow() : 0;

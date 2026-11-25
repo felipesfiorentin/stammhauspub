@@ -1,5 +1,11 @@
 # Histórico de mudanças
 
+## 2026-11-24 (3)
+- Tickets da programação: barra inferior com 4 campos iguais (Abertura, Show, Entrada, Vagas), fonte ajustada para caber no celular.
+- Artes dos tickets: prontas (Rock Grande, Diego Küchler) em assets/cards; demais atrações buscam dinamicamente na pasta do Drive (rota `arte`, por nome do artista, cache; logo + 2 fotos; sem pasta/imagem = ticket de texto).
+- Reserva: escolha obrigatória de ambiente (Térreo mais perto do palco / Andar superior mais calmo), gravada em Reservas col L, exibida no resumo, consulta, painel e PDF. Não incluído nas reservas internas da equipe.
+- Testes: e2e29; e2e2/e2e19 ajustados.
+
 ## 2026-11-24 (2)
 - Valor da entrada 0 = grátis (diferente de vazio, que usa o padrão 40): o site mostra "entrada grátis" na lista e no calendário e "Entrada gratuita nesta noite" na reserva; texto de WhatsApp do painel e ingresso (modelos novos) também.
 

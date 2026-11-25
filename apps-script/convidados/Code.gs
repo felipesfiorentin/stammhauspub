@@ -139,12 +139,16 @@ function convLeve_() {
 
 // Colunas Reservas (público): A data/hora, B protocolo, C dia, D nº da pessoa, E nome, F celular,
 // G status (Confirmado/Cancelado), H celular do titular da reserva, I consentimento, J compareceu, K atualizado
+/* ambiente escolhido na reserva: Reservas, coluna L. 'Térreo' (mais perto do palco) ou 'Andar superior' (mais calmo); vazio = sem preferência */
+var RES_COL_ANDAR = 12, ANDAR_CAB = 'ambiente (Térreo / Andar superior)';
+function andarNorm_(v) { var s = String(v == null ? '' : v).trim().toLowerCase(); return /^t/.test(s) ? 'Térreo' : /^(s|a)/.test(s) ? 'Andar superior' : ''; }
 function reservas_() {
   var sh = ss_().getSheetByName(ABA.RES), n = sh ? sh.getLastRow() : 0;
   if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 11).getValues().map(function (r, i) {
+  var lc = Math.min(RES_COL_ANDAR, sh.getMaxColumns());   // coluna L (ambiente) só existe depois da primeira reserva com escolha
+  return sh.getRange(2, 1, n - 1, lc).getValues().map(function (r, i) {
     return {linha: i + 2, ts: r[0], prot: String(r[1]), dia: Number(r[2]), n: Number(r[3]) || 0, nome: String(r[4]),
-            tel: String(r[5]), status: String(r[6]), titTel: String(r[7])};
+            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1])};
   }).filter(function (r) { return r.prot; });
 }
 
@@ -1042,7 +1046,7 @@ function estadoGestao_(a) {
   resv.forEach(function (r) {
     if (r.status !== 'Confirmado') return;
     var g = gr[r.prot];
-    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, pessoas: []}; ordem.push(r.prot); }
+    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, andar: r.andar || '', pessoas: []}; ordem.push(r.prot); }
     g.pessoas.push({linha: r.linha, nome: r.nome, tel: r.tel});
   });
   var aud = [], sa = ss_().getSheetByName('Auditoria'), na = sa ? sa.getLastRow() : 0;

@@ -79,12 +79,14 @@ function validarReserva_(p, cfg, prog) {
     if (nomes[nn]) return {campo: 'nome' + i, msg: 'Este nome aparece duas vezes na reserva.'};
     tels[d] = 1; nomes[nn] = 1; out.push({nome: n, tel: t});
   }
-  return {dia: dia, pessoas: out};
+  var andar = String(p.andar == null ? '' : p.andar).trim() === '' ? '' : andarNorm_(p.andar);
+  if (String(p.andar == null ? '' : p.andar).trim() !== '' && !andar) return {campo: 'andar', msg: 'Escolha o ambiente: Térreo ou Andar superior.'};
+  return {dia: dia, pessoas: out, andar: andar};
 }
 
-function resumoRes_(prot, dia, prog, pessoas, cfg) {
+function resumoRes_(prot, dia, prog, pessoas, cfg, andar) {
   var p = prog[dia] || {};
-  return {protocolo: prot, dia: dia, diaLabel: p.label || '', atracao: p.atracao || '', pessoas: pessoas, valor: valorDe_(cfg, p), ate: cfg.reservaAte};
+  return {protocolo: prot, dia: dia, diaLabel: p.label || '', atracao: p.atracao || '', pessoas: pessoas, valor: valorDe_(cfg, p), ate: cfg.reservaAte, andar: andar || ''};
 }
 
 function reservar_(p) {
@@ -113,12 +115,13 @@ function reservar_(p) {
     if (linha + n - 1 > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
     var rows = v.pessoas.map(function (x, i) { return [agora, prot, v.dia, i + 1, x.nome, x.tel, 'Confirmado', v.pessoas[0].tel, 'Sim (aceite ao reservar)', '', agora]; });
     sh.getRange(linha, 1, n, 11).setValues(rows);
+    if (v.andar) { if (sh.getMaxColumns() < RES_COL_ANDAR) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ANDAR - sh.getMaxColumns()); if (!String(sh.getRange(1, RES_COL_ANDAR).getValue() || '')) sh.getRange(1, RES_COL_ANDAR).setValue(ANDAR_CAB); sh.getRange(linha, RES_COL_ANDAR, n, 1).setValues(rows.map(function () { return [v.andar]; })); }
     SpreadsheetApp.flush();
     if (String(sh.getRange(linha, 2).getValue()) !== prot || String(sh.getRange(linha + n - 1, 5).getValue()) !== v.pessoas[n - 1].nome) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
     atualizarPainelSeguro_();
     enfileirarWhats_('R', prot, v.dia, v.pessoas);
     cacheLimpa_();
-    return {ok: true, resumo: resumoRes_(prot, v.dia, prog, v.pessoas, cfg)};
+    return {ok: true, resumo: resumoRes_(prot, v.dia, prog, v.pessoas, cfg, v.andar)};
   } finally { lock.releaseLock(); }
 }
 
@@ -136,7 +139,7 @@ function abrirReserva_(nome, tel) {
   if (!g.length) return {ok: false, code: 'nao_achou'};
   var cfg = cfg_(), prog = prog_();
   return {ok: true, resumos: g.map(function (rows) {
-    return resumoRes_(rows[0].prot, rows[0].dia, prog, rows.map(function (r) { return {nome: r.nome, tel: r.tel}; }), cfg);
+    return resumoRes_(rows[0].prot, rows[0].dia, prog, rows.map(function (r) { return {nome: r.nome, tel: r.tel}; }), cfg, rows[0].andar);
   })};
 }
 
@@ -155,13 +158,83 @@ function cancelarReserva_(prot, nome, tel) {
   } finally { lock.releaseLock(); }
 }
 
+
+/* ---------- artes dos artistas: busca pelo nome na pasta do Drive ----------
+ * Pasta "Artistas": uma subpasta por artista/banda (nome da subpasta = nome do artista), com fotos e logos (até 3 níveis de subpastas).
+ * O ticket usa: logo (arquivo cujo nome tem "logo", de preferência o preto/colorido — o branco some no ticket claro) e até 2 fotos.
+ * Sem imagem de foto/logo na subpasta (só PDF/vídeo, por exemplo) ou sem subpasta com o nome: ticket só de texto. */
+var ARTES_PASTA = '1gTowXWgSFVKnaoGYktAMfN3hrwUYLB7R';
+function artesPasta_() { try { return PropertiesService.getScriptProperties().getProperty('ARTES_PASTA') || ARTES_PASTA; } catch (e) { return ARTES_PASTA; } }
+function foldNome_(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function nomeArtista_(s) { return foldNome_(String(s || '').split(/·| - /)[0]).replace(/^(os|as|o|a|the|banda|trio|dupla) /, ''); }
+function driveLista_(pasta) {
+  var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("'" + pasta + "' in parents and trashed=false") + '&fields=' + encodeURIComponent('files(id,name,mimeType,size)') + '&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true',
+    {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}, muteHttpExceptions: true});
+  if (r.getResponseCode() !== 200) throw new Error('DRIVE_' + r.getResponseCode());
+  return JSON.parse(r.getContentText()).files || [];
+}
+function coletaImgs_(pasta, arr, nivel) {
+  driveLista_(pasta).forEach(function (f) {
+    if (f.mimeType === 'application/vnd.google-apps.folder') { if (nivel < 2) coletaImgs_(f.id, arr, nivel + 1); }
+    else if (/^image\//.test(f.mimeType)) arr.push({id: f.id, n: f.name, s: Number(f.size) || 0});
+  });
+}
+function artesIndice_() {   // {nome-normalizado-da-subpasta: [{id,n,s}]}; cache 30 min (só guarda se a leitura deu certo)
+  var ch = cacheGet_('artes_idx_v1'); if (ch) return ch;
+  var idx = {};
+  driveLista_(artesPasta_()).forEach(function (f) {
+    if (f.mimeType !== 'application/vnd.google-apps.folder') return;
+    var arr = []; coletaImgs_(f.id, arr, 0); idx[nomeArtista_(f.name) || foldNome_(f.name)] = arr;
+  });
+  cachePut_('artes_idx_v1', idx, 1800); return idx;
+}
+function achaArtista_(atracao, idx) {
+  var nome = nomeArtista_(atracao); if (nome.length < 3) return null;
+  var melhor = null, nm = ' ' + nome + ' ';
+  Object.keys(idx).forEach(function (k) { if (k.length < 3) return; var kk = ' ' + k + ' '; if ((nm.indexOf(kk) >= 0 || kk.indexOf(nm) >= 0) && (!melhor || k.length > melhor.length)) melhor = k; });
+  return melhor;
+}
+function escolheArtes_(imgs) {
+  var logos = imgs.filter(function (i) { return /logo/i.test(i.n); }), brancos = /branc|white/i;
+  var logo = logos.filter(function (i) { return !brancos.test(i.n); }).sort(function (a, b) { return /pret|black|color/i.test(b.n) - /pret|black|color/i.test(a.n); })[0] || null;
+  var fotos = imgs.filter(function (i) { return !/logo/i.test(i.n) && i.s > 15000; }).sort(function (a, b) { return a.n < b.n ? -1 : 1; }).slice(0, 2);
+  return {logo: logo, fotos: fotos};
+}
+function cachePutBig_(k, txt, seg) { try { var c = CacheService.getScriptCache(), n = Math.ceil(txt.length / 90000), o = {}; for (var i = 0; i < n; i++) o[k + '_' + i] = txt.substr(i * 90000, 90000); o[k + '_n'] = String(n); c.putAll(o, seg); } catch (e) {} }
+function cacheGetBig_(k) { try { var c = CacheService.getScriptCache(), n = Number(c.get(k + '_n') || 0); if (!n) return null; var ks = []; for (var i = 0; i < n; i++) ks.push(k + '_' + i); var o = c.getAll(ks), t = ''; for (var j = 0; j < n; j++) { if (o[k + '_' + j] == null) return null; t += o[k + '_' + j]; } return t; } catch (e) { return null; } }
+function dataUri_(blob) { return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()); }
+function imagemDrive_(id, larg, tam) {   // logo: arquivo original (mantém a transparência); foto: miniatura reduzida do Drive
+  if (tam && tam <= 1500000 && larg <= 0) return dataUri_(DriveApp.getFileById(id).getBlob());
+  var h = {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()};
+  var m = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '?fields=thumbnailLink&supportsAllDrives=true', {headers: h, muteHttpExceptions: true});
+  var tl = m.getResponseCode() === 200 ? JSON.parse(m.getContentText()).thumbnailLink : '';
+  if (tl) { var r = UrlFetchApp.fetch(tl.replace(/=s\d+$/, '=s' + (larg > 0 ? larg : 600)), {headers: h, muteHttpExceptions: true}); if (r.getResponseCode() === 200) return dataUri_(r.getBlob()); }
+  if (tam && tam <= 1000000) return dataUri_(DriveApp.getFileById(id).getBlob());
+  return '';
+}
+function arte_(atracao) {
+  if (!limite_('ar', 150, 60)) return {ok: false, code: 'limite'};
+  var nome = nomeArtista_(atracao); if (nome.length < 3) return {ok: false};
+  var ck = 'arte_v1_' + nome.replace(/ /g, '_').slice(0, 60), ch = cacheGetBig_(ck);
+  if (ch) return JSON.parse(ch);
+  var idx = artesIndice_(), k = achaArtista_(atracao, idx), out = {ok: false};
+  if (k) {
+    var e = escolheArtes_(idx[k]), fotos = [], logo = '';
+    try { if (e.logo) logo = imagemDrive_(e.logo.id, 0, e.logo.s); } catch (e1) {}
+    e.fotos.forEach(function (f) { try { var u = imagemDrive_(f.id, 600, f.s); if (u) fotos.push(u); } catch (e2) {} });
+    if (logo || fotos.length) out = {ok: true, logo: logo, fotos: fotos};
+  }
+  cachePutBig_(ck, JSON.stringify(out), 1800); return out;
+}
+
+function arte(nome)                { return api_('arte',     arte_,            arguments); }
 function dados()                   { return api_('dados',    dados_,           arguments); }
 function reservar(p)               { return api_('reservar', reservar_,        arguments); }
 function abrirReserva(nome, tel)   { return api_('abrir',    abrirReserva_,    arguments); }
 function cancelarReserva(prot, nome, tel){ return api_('cancelar', cancelarReserva_, arguments); }
 
 /* Entrada para a página estática do site (GitHub Pages): mesma API do google.script.run, só as funções públicas. */
-var ROTAS_ = {dados: function (a) { return dados.apply(null, a); }, reservar: function (a) { return reservar.apply(null, a); },
+var ROTAS_ = {dados: function (a) { return dados.apply(null, a); }, arte: function (a) { return arte.apply(null, a); }, reservar: function (a) { return reservar.apply(null, a); },
               abrirReserva: function (a) { return abrirReserva.apply(null, a); }, cancelarReserva: function (a) { return cancelarReserva.apply(null, a); }};
 function doPost(e) {
   var out;

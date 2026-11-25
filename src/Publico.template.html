@@ -74,8 +74,7 @@ button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;border:0;p
 .tk-pub{width:54px;height:auto;display:block;margin:0 auto 9px;opacity:.9}
 .noite.tkc{padding:0;background:none;border:0;border-radius:8px;margin:0 0 14px;cursor:pointer;display:block;-webkit-tap-highlight-color:transparent}
 .noite.tkc .tk{margin:0}.noite.tkc[disabled]{opacity:1}.noite.tkc[disabled] .tk{filter:grayscale(.85) brightness(.82)}
-.noite.tkc .tk-hr b{padding:0;margin-top:5px}.noite.tkc .tk-hr small{color:#4c5a4f;font:700 9px/1 Inter,sans-serif;margin:0}
-.tkc .tk-hr .st{font:800 15px/1.1 'Playfair Display',Georgia,serif;margin-top:5px;white-space:nowrap}
+.noite.tkc .tk-hr small{color:#4c5a4f;margin:0}
 .tkc .st.d{color:#1f6b2c}.tkc .st.p{color:#8a5d00}.tkc .st.l{color:#b03a18}
 .tkc .tk-cta{position:absolute;left:0;right:0;z-index:3}
 .tk-note{font-size:12.5px;color:#b9b5a6;text-align:center;margin:-6px 0 14px;font-style:italic}
@@ -89,7 +88,7 @@ a.zap{display:inline-block;margin-top:8px;padding:9px 14px;border-radius:8px;bac
 details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block;white-space:pre-wrap;word-break:break-word;margin-top:4px}
 .errbox{background:rgba(7,28,18,.55);border:1px solid rgba(224,78,39,.7);border-radius:10px;padding:12px 14px;color:#ffe2d8;font-size:14.5px}
 
-.tk .tk-hr{grid-template-columns:repeat(3,minmax(0,1fr));box-sizing:border-box;height:var(--b);padding:0 8px 3px;align-content:center;align-items:center}.tk .tk-hr small{white-space:nowrap}.tk .tk-hr b{font-size:18px;white-space:nowrap}.tk-pr{position:relative;z-index:1;height:36px;display:flex;align-items:center;justify-content:center;gap:8px;background:#d9cfae;border-top:1.5px solid rgba(22,36,27,.7);font:700 9.5px/1.2 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#16241b;padding:0 12px;text-align:center}
+.tk{container-type:inline-size}.tk .tk-hr{grid-template-columns:repeat(4,minmax(0,1fr));box-sizing:border-box;height:var(--b);padding:0 6px 3px;align-content:center;align-items:center}.tk .tk-hr>div{min-width:0;overflow:hidden;padding:0 2px}.tk .tk-hr small{white-space:nowrap;letter-spacing:.1em;font-size:clamp(7px,2.4cqw,9px)}.tk .tk-hr b,.tkc .tk-hr .st{font:800 clamp(11px,4.4cqw,18px)/1.1 'Playfair Display',Georgia,serif;white-space:nowrap;margin-top:5px;padding:0}.tk .tk-hr .st.d{color:#1f6b2c}.tk .tk-hr .st.p{color:#8a5d00}.tk .tk-hr .st.l{color:#b03a18}.tk-ph.dyn{filter:grayscale(1) sepia(.3) contrast(1.08) brightness(1.05)}.tk-pr{position:relative;z-index:1;height:36px;display:flex;align-items:center;justify-content:center;gap:8px;background:#d9cfae;border-top:1.5px solid rgba(22,36,27,.7);font:700 9.5px/1.2 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#16241b;padding:0 12px;text-align:center}
 .tk-pr b{font:800 15px/1 'Playfair Display',Georgia,serif;letter-spacing:.02em;color:#7a5400}
 .noite{display:block;width:100%;text-align:left;background:rgba(7,28,18,.42);color:var(--off);border:1px solid rgba(180,126,0,.6);border-radius:14px;padding:16px 18px;margin:0 0 12px;position:relative}
 .noite b{display:block;font:700 19px/1.2 'Playfair Display',Georgia,serif;padding-right:96px}
@@ -99,6 +98,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
 .noite[disabled]{opacity:.6;cursor:not-allowed}
 .qtd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}.qtd button{margin:0;padding:12px 0}
 .qtd .on{background:var(--ouro);color:#0a2016;border-color:var(--ouro)}
+.and{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}.and button{margin:0;padding:12px 8px;line-height:1.25}.and b{display:block;font:700 16px/1.2 'Playfair Display',Georgia,serif}.and small{display:block;font-size:12.5px;font-weight:400;opacity:.85;margin-top:2px}.and .on{background:var(--ouro);color:#0a2016;border-color:var(--ouro)}
 .pess{border-top:1px solid rgba(234,231,218,.18);margin-top:14px;padding-top:2px}.pess h3{font:700 16px/1.2 'Playfair Display',Georgia,serif;margin:12px 0 0;color:#d9a62e}
 .aviso-box{background:rgba(180,126,0,.14);border:1px solid rgba(180,126,0,.6);border-radius:10px;padding:12px 14px;font-size:14.5px;color:#f1e6c6;margin:0 0 14px}
 .cal{display:none}
@@ -140,6 +140,9 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
       <div class="qtd" id="qtd"></div>
       <p class="hint" id="qtd-h"></p>
       <div id="pessoas"></div>
+      <label>Onde prefere ficar?</label>
+      <div class="and" id="andar"><button type="button" class="ghost" data-a="Térreo"><b>Térreo</b><small>Mais perto do palco</small></button><button type="button" class="ghost" data-a="Andar superior"><b>Andar superior</b><small>Mais calmo</small></button></div>
+      <p class="err" id="e-andar"></p>
       <input class="hp" id="site" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
       <p class="consent">Ao tocar em “Garantir meu lugar”, você consente que o Das Stammhaus Pub utilize os nomes e telefones informados para organizar a inauguração e para entrar em contato sobre esta reserva, novidades e convites futuros. Se preferir não receber mensagens, basta nos avisar a qualquer momento. A reserva vale somente até as <span class="ate">20h</span>.</p>
       <p class="err" id="e-geral"></p>
@@ -185,7 +188,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
 (function(){
   var $=function(i){return document.getElementById(i)};
   var CLI=(function(){try{var k=sessionStorage.getItem('cli');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('cli',k)}return k}catch(e){return Math.random().toString(36).slice(2)}})();
-  var ZAP='5547992505290', INFO={valor:40,ate:'20h',max:4}, NOITES=[], N=null, QTD=1, RES=null, RES_TEL='', RES_NOME='';
+  var ANDAR='',ZAP='5547992505290', INFO={valor:40,ate:'20h',max:4}, NOITES=[], N=null, QTD=1, RES=null, RES_TEL='', RES_NOME='';
   var TEL_RE=/^\([1-9]\d\) 9\d{4}-\d{4}$/, NOME_RE=/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{3,78}$/;
   var TELAS=['s-home','s-form','s-ok','s-look','s-aviso'];
   var IMG='__IMGBASE__';
@@ -247,17 +250,20 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     C.innerHTML=h+'</div>';
     [].forEach.call(C.querySelectorAll('.cd.ev'),function(b){if(!b.disabled)b.onclick=function(){abrir(by[b.getAttribute('data-i')])}})}
   if(MQ){var rl=function(){if(NOITES.length||$('cal').innerHTML)listar()};if(MQ.addEventListener)MQ.addEventListener('change',rl);else if(MQ.addListener)MQ.addListener(rl)}
+  [].forEach.call(document.querySelectorAll('#andar button'),function(x){x.onclick=function(){ANDAR=x.getAttribute('data-a');[].forEach.call(document.querySelectorAll('#andar button'),function(y){y.classList.toggle('on',y===x)});$('e-andar').textContent=''}});
   function listar(){
     if(MQ&&MQ.matches){$('noites').innerHTML='';return calendario()}
+    carregaArtes();
     $('cal').innerHTML='';
     var L=$('noites');L.innerHTML='';
     NOITES.forEach(function(n){
       var b=document.createElement('button');b.className='noite tkc';b.type='button';
       var v=n.reservavel===false?['p','Reservas a partir de '+n.abreEm]:n.lotado?['l','Lotado']:(n.vagas<INFO.max?['p','Últimas vagas']:['d','Disponível']);
       b.setAttribute('aria-label',n.label+' · '+v[1]);
-      b.innerHTML='<div class="tk'+(!BANDAS[n.dia]||BANDAS[n.dia].w?' wide':'')+'">'+tkHTML(n,v)+'</div>';
+      b.innerHTML='<div class="tk'+(ehWide(n)?' wide':'')+'">'+tkHTML(n)+'</div>';
       if(n.lotado||n.reservavel===false){b.disabled=true}else b.onclick=function(){abrir(n)};
       L.appendChild(b)});
+    fitTk(L);
     if(!NOITES.length)L.innerHTML='<p class="hint">Nenhuma noite disponível no momento.'+contato()+'</p>'}
   $('b-look').onclick=function(){$('lNome').value='';$('lTel').value='';$('e-look').textContent='';ir('s-look')};
 
@@ -267,27 +273,40 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
   var LOGOD='data:image/png;base64,__LOGOD__';
   var GEN={gen:1};
   function showTxt(s){var m=/^(\d{2}):(\d{2})$/.exec(s||'');return m?(+m[1])+'h'+(m[2]==='00'?'':m[2]):'Ao vivo'}   /* noites sem arte própria (fora da semana de inauguração): ingresso só de texto */
-  function tkHTML(n,vagas){
-    var b=BANDAS[n&&n.dia]||GEN;
-    var m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·');
-    var cel=vagas?'<div><small>Vagas'+(vOf(n)===0?' · entrada grátis':'')+'</small><b class="st '+vagas[0]+'">'+vagas[1]+'</b></div>':'<div class="pv"><small>Entrada</small><b>'+vtxt(n)+'</b></div>';
-    if(b.gen)return '<div class="tk-in"><div class="tk-main"><div class="tk-top">Música ao vivo</div><div class="tk-logo"><div class="tk-nm">'+esc(at[0].trim())+'</div></div><div class="tk-gen">'+esc(n.estilo||(at[1]?at[1].trim():''))+'</div></div>'
-     +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt="Das Stammhaus Pub"><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div></div>'
-     +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+showTxt(n.show)+'</b></div>'+cel+'</div>';
-    return (b.w?'':'<div class="tk-ph l" style="background-image:url('+IMG+b.l+')"></div><div class="tk-ph r" style="background-image:url('+IMG+b.r+')"></div>')
-     +'<div class="tk-in"><div class="tk-main"><div class="tk-top">Semana de Inauguração</div><div class="tk-logo"><img src="'+IMG+b.logo+'" alt="'+esc(at[0].trim())+'"></div>'
-     +(String(n.dia)==='21'?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+esc(at[1]?at[1].trim():'')+'</div></div>'
-     +'<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt="Das Stammhaus Pub"><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div>'
-     +(b.w?'<div class="tk-wp" style="background-image:url('+IMG+b.w+')"></div>':'')+'</div>'
-     +'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+b.show+'</b></div>'+cel+'</div>'}
+  /* arte do ticket: (1) noites da inauguração; (2) artes prontas por artista; (3) fotos/logo achadas na pasta do Drive pelo nome do artista (servidor, rota "arte"); (4) ticket só de texto */
+  function fold(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+  var ARTES={'rock grande':{l:'art-rock-grande-L.jpg',r:'art-rock-grande-R.jpg',w:'art-rock-grande-W.jpg',logo:'art-rock-grande-logo.png'},'diego kuchler':{l:'art-diego-kuchler-L.jpg',r:'art-diego-kuchler-R.jpg'}},DYN={};
+  function chaveArt(n){return fold(String(n&&n.atracao||'').split(/·| - /)[0])}
+  function arteDe(n){
+    var b=BANDAS[n&&n.dia];if(b)return{l:IMG+b.l,r:IMG+b.r,w:b.w?IMG+b.w:'',logo:IMG+b.logo,top:'Semana de Inauguração',eb:String(n.dia)==='21'};
+    var f=' '+fold(n&&n.atracao)+' ';
+    for(var k in ARTES)if(f.indexOf(' '+k+' ')>=0){var e=ARTES[k];return{l:IMG+e.l,r:IMG+e.r,w:e.w?IMG+e.w:'',logo:e.logo?IMG+e.logo:'',top:'Música ao vivo'}}
+    var d=DYN[chaveArt(n)];if(d&&(d.fotos&&d.fotos.length||d.logo))return{l:(d.fotos||[])[0]||'',r:(d.fotos||[])[1]||(d.fotos||[])[0]||'',w:'',logo:d.logo||'',top:'Música ao vivo',dyn:1};
+    return null}
+  function carregaArtes(so){(so?[so]:NOITES).forEach(function(n){var k=chaveArt(n);if(!k||DYN[k]!==undefined||arteDe(n))return;DYN[k]=null;
+    run('arte',[n.atracao]).then(function(r){DYN[k]=r&&r.ok&&((r.fotos&&r.fotos.length)||r.logo)?r:false;if(DYN[k]){listar();if(N&&!$('s-form').classList.contains('hide'))ticket()}},function(){DYN[k]=false})})}
+  function ehWide(n){var a=arteDe(n);return !a||!!a.w||(!a.l&&!a.r)}
+  /* barra inferior: Abertura · Show · Entrada · Vagas (4 campos de mesma largura; o texto é reduzido até caber) */
+  function vagasTxt(n){var v=statusN(n);return[v[0],v[1]==='Últimas vagas'?'Últimas':v[1]]}
+  function hrHTML(n){var v=vagasTxt(n);return'<div class="tk-hr"><div><small>Abertura</small><b>18h</b></div><div><small>Show</small><b>'+showTxt(n.show)+'</b></div><div><small>Entrada</small><b>'+vtxt(n)+'</b></div><div><small>Vagas</small><b class="st '+v[0]+'">'+v[1]+'</b></div></div>'}
+  function fitTk(root){(root||document).querySelectorAll('.tk-hr b').forEach(function(x){x.style.fontSize='';var s=parseFloat(getComputedStyle(x).fontSize)||16,w=x.parentNode.clientWidth-4;while(x.scrollWidth>w&&s>8){s-=.5;x.style.fontSize=s+'px'}})}
+  function tkHTML(n){
+    var a=arteDe(n),m=String(n.label||'').match(/^([^,]+),\s*(\d{2})\/(\d{2})/),at=String(n.atracao||'').split('·');
+    var stub='<div class="tk-stub"><img class="tk-pub" src="'+LOGOD+'" alt="Das Stammhaus Pub"><span class="dw">'+(m?m[1].replace('-feira','').toUpperCase():'')+'</span><span class="dd">'+(m?m[2]:'')+'</span><span class="dm">'+(m?MESES[+m[3]]||'':'')+'</span></div>';
+    var nome=esc(at[0].trim()),estilo=esc(n.estilo||(at[1]?at[1].trim():''));
+    var logo=a&&a.logo?'<img src="'+a.logo+'" alt="'+nome+'">':'<div class="tk-nm">'+nome+'</div>';
+    var fotos=a&&!a.w&&(a.l||a.r)?(a.l?'<div class="tk-ph l'+(a.dyn?' dyn':'')+'" style="background-image:url('+a.l+')"></div>':'')+(a.r?'<div class="tk-ph r'+(a.dyn?' dyn':'')+'" style="background-image:url('+a.r+')"></div>':''):'';
+    return fotos+'<div class="tk-in"><div class="tk-main"><div class="tk-top">'+esc(a?a.top:'Música ao vivo')+'</div><div class="tk-logo">'+logo+'</div>'
+      +(a&&a.eb?'<div class="tk-eb">e banda</div>':'')+'<div class="tk-gen">'+estilo+'</div></div>'+stub
+      +(a&&a.w?'<div class="tk-wp" style="background-image:url('+a.w+')"></div>':'')+'</div>'+hrHTML(n)}
   function ticket(){
-    var b=BANDAS[N&&N.dia]||GEN,t=$('tk');if(!N){t.classList.add('hide');return}
-    t.classList.toggle('wide',!!b.w||!!b.gen);t.innerHTML=tkHTML(N);t.classList.remove('hide')}
+    var t=$('tk');if(!N){t.classList.add('hide');return}
+    t.classList.toggle('wide',ehWide(N));t.innerHTML=tkHTML(N);t.classList.remove('hide');fitTk(t)}
 
   /* ---- FORMULÁRIO ---- */
   function abrir(n){
-    N=n;QTD=1;$('tk-note').innerHTML=Number(vOf(n))===0?'Entrada <b>gratuita</b> nesta noite.':'Entrada de R$ '+brl(vOf(n))+' por pessoa, acertada junto à comanda na noite.';$('f-dia').textContent=n.label;$('f-at').textContent=n.atracao?' · '+n.atracao:'';$('e-geral').textContent='';$('site').value='';
-    $('pessoas').innerHTML='';pessoas(true);ticket();ir('s-form')}
+    N=n;QTD=1;ANDAR='';[].forEach.call(document.querySelectorAll('#andar button'),function(x){x.classList.remove('on')});$('tk-note').innerHTML=Number(vOf(n))===0?'Entrada <b>gratuita</b> nesta noite.':'Entrada de R$ '+brl(vOf(n))+' por pessoa, acertada junto à comanda na noite.';$('f-dia').textContent=n.label;$('f-at').textContent=n.atracao?' · '+n.atracao:'';$('e-geral').textContent='';$('site').value='';
+    $('pessoas').innerHTML='';pessoas(true);ticket();carregaArtes(n);ir('s-form')}
   function botoesQtd(){
     var q=$('qtd');q.innerHTML='';var mx=N.vagas>0?Math.min(INFO.max,N.vagas):1;   // só as quantidades que cabem na noite (vagas restantes, até o máximo por reserva)
     if(QTD>mx)QTD=mx;
@@ -308,7 +327,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     botoesQtd()}
   $('f-voltar').onclick=function(){ir('s-home')};
   function erro(k,msg){var e=$('e-'+k);if(e)e.textContent=msg;var m=k.match(/^(nome|tel)(\d+)$/);if(m){var i=document.getElementById((m[1]==='nome'?'pn':'pt')+m[2]);if(i)i.classList.add('bad')}}
-  function limpa(){for(var i=0;i<INFO.max;i++){['nome','tel'].forEach(function(k){var e=$('e-'+k+i);if(e)e.textContent=''})}$('e-geral').textContent='';[].forEach.call(document.querySelectorAll('#pessoas .bad'),function(x){x.classList.remove('bad')})}
+  function limpa(){for(var i=0;i<INFO.max;i++){['nome','tel'].forEach(function(k){var e=$('e-'+k+i);if(e)e.textContent=''})}$('e-geral').textContent='';$('e-andar').textContent='';[].forEach.call(document.querySelectorAll('#pessoas .bad'),function(x){x.classList.remove('bad')})}
   function coleta(){return [].map.call(document.querySelectorAll('#pessoas .pess'),function(p){return{nome:p.querySelector('.pn').value.replace(/\s+/g,' ').trim(),tel:p.querySelector('.pt').value}})}
   function validar(){
     limpa();var ok=true,P=coleta(),ts={},ns={};
@@ -318,10 +337,11 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
       else{var k=p.nome.toLowerCase();if(ns[k]){erro('nome'+i,'Este nome aparece duas vezes na reserva.');ok=false}ns[k]=1}
       if(!TEL_RE.test(p.tel)){erro('tel'+i,'Informe o celular '+quem+' no formato (42) 99999-9999.');ok=false}
       else{if(ts[p.tel]){erro('tel'+i,'Cada pessoa precisa de um número de celular próprio.');ok=false}ts[p.tel]=1}});
+    if(!ANDAR){erro('andar','Escolha onde prefere ficar: térreo ou andar superior.');ok=false}
     return ok}
   $('btn-res').onclick=function(){
     if(!validar())return;var b=$('btn-res');busy(b,true,'Reservando…');
-    run('reservar',{dia:N.dia,pessoas:coleta(),cli:CLI,site:$('site').value}).then(function(r){busy(b,false);trata(r)},function(e){busy(b,false);falha($('e-geral'),e,'reservar')})};
+    run('reservar',{dia:N.dia,pessoas:coleta(),andar:ANDAR,cli:CLI,site:$('site').value}).then(function(r){busy(b,false);trata(r)},function(e){busy(b,false);falha($('e-geral'),e,'reservar')})};
   function trata(r){
     if(r.ok){RES=r.resumo;RES_NOME=RES.pessoas[0].nome;RES_TEL=RES.pessoas[0].tel;sucesso(RES);return}
     if(r.code==='invalido'||r.code==='ja_consta'){erro(r.campo==='geral'||!r.campo?'geral':r.campo,r.msg||'Confira os dados informados.');if(r.code==='ja_consta')$('e-geral').innerHTML+=contato('Olá! A reserva bloqueou meu cadastro ('+r.code+') para a noite '+N.label+'.');return}
@@ -335,6 +355,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
     $('ok-lead').textContent='Mal podemos esperar para receber '+(s.pessoas.length>1?'vocês':'você')+' nesta noite especial, '+s.pessoas[0].nome.split(' ')[0]+'.';
     $('ok-sum').innerHTML='<dt>Noite</dt><dd>'+esc(s.diaLabel)+(s.atracao?' · '+esc(s.atracao):'')+'</dd>'
       +'<dt>Pessoas ('+s.pessoas.length+')</dt><dd>'+s.pessoas.map(function(p,i){return esc(p.nome)+'<br><span class="hint">'+esc(p.tel)+(i===0?' · titular':'')+'</span>'}).join('<br>')+'</dd>'
+      +(s.andar?'<dt>Ambiente</dt><dd>'+esc(s.andar)+(s.andar==='Térreo'?' · mais perto do palco':' · mais calmo')+'</dd>':'')
       +'<dt>Reserva válida até</dt><dd>'+esc(s.ate||INFO.ate)+'</dd>'
       +'<dt>Protocolo</dt><dd><b>'+esc(s.protocolo)+'</b></dd>';
     $('ok-cancel').classList.remove('hide');ir('s-ok')}
@@ -366,6 +387,7 @@ details{margin-top:8px;font-size:12.5px;color:#b9b5a6}details code{display:block
 
   function aviso(t,l){$('a-titulo').textContent=t;$('a-lead').innerHTML=l;ir('s-aviso')}
   $('a-voltar').onclick=function(){ir('s-home')};
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){fitTk()});window.addEventListener('resize',function(){fitTk()});
   document.body.classList.add('wide-home');carregar();
 })();
 </script>

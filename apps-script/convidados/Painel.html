@@ -285,7 +285,7 @@ function listaPortaria(n){var R=[],pend=0;
  S.convidados.forEach(function(c){if(c.dia!==n.dia||c.status==='Não vai')return;
   if(c.status==='Confirmado'){R.push({nome:c.titNome||c.nome,org:'Lista',obs:c.acNome?'Convite de '+c.nome:''});if(c.acNome)R.push({nome:c.acNome,org:'Lista',obs:'Acompanhante de '+(c.titNome||c.nome)})}
   else{R.push({nome:c.nome,org:'Lista',obs:'Sem resposta'+(c.acomp&&S.pendAc?' · direito a +1 acompanhante':'')});if(c.acomp&&S.pendAc)pend++}});
- S.reservas.forEach(function(r){if(r.dia!==n.dia)return;r.pessoas.forEach(function(p){R.push({nome:p.nome,org:'Reserva '+r.prot,obs:p.tel?'Cel. '+p.tel:''})})});
+ S.reservas.forEach(function(r){if(r.dia!==n.dia)return;r.pessoas.forEach(function(p){R.push({nome:p.nome,org:'Reserva '+r.prot,obs:(p.tel?'Cel. '+p.tel:'')+(r.andar?(p.tel?' · ':'')+r.andar:'')})})});
  R.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});return{R:R,pend:pend}}
 function listaGrupos(n){var G=[],pend=0;
  S.convidados.forEach(function(c){if(c.dia!==n.dia||c.status==='Não vai')return;var M=[];
@@ -294,7 +294,7 @@ function listaGrupos(n){var G=[],pend=0;
   else{M.push({nome:c.nome,tel:cvTel(c)||'',obs:'Sem resposta'+(c.acomp&&S.pendAc?' · direito a +1 acompanhante':'')});if(c.acomp&&S.pendAc)pend++
    G.push({tipo:'Convite',label:'Convite de '+c.nome+' · sem resposta',chave:c.nome,M:M})}});
  S.reservas.forEach(function(r){if(r.dia!==n.dia||!r.pessoas.length)return;
-  G.push({tipo:'Reserva',label:'Reserva '+r.prot,chave:r.pessoas[0].nome,M:r.pessoas.map(function(p){return{nome:p.nome,tel:p.tel||'',obs:''}})})});
+  G.push({tipo:'Reserva',label:'Reserva '+r.prot+(r.andar?' · '+r.andar:''),chave:r.pessoas[0].nome,M:r.pessoas.map(function(p){return{nome:p.nome,tel:p.tel||'',obs:''}})})});
  G.sort(function(a,b){return a.chave.localeCompare(b.chave,'pt-BR')});return{G:G,pend:pend}}
 function htmlLista(n,modo){var L=listaPortaria(n),R=L.R,nl=R.filter(function(x){return x.org==='Lista'}).length,nr=R.length-nl,gr=modo==='grupo';
  var h='<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:2px 0 8px;font-weight:normal}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:4px 5px;text-align:left}th{background:#ddd}td.c{width:22px}td.g{background:#eee;font-weight:bold}tr{page-break-inside:avoid}.m{color:#444}</style></head><body>'
@@ -357,7 +357,7 @@ function detalhe(n){var ed=podeEditar();var h='<div class="card" style="margin-t
    h+='<tr><td>'+esc(c.nome)+(c.acomp?' <small>(+1)</small>':'')+(c.acNome?'<br><small>c/ '+esc(c.acNome)+'</small>':'')+'</td><td><span class="tag '+tg+'">'+c.status+'</span></td><td class="n">'+c.pessoas+'</td><td><small>'+esc(c.titTel)+'</small></td><td>'+(c.status==='Confirmado'?zapBtn(c.titNome||c.nome,c.titTel,n,c.prot,false)+(c.acNome&&c.acTel&&c.acTel!==c.titTel?' '+zapBtn(c.acNome,c.acTel,n,c.prot,false):'')+' ':'')+(ed?'<button class="s" data-a="mc" data-id="'+c.id+'">Mudar de dia</button> <button class="s" data-a="ec" data-id="'+c.id+'">Status</button> <button class="s" data-a="ed" data-id="'+c.id+'">Editar</button>':'')+'</td></tr>'});
   if(!L.length)h+='<tr><td colspan="5">Nenhum convidado neste filtro.</td></tr>';h+='</table>'}
  else{var R=S.reservas.filter(function(r){return r.dia===n.dia});h+='<div class="row" style="margin:10px 0">'+(ed?'<button class="p s" id="addr">+ Nova reserva</button>':'')+'<span class="mut">'+n.reservas+' reserva(s) · '+n.publico+' pessoa(s)</span></div>';
-  R.forEach(function(r){h+='<div class="res"><div class="row sp"><span><b>'+esc(r.prot)+'</b> · '+r.pessoas.length+' pessoa(s)</span>'+(ed?'<span><button class="s" data-a="rm" data-id="'+esc(r.prot)+'">Mudar de dia</button> <button class="s" data-a="rap" data-id="'+esc(r.prot)+'">+ Pessoa</button> <button class="s d" data-a="rc" data-id="'+esc(r.prot)+'">Cancelar reserva</button></span>':'')+'</div><table class="tb">'+
+  R.forEach(function(r){h+='<div class="res"><div class="row sp"><span><b>'+esc(r.prot)+'</b> · '+r.pessoas.length+' pessoa(s)'+(r.andar?' · <small class="mut">'+esc(r.andar)+'</small>':'')+'</span>'+(ed?'<span><button class="s" data-a="rm" data-id="'+esc(r.prot)+'">Mudar de dia</button> <button class="s" data-a="rap" data-id="'+esc(r.prot)+'">+ Pessoa</button> <button class="s d" data-a="rc" data-id="'+esc(r.prot)+'">Cancelar reserva</button></span>':'')+'</div><table class="tb">'+
    r.pessoas.map(function(p){return'<tr><td>'+esc(p.nome)+'</td><td><small>'+esc(p.tel)+'</small></td><td>'+zapBtn(p.nome,p.tel,n,r.prot,true)+' '+(ed?'<button class="s" data-a="rep" data-id="'+esc(r.prot)+'" data-l="'+p.linha+'">Editar</button> <button class="s d" data-a="rrp" data-id="'+esc(r.prot)+'" data-l="'+p.linha+'">Remover</button>':'')+'</td></tr>'}).join('')+'</table></div>'});
   if(!R.length)h+='<div class="mut">Nenhuma reserva do público nesta noite.</div>'}
  return h+'</div>'}
