@@ -1,6 +1,6 @@
 /* =====================================================================
- * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS + métricas. ARQUIVO ÚNICO (Code.gs).
- * Ordem: Comum (núcleo/lotação) · Busca · Convidados · Métricas · Preparação.
+ * Das Stammhaus Pub — GESTÃO (painel interno). ARQUIVO ÚNICO (Code.gs).
+ * Ordem: Comum (núcleo/lotação) · Código · Preparação · Acesso · Gestão · Legado.
  * ===================================================================== */
 var TZ = 'America/Sao_Paulo';
 var TEL_RE = /^\([1-9]\d\) 9\d{4}-\d{4}$/;
@@ -129,26 +129,30 @@ function valorDe_(cfg, p) { return (p && p.valorCustom !== '' && p.valorCustom !
 function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
-function convLeve_() {
-  var sh = aba_(ABA.CONV), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 6).getValues().filter(function (r) { return r[0]; }).map(function (r) {
-    return {id: String(r[0]), dia: Number(r[2]), acomp: Number(r[5]) === 1 ? 1 : 0};
-  });
-}
+function convLeve_() { return []; }   // convidados desativados (25/11): a lotação vem só das reservas; os dados antigos ficam em Reservas como legado
 
 // Colunas Reservas (público): A data/hora, B protocolo, C dia, D nº da pessoa, E nome, F celular,
 // G status (Confirmado/Cancelado), H celular do titular da reserva, I consentimento, J compareceu, K atualizado
 /* ambiente escolhido na reserva: Reservas, coluna L. 'Térreo' (mais perto do palco) ou 'Andar superior' (mais calmo); vazio = sem preferência */
 var RES_COL_ANDAR = 12, ANDAR_CAB = 'ambiente (Térreo / Andar superior)';
+/* entrada bonificada (por pessoa; 'Sim' = sem cobrança de entrada) e origem (legado = veio da lista de convidados da inauguração) */
+var RES_COL_BONUS = 13, BONUS_CAB = 'entrada bonificada (Sim / vazio)', RES_COL_ORIG = 14, ORIG_CAB = 'origem (legado: convite da inauguração)';
+function resColunas_(sh) {   // garante colunas L, M e N e seus cabeçalhos na aba Reservas
+  try {
+    if (sh.getMaxColumns() < RES_COL_ORIG) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ORIG - sh.getMaxColumns());
+    [[RES_COL_ANDAR, ANDAR_CAB], [RES_COL_BONUS, BONUS_CAB], [RES_COL_ORIG, ORIG_CAB]].forEach(function (c) { if (!String(sh.getRange(1, c[0]).getValue() || '')) sh.getRange(1, c[0]).setValue(c[1]); });
+  } catch (e) {}
+}
+function bonifNorm_(v) { return /^(s|sim|x|1|true)$/i.test(String(v == null ? '' : v).trim()); }
 function andarNorm_(v) { var s = String(v == null ? '' : v).trim().toLowerCase(); return /^t/.test(s) ? 'Térreo' : /^(s|a)/.test(s) ? 'Andar superior' : ''; }
 function reservas_() {
   var sh = ss_().getSheetByName(ABA.RES), n = sh ? sh.getLastRow() : 0;
   if (n < 2) return [];
-  var lc = Math.min(RES_COL_ANDAR, sh.getMaxColumns());   // coluna L (ambiente) só existe depois da primeira reserva com escolha
+  var lc = Math.min(RES_COL_ORIG, sh.getMaxColumns());   // colunas L–N só existem depois da primeira reserva que as usa
   return sh.getRange(2, 1, n - 1, lc).getValues().map(function (r, i) {
     return {linha: i + 2, ts: r[0], prot: String(r[1]), dia: Number(r[2]), n: Number(r[3]) || 0, nome: String(r[4]),
-            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1])};
+            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1]),
+            bonif: bonifNorm_(r[RES_COL_BONUS - 1]), origem: String(r[RES_COL_ORIG - 1] || '')};
   }).filter(function (r) { return r.prot; });
 }
 
@@ -167,22 +171,15 @@ function contribConv_(g, confs, cfg) {
 
 function contagem_(dia, cfg, conv, confs, resv) {
   var teto = tetoDe_(cfg, dia), o = {dia: dia, teto: teto, padrao: cfg.teto, excecao: teto !== cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
-           pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, reservas: 0, canceladasPublico: 0};
+           pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, bonificadas: 0, pagantes: 0, reservas: 0, canceladasPublico: 0};
   var prots = {};
-  conv.forEach(function (g) {
-    if (g.dia !== dia) return;
-    o.convites++;
-    var ult = null; confs.forEach(function (c) { if (c.id === g.id && c.status !== 'Substituído') ult = c; });
-    if (!ult) { o.pendentesConvites++; o.pendentesPessoas += 1 + (cfg.pendAc ? g.acomp : 0); }
-    else if (ult.status === 'Confirmado') o.confirmadosPessoas += ult.pessoas;
-    else o.naoVaiConvites++;
-  });
   resv.forEach(function (r) {
     if (r.dia !== dia) return;
-    if (r.status === 'Confirmado') { o.publico++; prots[r.prot] = 1; } else if (r.n === 1) o.canceladasPublico++;
+    if (r.status === 'Confirmado') { o.publico++; prots[r.prot] = 1; if (r.bonif) o.bonificadas++; } else if (r.n === 1) o.canceladasPublico++;
   });
   o.reservas = Object.keys(prots).length;
-  o.lista = o.confirmadosPessoas + o.pendentesPessoas;
+  o.pagantes = o.publico - o.bonificadas;
+  o.lista = 0;
   o.total = o.lista + o.publico;
   o.restantes = Math.max(0, teto - o.total);
   o.lotado = o.total >= teto;
@@ -199,19 +196,17 @@ function lotacaoTodas_() {
 function atualizarPainel_() {
   var ss = ss_(), sh = ss.getSheetByName(ABA.PAINEL) || ss.insertSheet(ABA.PAINEL);
   var L = lotacaoTodas_(), cfg = cfg_(), agora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss');
-  var cab = ['dia', 'atração', 'capacidade', 'teto (74+10%)', 'convidados confirmados (pessoas)', 'convidados sem resposta (pessoas contadas)',
-             'convidados que não vão (convites)', 'lista garantida (pessoas)', 'reservas do público (pessoas)', 'total comprometido',
-             'vagas restantes', '% do teto', 'situação'];
+  var cab = ['dia', 'atração', 'capacidade', 'teto (74+10%)', 'reservas', 'pessoas', 'entradas bonificadas', 'total comprometido', 'vagas restantes', '% do teto', 'situação'];
   var v = [cab].concat(L.map(function (c) {
-    return [c.dia, c.prog && c.prog.atracao || '', c.capacidade, c.teto, c.confirmadosPessoas, c.pendentesPessoas, c.naoVaiConvites,
-            c.lista, c.publico, c.total, c.restantes, c.pct / 100, c.lotado ? 'LOTADO' : 'Disponível'];
+    return [c.dia, c.prog && c.prog.atracao || '', c.capacidade, c.teto, c.reservas, c.publico, c.bonificadas, c.total, c.restantes, c.pct / 100, c.lotado ? 'LOTADO' : 'Disponível'];
   }));
-  sh.getRange(1, 1, v.length, 13).setValues(v);
-  sh.getRange(v.length + 2, 1).setValue('Atualizado em ' + agora + ' · regra: lista garantida + público ≤ ' + cfg.teto + ' pessoas por noite');
+  sh.getRange(1, 1, Math.max(v.length, 1), 13).clearContent();
+  sh.getRange(1, 1, v.length, 11).setValues(v);
+  sh.getRange(v.length + 2, 1).setValue('Atualizado em ' + agora + ' · regra: pessoas em reservas ≤ ' + cfg.teto + ' por noite');
   try {
-    sh.getRange(1, 1, 1, 13).setFontWeight('bold').setBackground('#113325').setFontColor('#EAE7DA').setWrap(true);
-    sh.getRange(2, 12, Math.max(L.length, 1), 1).setNumberFormat('0.0%');
-    L.forEach(function (c, i) { sh.getRange(i + 2, 13).setBackground(c.lotado ? '#E04E27' : '#BFE3C4').setFontWeight('bold'); });
+    sh.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#113325').setFontColor('#EAE7DA').setWrap(true);
+    sh.getRange(2, 10, Math.max(L.length, 1), 1).setNumberFormat('0.0%');
+    L.forEach(function (c, i) { sh.getRange(i + 2, 11).setBackground(c.lotado ? '#E04E27' : '#BFE3C4').setFontWeight('bold'); });
     sh.setFrozenRows(1);
   } catch (e) {}
 }
@@ -269,14 +264,7 @@ function prog_() {
 // G acompanhante, H tel acomp., I pessoas, J status, K consentimento, L compareceu, M atualizado
 var STATUS_NAO = 'Não vai';
 
-function confs_() {
-  var sh = aba_(ABA.CONF), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 13).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[1]), dia: Number(r[3]), titNome: String(r[4]), titTel: String(r[5]),
-            acNome: String(r[6]), acTel: String(r[7]), pessoas: Number(r[8]) || 0, status: String(r[9])};
-  }).filter(function (c) { return c.id; });
-}
+function confs_() { return []; }   // idem
 
 /* ---------- proteção contra abuso ---------- */
 function limite_(chave, max, seg) {
@@ -340,118 +328,8 @@ function cancelarFilaWhats_(origem, ref, dia) {
 }
 
 /**
- * Busca tolerante de nomes (JS puro, sem dependências do Apps Script).
- * Tolera: acentos, maiúsculas, ordem trocada, sobrenome/nome do meio omitido,
- * letras trocadas/faltando/sobrando e grafias foneticamente parecidas (Fuck/Fuk, Hoffman/Hofmann).
- */
-var BUSCA_CFG = {
-  AUTO: 0.90,      // nota mínima para tratar como "achei você"
-  GAP: 0.06,       // diferença mínima para o 2º colocado, senão vira lista de sugestões
-  MIN_SUGESTAO: 0.70,
-  MAX_SUGESTOES: 3
-};
-var BUSCA_STOP = {de:1, da:1, do:1, dos:1, das:1, e:1};
-
-function buscaNormalizar_(s) {
-  var t = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-    .replace(/\+1/g, ' ').replace(/[^a-z]+/g, ' ').trim();
-  if (!t) return [];
-  return t.split(' ').filter(function (w) { return w && !BUSCA_STOP[w]; });
-}
-
-// Chave fonética aproximada para o português do Brasil
-function buscaFonetica_(w) {
-  var s = w;
-  s = s.replace(/ph/g, 'f').replace(/th/g, 't').replace(/ck/g, 'k')
-       .replace(/w/g, 'v').replace(/y/g, 'i')
-       .replace(/sch/g, 'x').replace(/ch|sh/g, 'x').replace(/x/g, 'x')
-       .replace(/qu([ei])/g, 'k$1').replace(/q/g, 'k')
-       .replace(/gu([ei])/g, 'g$1').replace(/g([ei])/g, 'j$1')
-       .replace(/c([ei])/g, 's$1').replace(/c/g, 'k').replace(/k/g, 'k')
-       .replace(/z/g, 's').replace(/h/g, '')
-       .replace(/ss/g, 's').replace(/(.)\1+/g, '$1');
-  return s;
-}
-
-// Distância de edição com transposição (Damerau-Levenshtein restrita)
-function buscaDist_(a, b) {
-  var la = a.length, lb = b.length, i, j;
-  if (!la) return lb; if (!lb) return la;
-  var d = [];
-  for (i = 0; i <= la; i++) { d[i] = [i]; }
-  for (j = 0; j <= lb; j++) { d[0][j] = j; }
-  for (i = 1; i <= la; i++) {
-    for (j = 1; j <= lb; j++) {
-      var c = a[i - 1] === b[j - 1] ? 0 : 1;
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-        d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
-      }
-    }
-  }
-  return d[la][lb];
-}
-
-function buscaSimTok_(q, g) {
-  if (q === g) return 1;
-  var fq = buscaFonetica_(q), fg = buscaFonetica_(g);
-  if (fq === fg) return 0.95;
-  var best = 0;
-  if (q.length >= 3 && g.indexOf(q) === 0) best = 0.80 + 0.15 * (q.length / g.length); // digitação incompleta
-  var s1 = 1 - buscaDist_(q, g) / Math.max(q.length, g.length);
-  var s2 = (1 - buscaDist_(fq, fg) / Math.max(fq.length, fg.length)) * 0.97;
-  return Math.max(best, s1, s2);
-}
-
-/** Nota 0..1 de um convidado para a consulta (tokens já normalizados). */
-function buscaNota_(qt, gt, extra) {
-  var all = gt.concat(extra || []);
-  var pairs = [], i, j;
-  for (i = 0; i < qt.length; i++) for (j = 0; j < all.length; j++) {
-    pairs.push({i: i, j: j, s: buscaSimTok_(qt[i], all[j])});
-  }
-  pairs.sort(function (a, b) { return b.s - a.s; });
-  var usedQ = {}, usedG = {}, sum = 0, matchedNome = 0, matchedQ = 0;
-  pairs.forEach(function (p) {
-    if (usedQ[p.i] || usedG[p.j] || p.s < 0.6) return;
-    usedQ[p.i] = 1; usedG[p.j] = 1; sum += p.s; matchedQ++;
-    if (p.j < gt.length) matchedNome++;
-  });
-  if (matchedQ < 2) return 0;                       // exige ao menos 2 palavras coincidentes (nome + sobrenome)
-  // palavra digitada sem par (ex.: sobrenome a mais) pesa meio ponto: vira sugestão, nunca "achei"
-  var scoreQ = sum / (matchedQ + 0.5 * (qt.length - matchedQ));
-  var cov = gt.length ? matchedNome / gt.length : 0; // nome completo vence nome parcial
-  return scoreQ * (0.85 + 0.15 * cov);
-}
-
-/**
- * convidados: [{id, nome, dia, busca}]. Retorna {status, candidatos[]}
- * status: 'curto' | 'achei' | 'sugestoes' | 'nenhum'
- */
-function buscarNome(consulta, convidados) {
-  var qt = buscaNormalizar_(consulta);
-  var letras = qt.join('').length;
-  if (qt.length < 2 || letras < 5 || qt.some(function (w) { return w.length < 2; })) {
-    return {status: 'curto', candidatos: []};
-  }
-  var lista = convidados.map(function (c) {
-    return {c: c, nota: buscaNota_(qt, buscaNormalizar_(c.nome), buscaNormalizar_(c.busca))};
-  }).filter(function (x) { return x.nota >= BUSCA_CFG.MIN_SUGESTAO; })
-    .sort(function (a, b) { return b.nota - a.nota; });
-  if (!lista.length) return {status: 'nenhum', candidatos: []};
-  var top = lista[0], seg = lista[1];
-  if (top.nota >= BUSCA_CFG.AUTO && (!seg || top.nota - seg.nota >= BUSCA_CFG.GAP)) {
-    return {status: 'achei', candidatos: [top.c], notas: [top.nota]};
-  }
-  var sel = lista.slice(0, BUSCA_CFG.MAX_SUGESTOES);
-  return {status: 'sugestoes', candidatos: sel.map(function (x) { return x.c; }), notas: sel.map(function (x) { return x.nota; })};
-}
-
-if (typeof module !== 'undefined') { module.exports = {buscarNome: buscarNome, buscaNormalizar_: buscaNormalizar_, buscaFonetica_: buscaFonetica_}; }
-
-/**
- * Das Stammhaus Pub — Confirmação de presença dos CONVIDADOS (semana de inauguração) + painel.
- * Web app (Apps Script) vinculado à planilha. Arquivos: Code.gs (único) + Index.html + Painel.html
+ * Das Stammhaus Pub — projeto de GESTÃO (painel interno com login). Arquivos: Code.gs (único) + Painel.html
+ * Web app (Apps Script) vinculado à planilha. A página de convidados foi desativada em 25/11/2026 (só reservas).
  */
 function ss_() {
   var x = SpreadsheetApp.getActiveSpreadsheet();
@@ -459,312 +337,16 @@ function ss_() {
   return x;
 }
 
-/* Página dos convidados (padrão) ou painel de métricas + gestão (?p=painel; exige login por usuário e senha). */
+/* Painel de gestão (login por usuário e senha). Qualquer endereço do app abre o painel. */
 function doGet(e) {
-  var p = (e && e.parameter) || {};
-  if (p.p === 'painel' || p.p === 'gestao' || p.p === 'metricas') {   // página única (login por usuário e senha); gestao/metricas = links antigos
-    return HtmlService.createHtmlOutputFromFile('Painel').setTitle('Painel · Das Stammhaus Pub')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Das Stammhaus Pub · Confirmação de presença')
+  return HtmlService.createHtmlOutputFromFile('Painel').setTitle('Painel · Das Stammhaus Pub')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-function convidados_() {
-  var sh = aba_(ABA.CONV), n = sh.getLastRow();
-  if (n < 2) throw new Error('LISTA_VAZIA: a aba Convidados não tem linhas');
-  return sh.getRange(2, 1, n - 1, 7).getValues().filter(function (r) { return r[0]; }).map(function (r) {
-    return {id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]),
-            acomp: Number(r[5]) === 1 ? 1 : 0, busca: String(r[6] || '')};
-  });
-}
-
-function pub_(c, prog) {
-  var p = prog[c.dia] || {};
-  return {id: c.id, nome: c.nome, dia: c.dia, diaLabel: p.label || '', atracao: p.atracao || '', acomp: c.acomp};
-}
-
-/* ---------- validação ---------- */
-function validar_(p, g) {
-  var tn = limpaNome_(p.titNome), tt = String(p.titTel || '').trim();
-  if (!NOME_RE.test(tn) || tn.split(' ').length < 2) return {campo: 'titNome', msg: 'Informe seu nome completo (nome e sobrenome).'};
-  if (!nomeTitularValido_(tn, g.nome)) return {campo: 'titNome', msg: 'O nome do convite não pode ser trocado. Você pode completá-lo com seus outros sobrenomes, mas as palavras do nome original precisam permanecer.'};
-  if (!TEL_RE.test(tt)) return {campo: 'titTel', msg: 'Informe seu celular no formato (42) 99999-9999.'};
-  var out = {titNome: tn, titTel: tt, acNome: '', acTel: ''};
-  if (p.vaiAcomp) {
-    if (!g.acomp) return {campo: 'acNome', msg: 'Este convite não inclui acompanhante.'};
-    var an = limpaNome_(p.acNome), at = String(p.acTel || '').trim();
-    if (!NOME_RE.test(an) || an.split(' ').length < 2) return {campo: 'acNome', msg: 'Informe o nome completo do seu acompanhante.'};
-    if (!TEL_RE.test(at)) return {campo: 'acTel', msg: 'Informe o celular do acompanhante no formato (42) 99999-9999.'};
-    if (digitos_(at) === digitos_(tt)) return {campo: 'acTel', msg: 'Cada pessoa precisa de um número próprio. Use outro telefone para o acompanhante.'};
-    out.acNome = an; out.acTel = at;
-  }
-  return {dados: out};
-}
-
-function telEmUso_(tels, confs, ignorarLinha) {
-  var usados = {};
-  confs.forEach(function (c) {
-    if (c.status !== 'Confirmado' || c.linha === ignorarLinha) return;
-    usados[digitos_(c.titTel)] = 1; if (c.acTel) usados[digitos_(c.acTel)] = 1;
-  });
-  return tels.filter(Boolean).some(function (t) { return usados[digitos_(t)]; });
-}
-
-function simId_(x, y) {
-  if (x === y) return 1;
-  // só a vogal final muda (Juliano/Juliana, Luciano/Luciana): são pessoas diferentes
-  if (x.length >= 4 && x.length === y.length && x.slice(0, -1) === y.slice(0, -1) && /[aoe]$/.test(x) && /[aoe]$/.test(y)) return 0.5;
-  if (buscaFonetica_(x) === buscaFonetica_(y)) return 0.95;
-  return 1 - buscaDist_(x, y) / Math.max(x.length, y.length);
-}
-// MESMA PESSOA (critério estrito): mesma quantidade de palavras e cada palavra igual, com/sem acento ou de grafia
-// foneticamente idêntica (Henckels/Henkels). Uma letra diferente NÃO basta: Helon e Heron são pessoas distintas.
-function nomesIguais_(a, b) {
-  var ta = buscaNormalizar_(a), tb = buscaNormalizar_(b);
-  if (ta.length < 2 || ta.length !== tb.length) return false;
-  var usados = {}, i, j;
-  for (i = 0; i < ta.length; i++) {
-    var melhor = 0, k = -1;
-    for (j = 0; j < tb.length; j++) {
-      if (usados[j]) continue;
-      var s = simId_(ta[i], tb[j]);
-      if (s > melhor) { melhor = s; k = j; }
-    }
-    if (k < 0 || melhor < 0.95) return false;
-    usados[k] = 1;
-  }
-  return true;
-}
-
-var TITULOS_ = {dr: 1, dra: 1, sr: 1, sra: 1, prefeito: 1, prefeita: 1};
-
-function tokensConvite_(nome) {
-  return buscaNormalizar_(String(nome).replace(/\s*\(.*?\)/g, '')).filter(function (w) { return !TITULOS_[w]; });
-}
-
-/**
- * NOME TRAVADO: o nome digitado precisa conter TODAS as palavras do nome do convite
- * (tolera acento, 1 letra trocada e grafia parecida) e pode ter até 2 palavras a mais (outros sobrenomes).
- * Não é possível trocar o nome por outra pessoa nem remover palavras do nome original.
- */
-function nomeTitularValido_(digitado, nomeLista) { return pontuaTitular_(digitado, nomeLista) > 0; }
-
-/** 0 se o nome digitado não vale para o nome do convite; senão a média de semelhança (1 = idêntico). */
-function pontuaTitular_(digitado, nomeLista) {
-  var tl = tokensConvite_(nomeLista), td = tokensConvite_(digitado);
-  if (!tl.length || td.length < tl.length || td.length > tl.length + 2) return 0;
-  var usados = {}, soma = 0, i, j;
-  for (i = 0; i < tl.length; i++) {
-    var melhor = 0, k = -1;
-    for (j = 0; j < td.length; j++) {
-      if (usados[j]) continue;
-      var sc = simId_(tl[i], td[j]);
-      if (sc > melhor) { melhor = sc; k = j; }
-    }
-    if (k < 0 || melhor < 0.80) return 0;
-    usados[k] = 1; soma += melhor;
-  }
-  return soma / tl.length >= 0.90 ? soma / tl.length : 0;
-}
-
-function nomesEmUso_(confs, ignorarLinha, dia) {
-  var v = [];
-  confs.forEach(function (c) {
-    if (c.status !== 'Confirmado' || c.linha === ignorarLinha) return;
-    if (dia && Number(c.dia) !== Number(dia)) return;   // a mesma pessoa pode ter convite em noites diferentes
-    v.push(c.titNome); if (c.acNome) v.push(c.acNome);
-  });
-  return v;
-}
-
-/** Regras de unicidade. Retorna {code,msg} ou null. */
-function regrasUnicidade_(g, d, confs, todos, ignorarLinha) {
-  var usados = nomesEmUso_(confs, ignorarLinha, g.dia), i;
-  var dup = function (n) { return usados.some(function (u) { return nomesIguais_(n, u); }); };
-  if (dup(d.titNome)) return {code: 'nome_duplicado', msg: 'Já existe uma confirmação com este nome. Cada pessoa é confirmada uma única vez.'};
-  // titular digitou o nome de OUTRO convidado (igual, ou um nome mais completo que contém o de outro convite)
-  // quem entrou pelo próprio convite e digitou o próprio nome (ex.: Helon, com um Heron também convidado) nunca é barrado aqui
-  var nTok = tokensConvite_(g.nome).length, propria = pontuaTitular_(d.titNome, g.nome), exatoProprio = nomesIguais_(d.titNome, g.nome);
-  for (i = 0; i < todos.length && !exatoProprio; i++) {
-    var o = todos[i];
-    if (o.id === g.id) continue;
-    var po = pontuaTitular_(d.titNome, o.nome);
-    if (po < propria || (po === propria && !(tokensConvite_(o.nome).length > nTok))) continue;   // só barra se o nome digitado combina melhor com o de outro convite
-    if (nomesIguais_(d.titNome, o.nome) || (tokensConvite_(o.nome).length > nTok && nomeTitularValido_(d.titNome, o.nome))) {
-      return {code: 'titular_outro_convidado', msg: 'O nome digitado pertence a outro convite. Para confirmar essa pessoa, volte, busque o nome dela e use o convite dela.'};
-    }
-  }
-  if (d.acNome) {
-    if (nomesIguais_(d.acNome, d.titNome)) return {code: 'acomp_igual_titular', msg: 'O acompanhante precisa ser outra pessoa, diferente do convidado.'};
-    if (dup(d.acNome)) return {code: 'nome_duplicado', msg: 'O acompanhante informado já consta em outra confirmação. Cada pessoa é confirmada uma única vez.'};
-    for (i = 0; i < todos.length; i++) {
-      if (nomesIguais_(d.acNome, todos[i].nome)) {
-        return {code: 'acomp_e_convidado', msg: 'Este nome pertence a uma pessoa que recebeu convite próprio, e ela confirma a presença pelo próprio convite. Para levar um acompanhante, informe alguém que não tenha convite.'};
-      }
-    }
-  }
-  return null;
-}
-
-function resumo_(g, d, prog) {
-  var p = prog[g.dia] || {};
-  return {nome: g.nome, diaLabel: p.label || '', atracao: p.atracao || '', horario: cfg_().horario,
-          titNome: d.titNome, titTel: d.titTel, acNome: d.acNome, acTel: d.acTel, pessoas: d.acNome ? 2 : 1};
-}
-
-/* ---------- API chamada pela página (cada função pública é protegida por api_) ---------- */
-function config_() {
-  var c = cfg_();
-  return {whatsapp: c.whatsapp, horario: c.horario};
-}
-
-function buscar_(q, cliente) {
-  if (!limite_('g', 600, 60) || !limite_('c' + cli_(cliente), 25, 600)) return {status: 'limite'};
-  var prog = prog_(), r = buscarNome(String(q || '').slice(0, 80), convidados_());
-  return {status: r.status, candidatos: r.candidatos.map(function (c) { return pub_(c, prog); })};
-}
-
-function estado_(id) {
-  var g = convidados_().filter(function (c) { return c.id === id; })[0];
-  if (!g) return {ok: false};
-  var cs = confs_(), ja = cs.some(function (c) { return c.id === id && c.status === 'Confirmado'; });
-  var nao = !ja && cs.some(function (c) { return c.id === id && c.status === STATUS_NAO; });
-  return {ok: true, convidado: pub_(g, prog_()), jaConfirmado: ja, jaNaoVai: nao};
-}
-
-function confirmar_(p) {
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  try {
-    var g = convidados_().filter(function (c) { return c.id === String(p.id); })[0];
-    if (!g) return {ok: false, code: 'nao_encontrado'};
-    var confs = confs_();
-    if (confs.some(function (c) { return c.id === g.id && c.status === 'Confirmado'; })) return {ok: false, code: 'ja_confirmado'};
-    var antes = confs.filter(function (c) { return c.id === g.id && c.status === STATUS_NAO; })[0];
-    if (antes) {
-      if (!limite_('v' + cli_(g.id), 12, 900)) return {ok: false, code: 'limite'};
-      if (digitos_(antes.titTel) !== digitos_(p.telAtual)) return {ok: false, code: 'tel_incorreto'};
-    }
-    var v = validar_(p, g); if (!v.dados) return {ok: false, code: 'invalido', campo: v.campo, msg: v.msg};
-    var d = v.dados;
-    if (telEmUso_([d.titTel, d.acTel], confs, 0)) return {ok: false, code: 'tel_duplicado',
-      msg: 'Este telefone já está em outra confirmação. Confira o número ou fale com a nossa equipe.'};
-    var todos = convidados_(), un = regrasUnicidade_(g, d, confs, todos, 0);
-    if (un) return {ok: false, code: un.code, msg: un.msg};
-    var pessoas = d.acNome ? 2 : 1;
-    if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
-    var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);   // a lista já conta o convidado; só barra se a resposta AUMENTA o total
-    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > tetoDe_(cfgv, g.dia)) return {ok: false, code: 'lotado'};
-    var agora = new Date(), sh = aba_(ABA.CONF), linha = proximaLinha_(sh);
-    if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
-    sh.getRange(linha, 1, 1, 13).setValues([[agora, g.id, g.nome, g.dia, d.titNome, d.titTel, d.acNome, d.acTel,
-      pessoas, 'Confirmado', 'Sim (aceite ao confirmar)', '', agora]]);
-    SpreadsheetApp.flush();
-    if (String(sh.getRange(linha, 2).getValue()) !== g.id) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
-    if (antes) sh.getRange(antes.linha, 10).setValue('Substituído');
-    atualizarPainelSeguro_();
-    enfileirarWhats_('C', g.id, g.dia, [{nome: d.titNome, tel: d.titTel}].concat(d.acNome ? [{nome: d.acNome, tel: d.acTel || d.titTel}] : []));
-    var res = resumo_(g, d, prog_()); res.protocolo = 'C' + linha;
-    return {ok: true, resumo: res};
-  } finally { lock.releaseLock(); }
-}
-
-/* Registra que o convidado NÃO poderá comparecer (nome vem da lista; pede só o celular, para ele poder mudar de ideia depois). */
-function recusar_(p) {
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  try {
-    var g = convidados_().filter(function (c) { return c.id === String(p.id); })[0];
-    if (!g) return {ok: false, code: 'nao_encontrado'};
-    var confs = confs_();
-    if (confs.some(function (c) { return c.id === g.id && c.status === 'Confirmado'; })) return {ok: false, code: 'ja_confirmado'};
-    if (confs.some(function (c) { return c.id === g.id && c.status === STATUS_NAO; })) return {ok: false, code: 'ja_nao_vai'};
-    var tel = String(p.titTel || '').trim();
-    if (!TEL_RE.test(tel)) return {ok: false, code: 'invalido', campo: 'titTel', msg: 'Informe seu celular com DDD no formato (42) 99999-9999.'};
-    var agora = new Date(), sh = aba_(ABA.CONF), linha = proximaLinha_(sh);
-    if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
-    sh.getRange(linha, 1, 1, 13).setValues([[agora, g.id, g.nome, g.dia, g.nome, tel, '', '', 0, STATUS_NAO, 'Sim (aceite ao registrar)', '', agora]]);
-    SpreadsheetApp.flush();
-    if (String(sh.getRange(linha, 2).getValue()) !== g.id) throw new Error('ESCRITA_FALHOU: linha ' + linha + ' não confirmada');
-    atualizarPainelSeguro_();
-    var res = resumo_(g, {titNome: g.nome, titTel: tel, acNome: '', acTel: ''}, prog_()); res.pessoas = 0; res.protocolo = 'C' + linha;
-    return {ok: true, resumo: res};
-  } finally { lock.releaseLock(); }
-}
-
-function linhaVerificada_(id, tel, confs, status) {
-  var c = confs.filter(function (x) { return x.id === String(id) && x.status === (status || 'Confirmado'); })[0];
-  return c && digitos_(c.titTel) === digitos_(tel) ? c : null;
-}
-
-function abrir_(id, tel) {
-  if (!limite_('v' + cli_(id), 6, 900)) return {ok: false, code: 'limite'};
-  var cs = confs_(), c = linhaVerificada_(id, tel, cs);
-  if (!c) {
-    var n = linhaVerificada_(id, tel, cs, STATUS_NAO);
-    if (!n) return {ok: false, code: 'tel_incorreto'};
-    return {ok: true, status: STATUS_NAO, convidado: pub_(convidados_().filter(function (x) { return x.id === n.id; })[0], prog_())};
-  }
-  var g = convidados_().filter(function (x) { return x.id === c.id; })[0];
-  return {ok: true, status: 'Confirmado', convidado: pub_(g, prog_()),
-          dados: {titNome: c.titNome, titTel: c.titTel, acNome: c.acNome, acTel: c.acTel}};
-}
-
-function atualizar_(p) {
-  if (!limite_('v' + cli_(p.id), 12, 900)) return {ok: false, code: 'limite'};
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  try {
-    var confs = confs_(), c = linhaVerificada_(p.id, p.telAtual, confs);
-    if (!c) return {ok: false, code: 'tel_incorreto'};
-    var g = convidados_().filter(function (x) { return x.id === c.id; })[0];
-    var v = validar_(p, g); if (!v.dados) return {ok: false, code: 'invalido', campo: v.campo, msg: v.msg};
-    var d = v.dados;
-    if (telEmUso_([d.titTel, d.acTel], confs, c.linha)) return {ok: false, code: 'tel_duplicado',
-      msg: 'Este telefone já está em outra confirmação. Confira o número ou fale com a nossa equipe.'};
-    var todos = convidados_(), un = regrasUnicidade_(g, d, confs, todos, c.linha);
-    if (un) return {ok: false, code: un.code, msg: un.msg};
-    var pessoas = d.acNome ? 2 : 1;
-    if (pessoas > 1 + g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite permite no máximo ' + g.acomp + ' acompanhante(s).'};
-    var cfgv = cfg_(), delta = pessoas - contribConv_(g, confs, cfgv);
-    if (delta > 0 && contagem_(g.dia, cfgv, todos, confs, reservas_()).total + delta > tetoDe_(cfgv, g.dia)) return {ok: false, code: 'lotado'};
-    aba_(ABA.CONF).getRange(c.linha, 5, 1, 5).setValues([[d.titNome, d.titTel, d.acNome, d.acTel, pessoas]]);
-    aba_(ABA.CONF).getRange(c.linha, 13).setValue(new Date());
-    atualizarPainelSeguro_();
-    enfileirarWhats_('C', g.id, g.dia, [{nome: d.titNome, tel: d.titTel}].concat(d.acNome ? [{nome: d.acNome, tel: d.acTel || d.titTel}] : []));
-    var res = resumo_(g, d, prog_()); res.protocolo = 'C' + c.linha;
-    return {ok: true, resumo: res};
-  } finally { lock.releaseLock(); }
-}
-
-function cancelar_(id, tel) {
-  if (!limite_('v' + cli_(id), 12, 900)) return {ok: false, code: 'limite'};
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  try {
-    var c = linhaVerificada_(id, tel, confs_());
-    if (!c) return {ok: false, code: 'tel_incorreto'};
-    var sh = aba_(ABA.CONF);
-    sh.getRange(c.linha, 10).setValue('Cancelado'); sh.getRange(c.linha, 13).setValue(new Date());
-    cancelarFilaWhats_('C', c.id, null);
-    atualizarPainelSeguro_();
-    return {ok: true};
-  } finally { lock.releaseLock(); }
-}
-
-function config()           { return api_('config',    config_,    arguments); }
-function buscar(q, cli)     { return api_('buscar',    buscar_,    arguments); }
-function estado(id)         { return api_('estado',    estado_,    arguments); }
-function confirmar(p)       { return api_('confirmar', confirmar_, arguments); }
-function abrir(id, tel)     { return api_('abrir',     abrir_,     arguments); }
-function recusar(p)         { return api_('recusar',   recusar_,   arguments); }
-function atualizar(p)       { return api_('atualizar', atualizar_, arguments); }
-function cancelar(id, tel)  { return api_('cancelar',  cancelar_,  arguments); }
-
 /* ---------- DIAGNÓSTICO (menu "Stammhaus" na planilha) ---------- */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Stammhaus').addItem('Diagnóstico do sistema', 'diagnostico')
-    .addItem('Sincronizar lista de convidados (telefones)', 'sincronizarListaMenu')
     .addItem('Atualizar painel de lotação', 'atualizarPainelMenu')
     .addItem('Preparar reservas e métricas (1ª vez)', 'prepararReservas').addToUi();
 }
@@ -774,19 +356,14 @@ function diagnostico() {
   function t(nome, fn) { try { return fn(); } catch (e) { ok(false, nome + ' → ' + classificar_(e.message) + ' · ' + String(e.message).slice(0, 120)); return null; } }
   var ssd = ss_();
   L.push('Planilha ligada ao script: ' + ssd.getName(), 'ID: ' + ssd.getId(), 'Link: ' + ssd.getUrl(), '');
-  [ABA.CONV, ABA.CONF, ABA.PROG, ABA.CFG].forEach(function (n) { ok(!!ss_().getSheetByName(n), 'Aba "' + n + '" existe'); });
-  var conv = t('Ler Convidados', function () { var c = convidados_(); ok(c.length > 0, 'Convidados lidos: ' + c.length); return c; });
-  t('Ler Programacao', function () { var p = prog_(), n = Object.keys(p).length; ok(n === 4, 'Programação: ' + n + ' dias (esperado 4)'); Object.keys(p).forEach(function (k) { ok(/\d\d\/\d\d/.test(p[k].label), 'Dia ' + k + ' com data válida: ' + p[k].label); }); });
+  [ABA.PROG, ABA.CFG, ABA.RES].forEach(function (n) { ok(!!ss_().getSheetByName(n), 'Aba "' + n + '" existe'); });
+  t('Ler Programacao', function () { var p = prog_(), n = Object.keys(p).length; ok(n > 0, 'Programação: ' + n + ' dias'); });
   t('Ler Config', function () { var c = cfg_(); ok(c.capacidade > 0, 'Capacidade por noite: ' + c.capacidade); });
-  t('Ler Confirmacoes', function () { ok(true, 'Confirmações lidas: ' + confs_().length); });
-  ok(typeof buscarNome === 'function', 'Código completo (função buscarNome carregada)');
+  t('Ler Reservas', function () { ok(true, 'Linhas de reservas: ' + reservas_().length); });
   ok(typeof ''.normalize === 'function', 'Runtime V8 ativo (String.normalize)');
-  if (conv && typeof buscarNome === 'function' && typeof ''.normalize === 'function') {
-    t('Busca de teste', function () { var r = buscarNome(conv[0].nome, conv); ok(r.status === 'achei' || r.status === 'sugestoes', 'Busca de teste com "' + conv[0].nome + '": ' + r.status); });
-  }
   t('Cache', function () { CacheService.getScriptCache().put('diag', '1', 30); ok(CacheService.getScriptCache().get('diag') === '1', 'Cache funcionando'); });
   t('Lock', function () { var l = LockService.getScriptLock(); ok(l.tryLock(3000), 'Lock funcionando'); l.releaseLock(); });
-  t('Página', function () { HtmlService.createHtmlOutputFromFile('Index'); ok(true, 'Arquivo Index (HTML) encontrado'); });
+  t('Página', function () { HtmlService.createHtmlOutputFromFile('Painel'); ok(true, 'Arquivo Painel (HTML) encontrado'); });
   var sh = ss_().getSheetByName('Erros');
   if (sh && sh.getLastRow() > 1) {
     var n = sh.getLastRow(), de = Math.max(2, n - 4), v = sh.getRange(de, 1, n - de + 1, 5).getValues();
@@ -795,19 +372,6 @@ function diagnostico() {
   } else { L.push('', 'Aba Erros: nenhum erro registrado ainda.'); }
   L.push('', 'Lembrete: depois de alterar o código, faça Implantar → Gerenciar implantações → Editar → Nova versão.');
   SpreadsheetApp.getUi().alert('Diagnóstico do sistema', L.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-/* Entrada para a página estática do site (GitHub Pages): mesma API do google.script.run, só as funções da confirmação de presença. */
-var ROTAS_ = {config: function (a) { return config.apply(null, a); }, buscar: function (a) { return buscar.apply(null, a); }, estado: function (a) { return estado.apply(null, a); },
-              abrir: function (a) { return abrir.apply(null, a); }, cancelar: function (a) { return cancelar.apply(null, a); },
-              confirmar: function (a) { return confirmar.apply(null, a); }, recusar: function (a) { return recusar.apply(null, a); }, atualizar: function (a) { return atualizar.apply(null, a); }};
-function doPost(e) {
-  var out;
-  try {
-    var b = JSON.parse((e && e.postData && e.postData.contents) || '{}'), f = ROTAS_[b.fn];
-    out = f ? f(Array.isArray(b.args) ? b.args : []) : {erro: {codigo: 'S99', titulo: 'Função inválida'}};
-  } catch (err) { out = {erro: {codigo: 'S99', titulo: 'Erro não classificado', detalhe: String(err && err.message || err).slice(0, 120)}}; }
-  return ContentService.createTextOutput(JSON.stringify(out === undefined ? null : out)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /* ================= CONFIGURAÇÃO INICIAL (menu Stammhaus) ================= */
@@ -821,7 +385,7 @@ function garantirAba_(nome, cab) {
   return sh;
 }
 
-function atualizarPainelMenu() { atualizarPainelSeguro_(); }
+function atualizarPainelMenu() { atualizarPainelSeguro_(); try { legadoMigrarSeguro_(); } catch (e) {} }
 
 function prepararReservas() {
   var sc = ss_().getSheetByName(ABA.CFG);
@@ -972,32 +536,9 @@ function aud_(a, acao, det) {
 
 function normG_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 
-function convFull_() {
-  var sh = aba_(ABA.CONV), n = sh.getLastRow();
-  if (n < 2) return [];
-  var nc = Math.min(sh.getMaxColumns(), LISTA_COL.HOR);
-  return sh.getRange(2, 1, n - 1, nc).getValues().map(function (r, i) {
-    var env = r[LISTA_COL.ENV - 1], lem = r[LISTA_COL.LEM - 1], hor = r[LISTA_COL.HOR - 1];
-    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0,
-            tel: String(r[LISTA_COL.TEL - 1] || '').trim(), tipo: String(r[LISTA_COL.TIPO - 1] || ''),
-            env: env instanceof Date ? Utilities.formatDate(env, TZ, 'dd/MM HH:mm') : String(env || ''),
-            lem: lem instanceof Date ? Utilities.formatDate(lem, TZ, 'dd/MM HH:mm') : String(lem || ''),
-            hor: hor instanceof Date ? Utilities.formatDate(hor, TZ, 'dd/MM HH:mm') : String(hor || '')};
-  }).filter(function (c) { return c.id; });
-}
-
-function ultConf_(id, confs) {
-  var u = null;
-  confs.forEach(function (c) { if (c.id === id && c.status !== 'Substituído') u = c; });
-  return u;
-}
-
 function atividade_(resv) {
-  var ev = [], shC = aba_(ABA.CONF), nC = shC.getLastRow();
-  if (nC >= 2) shC.getRange(Math.max(2, nC - 14), 1, nC - Math.max(2, nC - 14) + 1, 13).getValues().forEach(function (r) {
-    if (r[1]) ev.push({t: r[12] || r[0], tipo: 'Convidado', texto: (r[4] || r[2]) + ' · ' + r[9] + (r[9] === 'Confirmado' ? ' (' + r[8] + ' pessoa' + (r[8] > 1 ? 's' : '') + ')' : '') + ' · noite ' + r[3]});
-  });
-  resv.slice(-30).forEach(function (r) { if (r.n === 1) ev.push({t: r.ts, tipo: 'Público', texto: r.nome + ' · reserva ' + r.prot + ' · ' + r.status + ' · noite ' + r.dia}); });
+  var ev = [];
+  resv.filter(function (r) { return !r.origem; }).slice(-30).forEach(function (r) { if (r.n === 1) ev.push({t: r.ts, tipo: 'Reserva', texto: r.nome + ' · reserva ' + r.prot + ' · ' + r.status + ' · noite ' + r.dia}); });
   ev.sort(function (x, y) { return (y.t instanceof Date ? y.t.getTime() : 0) - (x.t instanceof Date ? x.t.getTime() : 0); });
   return ev.slice(0, 12).map(function (e) { return {quando: fmtData_(e.t), tipo: e.tipo, texto: e.texto}; });
 }
@@ -1028,26 +569,20 @@ function contratos_(prog) {
 }
 
 function estadoGestao_(a) {
-  var cfg = cfg_(), prog = prog_(), conv = convFull_(), confs = confs_(), resv = reservas_();
-  var leve = conv.map(function (c) { return {id: c.id, dia: c.dia, acomp: c.acomp}; });
+  var cfg = cfg_(), prog = prog_(), resv = reservas_();
   var contr = a.gestao ? contratos_(prog) : {};   // dados de contratação: só perfil GESTAO, nunca vão para a página pública
   var noites = ordemDias_(prog).map(function (d) {
-    var c = contagem_(d, cfg, leve, confs, resv);
+    var c = contagem_(d, cfg, [], [], resv);
     if (a.gestao) c.contrato = contr[d] || {cache: '', integrantes: '', consumacao: '', estadia: '', transporte: ''};
-    if (c.contrato) c.contrato.refeicao = prog[d].refeicao; c.aberto = prog[d].aberto; c.show = prog[d].show; c.showPadrao = prog[d].showPadrao; c.showCustom = prog[d].showCustom; c.valor = valorDe_(cfg, prog[d]); c.valorCustom = prog[d].valorCustom; c.label = prog[d].label; c.iso = prog[d].iso; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.pub = prog[d].pub; c.receita = c.publico * c.valor;
+    if (c.contrato) c.contrato.refeicao = prog[d].refeicao; c.aberto = prog[d].aberto; c.show = prog[d].show; c.showPadrao = prog[d].showPadrao; c.showCustom = prog[d].showCustom; c.valor = valorDe_(cfg, prog[d]); c.valorCustom = prog[d].valorCustom; c.label = prog[d].label; c.iso = prog[d].iso; c.atracao = prog[d].atracao; c.estilo = prog[d].estilo; c.pub = prog[d].pub; c.receita = c.pagantes * c.valor;
     return c;
-  });
-  var convidados = conv.map(function (c) {
-    var u = ultConf_(c.id, confs), st = !u ? 'Pendente' : (u.status === 'Confirmado' ? 'Confirmado' : 'Não vai');
-    return {id: c.id, nome: c.nome, dia: c.dia, grupo: c.grupo, acomp: c.acomp, status: st, pessoas: u && st === 'Confirmado' ? u.pessoas : 0,
-            titNome: u ? u.titNome : '', titTel: u ? u.titTel : '', acNome: u ? u.acNome : '', acTel: u ? u.acTel : '', prot: u && st === 'Confirmado' ? 'C' + u.linha : '', tel: c.tel, tipo: c.tipo, lem: c.lem, hor: c.hor, env: c.env};
   });
   var gr = {}, ordem = [];
   resv.forEach(function (r) {
     if (r.status !== 'Confirmado') return;
     var g = gr[r.prot];
-    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, andar: r.andar || '', pessoas: []}; ordem.push(r.prot); }
-    g.pessoas.push({linha: r.linha, nome: r.nome, tel: r.tel});
+    if (!g) { g = gr[r.prot] = {prot: r.prot, dia: r.dia, titTel: r.titTel, andar: r.andar || '', origem: r.origem || '', pessoas: []}; ordem.push(r.prot); }
+    g.pessoas.push({linha: r.linha, nome: r.nome, tel: r.tel, bonif: !!r.bonif});
   });
   var aud = [], sa = ss_().getSheetByName('Auditoria'), na = sa ? sa.getLastRow() : 0;
   if (na >= 2) {
@@ -1064,8 +599,8 @@ function estadoGestao_(a) {
       .filter(function (x) { return x.status !== 'ENVIADO' && x.status !== 'CANCELADO'; }).slice(-30).forEach(function (x) { wh.push(x); });
   }
   return {ok: true, hoje: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), perfil: a.gestao ? 'GESTAO' : 'CONSULTA', atividade: atividade_(resv), whats: {ativo: cfg.waAtivo, contagem: cw, pendencias: wh}, quem: a.nome, geradoEm: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), teto: cfg.teto, capacidade: cfg.capacidade,
-          valor: cfg.valor, maxPessoas: cfg.maxPessoas, confirmarAte: cfg.confirmarAte, pendAc: cfg.pendAc, noites: noites, convidados: convidados,
-          reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud};
+          valor: cfg.valor, maxPessoas: cfg.maxPessoas, confirmarAte: cfg.confirmarAte, noites: noites,
+          reservas: ordem.map(function (p) { return gr[p]; }), auditoria: aud, legado: a.gestao ? gLegadoEstado_() : null};
 }
 
 function gestaoAbrir_(k) {
@@ -1096,18 +631,11 @@ function gMut_(k, nome, fn) {
 }
 
 function gDiaValido_(dia) { var p = prog_(); return p[Number(dia)] ? Number(dia) : 0; }
-function gTotalNoite_(dia) { return contagem_(dia, cfg_(), convLeve_(), confs_(), reservas_()).total; }
+function gTotalNoite_(dia) { return contagem_(dia, cfg_(), [], [], reservas_()).total; }
 function gLotado_(dia, add, forcar) {
   var t = gTotalNoite_(dia), teto = tetoDe_(cfg_(), dia);
   if (add > 0 && t + add > teto && !forcar) return {ok: false, code: 'lotado', total: t, teto: teto, adicional: add};
   return null;
-}
-function gPessoasConf_(u) { return [{nome: u.titNome, tel: u.titTel}].concat(u.acNome ? [{nome: u.acNome, tel: u.acTel || u.titTel}] : []); }
-function gAppendConf_(sh, vals) {
-  var linha = proximaLinha_(sh);
-  if (linha > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
-  sh.getRange(linha, 1, 1, 13).setValues([vals]);
-  return linha;
 }
 /* aceita o celular digitado de qualquer jeito (47996015131, 47 99601-5131, +55 47 99601 5131) e devolve (47) 99601-5131; o que não couber no padrão volta como veio e a validação recusa */
 function gTelFmt_(t) {
@@ -1118,159 +646,7 @@ function gTelFmt_(t) {
 }
 function gTelOk_(t, obrig) { t = String(t || '').trim(); return t ? TEL_RE.test(t) : !obrig; }
 
-/* ===== convidados da lista ===== */
-function gMoverConvidado(k, id, dia, forcar) {
-  return api_('gMoverConvidado', function () {
-    return gMut_(k, 'mover', function (a) {
-      dia = gDiaValido_(dia); if (!dia) return {ok: false, code: 'dia_invalido'};
-      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
-      if (!g) return {ok: false, code: 'nao_encontrado'};
-      if (g.dia === dia) return {ok: false, code: 'mesmo_dia'};
-      var cfg = cfg_(), confs = confs_(), contrib = contribConv_({id: g.id, acomp: g.acomp}, confs, cfg);
-      var bl = gLotado_(dia, contrib, forcar); if (bl) return bl;
-      aba_(ABA.CONV).getRange(g.linha, 3).setValue(dia);
-      var sh = aba_(ABA.CONF);
-      confs.forEach(function (c) { if (c.id === g.id) sh.getRange(c.linha, 4).setValue(dia); });
-      var uc = ultConf_(g.id, confs);
-      if (uc && uc.status === 'Confirmado') { cancelarFilaWhats_('C', g.id, g.dia); enfileirarWhats_('C', g.id, dia, gPessoasConf_(uc)); }
-      aud_(a, 'Moveu convidado', g.nome + ' (' + g.id + '): noite ' + g.dia + ' → ' + dia + (forcar ? ' [acima do teto, forçado]' : ''));
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-function gAddConvidado(k, p, forcar) {
-  return api_('gAddConvidado', function () {
-    return gMut_(k, 'add', function (a) {
-      var nome = limpaNome_(p && p.nome), dia = gDiaValido_(p && p.dia), acomp = Number(p && p.acomp) === 1 ? 1 : 0;
-      if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
-      if (!dia) return {ok: false, code: 'dia_invalido'};
-      var conv = convFull_(), nn = normG_(nome);
-      if (!forcar && conv.some(function (c) { return normG_(c.nome) === nn && c.dia === dia; })) return {ok: false, code: 'duplicado'};
-      var bl = gLotado_(dia, 1 + (cfg_().pendAc ? acomp : 0), forcar); if (bl) return bl;
-      var max = 0; conv.forEach(function (c) { var m = /^G(\d+)$/.exec(c.id); if (m) max = Math.max(max, Number(m[1])); });
-      var id = 'G' + ('000' + (max + 1)).slice(-3), sh = aba_(ABA.CONV), ult = sh.getLastRow(), nl = ult + 1, pr = prog_()[dia] || {};
-      sh.getRange(nl, 1, 1, 6).setValues([[id, nome, dia, String(p.estilo || pr.estilo || ''), String(p.grupo || 'Gestão').slice(0, 40), acomp]]);
-      try { var f = sh.getRange(ult, 8, 1, 2); if (ult >= 2 && f.getFormulas()[0].some(function (x) { return x; })) f.copyTo(sh.getRange(nl, 8, 1, 2)); } catch (e) {}
-      aud_(a, 'Incluiu convidado', nome + ' (' + id + ') na noite ' + dia + (acomp ? ' · com acompanhante' : '') + (forcar ? ' [forçado]' : ''));
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-function gEditarConvidado(k, id, p) {
-  return api_('gEditarConvidado', function () {
-    return gMut_(k, 'editar', function (a) {
-      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
-      if (!g) return {ok: false, code: 'nao_encontrado'};
-      var nome = limpaNome_(p && p.nome), acomp = Number(p && p.acomp) === 1 ? 1 : 0;
-      if (!NOME_RE.test(nome) || nome.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe nome e sobrenome.'};
-      var u = ultConf_(g.id, confs_());
-      if (!acomp && u && u.status === 'Confirmado' && u.pessoas > 1) return {ok: false, code: 'tem_acompanhante'};
-      var sh = aba_(ABA.CONV);
-      sh.getRange(g.linha, 2).setValue(nome); sh.getRange(g.linha, 6).setValue(acomp);
-      if (p && p.grupo !== undefined) sh.getRange(g.linha, 5).setValue(String(p.grupo).slice(0, 40));
-      if (p && p.tel !== undefined) {
-        var tel = gTelFmt_(p.tel);
-        if (!gTelOk_(tel, false)) return {ok: false, code: 'invalido', campo: 'tel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
-        lnGarantirColunas_(sh); sh.getRange(g.linha, LISTA_COL.TEL).setNumberFormat('@').setValue(tel);
-      }
-      aud_(a, 'Editou convidado', g.id + ': "' + g.nome + '" → "' + nome + '", acompanhante ' + g.acomp + ' → ' + acomp);
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-/* marca (ou desmarca) que o convite por WhatsApp foi enviado a este convidado */
-function gConviteMarcar(k, id, enviado) {
-  return api_('gConviteMarcar', function () {
-    return gMut_(k, 'convite', function (a) {
-      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
-      if (!g) return {ok: false, code: 'nao_encontrado'};
-      var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
-      sh.getRange(g.linha, LISTA_COL.ENV).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
-      aud_(a, enviado ? 'Convite WhatsApp enviado' : 'Desmarcou convite enviado', g.id + ' ' + g.nome);
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-/* marca (ou desmarca) que o lembrete de confirmação por WhatsApp foi enviado a este convidado */
-function gLembreteMarcar(k, id, enviado) {
-  return api_('gLembreteMarcar', function () {
-    return gMut_(k, 'lembrete', function (a) {
-      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
-      if (!g) return {ok: false, code: 'nao_encontrado'};
-      var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
-      sh.getRange(g.linha, LISTA_COL.LEM).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
-      aud_(a, enviado ? 'Lembrete de confirmação enviado' : 'Desmarcou lembrete enviado', g.id + ' ' + g.nome);
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-/* marca (ou desmarca) que o lembrete de horário (mesa guardada até as 20h) foi enviado a este convidado */
-function gHorarioMarcar(k, id, enviado) {
-  return api_('gHorarioMarcar', function () {
-    return gMut_(k, 'lembrete de horário', function (a) {
-      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
-      if (!g) return {ok: false, code: 'nao_encontrado'};
-      var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
-      sh.getRange(g.linha, LISTA_COL.HOR).setValue(enviado ? new Date() : '').setNumberFormat('dd/MM HH:mm');
-      aud_(a, enviado ? 'Lembrete de horário enviado' : 'Desmarcou lembrete de horário', g.id + ' ' + g.nome);
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-/* lê a planilha de trabalho "Lista de convidados" e harmoniza com o banco (telefones, pessoas novas); ver Lista.src.gs */
-function gSincronizarLista(k) {
-  return api_('gSincronizarLista', function () {
-    return gMut_(k, 'sync', function (a) {
-      var o = sincronizarLista_(a.nome);
-      aud_(a, 'Sincronizou lista de convidados', 'telefones ' + o.telefones + ' · incluídos ' + o.incluidos + ' · +1 ajustados ' + o.acZerados + ' · pendências ' + o.pendencias);
-      return {ok: true, info: {sync: o}};
-    });
-  }, arguments);
-}
-
-/* acao: 'pendente' (volta a sem resposta) · 'nao_vai' · 'confirmar' (p: titNome, titTel, acNome, acTel) */
-function gStatusConvidado(k, id, acao, p, forcar) {
-  return api_('gStatusConvidado', function () {
-    return gMut_(k, 'status', function (a) {
-      var g = convFull_().filter(function (c) { return c.id === String(id); })[0];
-      if (!g) return {ok: false, code: 'nao_encontrado'};
-      var cfg = cfg_(), confs = confs_(), shC = aba_(ABA.CONF), agora = new Date();
-      var atual = contribConv_({id: g.id, acomp: g.acomp}, confs, cfg), novo, dados = null;
-      if (acao === 'pendente') novo = 1 + (cfg.pendAc ? g.acomp : 0);
-      else if (acao === 'nao_vai') novo = 0;
-      else if (acao === 'confirmar') {
-        var tn = limpaNome_(p && p.titNome) || g.nome, tt = gTelFmt_(p && p.titTel), an = limpaNome_(p && p.acNome), at = gTelFmt_(p && p.acTel);
-        if (!NOME_RE.test(tn)) return {ok: false, code: 'invalido', campo: 'titNome', msg: 'Nome do convidado inválido.'};
-        if (!gTelOk_(tt, false)) return {ok: false, code: 'invalido', campo: 'titTel', msg: 'Celular no formato (42) 99999-9999 (ou deixe em branco).'};
-        if (an) {
-          if (!g.acomp) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Este convite não inclui acompanhante (edite o convidado antes).'};
-          if (!NOME_RE.test(an)) return {ok: false, code: 'invalido', campo: 'acNome', msg: 'Nome do acompanhante inválido.'};
-          if (!gTelOk_(at, false)) return {ok: false, code: 'invalido', campo: 'acTel', msg: 'Celular do acompanhante inválido.'};
-        }
-        dados = {titNome: tn, titTel: tt, acNome: an, acTel: an ? at : ''}; novo = an ? 2 : 1;
-      } else return {ok: false, code: 'acao_invalida'};
-      var bl = gLotado_(g.dia, novo - atual, forcar); if (bl) return bl;
-      confs.forEach(function (c) {
-        if (c.id === g.id && c.status !== 'Substituído') { shC.getRange(c.linha, 10).setValue('Substituído'); shC.getRange(c.linha, 13).setValue(agora); }
-      });
-      if (acao === 'nao_vai') gAppendConf_(shC, [agora, g.id, g.nome, g.dia, g.nome, '', '', '', 0, STATUS_NAO, 'Registrado pela gestão (' + a.nome + ')', '', agora]);
-      if (acao === 'confirmar') gAppendConf_(shC, [agora, g.id, g.nome, g.dia, dados.titNome, dados.titTel, dados.acNome, dados.acTel, novo, 'Confirmado',
-        'Registrado pela gestão (' + a.nome + ')', '', agora]);
-      if (acao === 'confirmar') enfileirarWhats_('C', g.id, g.dia, gPessoasConf_(dados));
-      else cancelarFilaWhats_('C', g.id, null);
-      aud_(a, 'Status do convidado', g.nome + ' (' + g.id + ', noite ' + g.dia + '): ' + acao + (acao === 'confirmar' ? ' · ' + novo + ' pessoa(s)' : '') + (forcar ? ' [forçado]' : ''));
-      return {ok: true};
-    });
-  }, arguments);
-}
-
-/* ===== reservas do público ===== */
+/* ===== reservas (único módulo de lista: os convidados da inauguração viraram legado na aba Reservas) ===== */
 function gReservaLinhas_(prot) {
   return reservas_().filter(function (r) { return r.prot === String(prot) && r.status === 'Confirmado'; });
 }
@@ -1351,18 +727,34 @@ function gReservaPessoas(k, prot, lista, forcar) {
         if (digitos_(tel) && usTel[digitos_(tel)]) return {ok: false, code: 'invalido', campo: 'tel', msg: q + 'cada pessoa precisa de um celular próprio.'};
         if (usNome[gNomeChave_(nome)]) return {ok: false, code: 'invalido', campo: 'nome', msg: q + 'este nome já consta na reserva.'};
         if (digitos_(tel)) usTel[digitos_(tel)] = 1; usNome[gNomeChave_(nome)] = 1;
-        novos.push({nome: nome, tel: tel});
+        novos.push({nome: nome, tel: tel, bonif: lista[i].bonif === true || bonifNorm_(lista[i].bonif)});
       }
       var bl = gLotado_(rows[0].dia, novos.length, forcar); if (bl) return bl;
       var sh = aba_(ABA.RES), agora = new Date(), nl = proximaLinha_(sh), n0 = Math.max.apply(null, rows.map(function (r) { return r.n; }));
       if (nl + novos.length - 1 > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 50);
       var out = novos.map(function (x, i) { return [agora, String(prot), rows[0].dia, n0 + i + 1, x.nome, x.tel, 'Confirmado', rows[0].titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora]; });
       sh.getRange(nl, 1, novos.length, 11).setValues(out);
+      if (novos.some(function (x) { return x.bonif; })) { resColunas_(sh); sh.getRange(nl, RES_COL_BONUS, novos.length, 1).setValues(novos.map(function (x) { return [x.bonif ? 'Sim' : '']; })); }
       var andar = rows[0].andar || '';
       if (andar) { if (sh.getMaxColumns() < RES_COL_ANDAR) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ANDAR - sh.getMaxColumns()); sh.getRange(nl, RES_COL_ANDAR, novos.length, 1).setValues(novos.map(function () { return [andar]; })); }
       enfileirarWhats_('R', String(prot), rows[0].dia, novos);
       aud_(a, 'Incluiu pessoas na reserva', prot + ': ' + novos.map(function (x) { return x.nome; }).join(', ') + (forcar ? ' [forçado]' : ''));
       return {ok: true, n: novos.length};
+    });
+  }, arguments);
+}
+
+/* entrada bonificada (sem cobrança de entrada), por pessoa: linhas = números de linha da aba Reservas (da própria reserva); vazio = todas as pessoas da reserva */
+function gReservaBonificar(k, prot, linhas, marcar) {
+  return api_('gReservaBonificar', function () {
+    return gMut_(k, 'rbonif', function (a) {
+      var rows = gReservaLinhas_(prot); if (!rows.length) return {ok: false, code: 'nao_encontrado'};
+      var alvo = (linhas && linhas.length) ? rows.filter(function (r) { return linhas.indexOf(r.linha) >= 0; }) : rows;
+      if (!alvo.length) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Pessoa não encontrada nesta reserva.'};
+      var sh = aba_(ABA.RES); resColunas_(sh);
+      alvo.forEach(function (r) { sh.getRange(r.linha, RES_COL_BONUS).setValue(marcar ? 'Sim' : ''); sh.getRange(r.linha, 11).setValue(new Date()); });
+      aud_(a, marcar ? 'Marcou entrada bonificada' : 'Removeu entrada bonificada', prot + ': ' + alvo.map(function (r) { return r.nome; }).join(', '));
+      return {ok: true};
     });
   }, arguments);
 }
@@ -1390,7 +782,7 @@ function gReservaNova(k, dia, pessoas, forcar) {
       if (!pessoas.length) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Informe ao menos uma pessoa.'};
       if (pessoas.length > 300) return {ok: false, code: 'invalido', campo: 'nome', msg: 'Máximo de 300 pessoas por reserva.'};   // equipe: sem o limite do público; só um teto de segurança
       var tels = {}, ativos = {};
-      reservas_().forEach(function (r) { var dg = digitos_(r.tel); if (r.status === 'Confirmado' && dg) ativos[dg] = r.prot; });
+      reservas_().forEach(function (r) { var dg = digitos_(r.tel); if (r.status === 'Confirmado' && dg && !/^legado/.test(r.origem || '')) ativos[dg] = r.prot; });
       for (var i = 0; i < pessoas.length; i++) {
         var n = limpaNome_(pessoas[i].nome), t = gTelFmt_(pessoas[i].tel);
         if (!NOME_RE.test(n) || n.split(' ').length < 2) return {ok: false, code: 'invalido', campo: 'nome' + i, msg: 'Pessoa ' + (i + 1) + ': informe nome e sobrenome.'};
@@ -1398,7 +790,7 @@ function gReservaNova(k, dia, pessoas, forcar) {
         var d = digitos_(t);   // celular é opcional na reserva da equipe; só confere repetição quando informado
         if (d && tels[d]) return {ok: false, code: 'invalido', campo: 'tel' + i, msg: 'Cada pessoa precisa de um celular próprio.'};
         if (d && ativos[d] && !forcar) return {ok: false, code: 'tel_duplicado', msg: 'O celular da pessoa ' + (i + 1) + ' já está na reserva ' + ativos[d] + '.'};
-        if (d) tels[d] = 1; pessoas[i] = {nome: n, tel: t};
+        if (d) tels[d] = 1; pessoas[i] = {nome: n, tel: t, bonif: bonifNorm_(pessoas[i].bonif) || pessoas[i].bonif === true};
       }
       var bl = gLotado_(dia, pessoas.length, forcar); if (bl) return bl;
       var sh = aba_(ABA.RES), agora = new Date(), l0 = proximaLinha_(sh), prot = 'R' + l0, titTel = (pessoas.filter(function (x) { return x.tel; })[0] || {tel: ''}).tel;
@@ -1406,6 +798,7 @@ function gReservaNova(k, dia, pessoas, forcar) {
       sh.getRange(l0, 1, pessoas.length, 11).setValues(pessoas.map(function (x, i) {
         return [agora, prot, dia, i + 1, x.nome, x.tel, 'Confirmado', titTel, 'Registrado pela gestão (' + a.nome + ')', '', agora];
       }));
+      if (pessoas.some(function (x) { return x.bonif; })) { resColunas_(sh); sh.getRange(l0, RES_COL_BONUS, pessoas.length, 1).setValues(pessoas.map(function (x) { return [x.bonif ? 'Sim' : '']; })); }
       enfileirarWhats_('R', prot, dia, pessoas);
       aud_(a, 'Criou reserva', prot + ' na noite ' + dia + ': ' + pessoas.map(function (x) { return x.nome; }).join(', ') + (forcar ? ' [forçado]' : ''));
       return {ok: true, info: {protocolo: prot}};
@@ -1517,7 +910,7 @@ function gDiaMover(k, isoOrig, isoDest) {
       if (exD && exD.atracao) return {ok: false, code: 'invalido', campo: 'data', msg: 'Já existe atração em ' + exD.label + ' (' + exD.atracao + '). Edite ou limpe esse dia antes.'};
       var sh = aba_(ABA.PROG); progColunas_(sh);
       var v = sh.getRange(exO.linha, 3, 1, PROG_COL_REF - 2).getValues()[0];   // atração … refeição (cols 3–13)
-      var cfg = cfg_(), c = contagem_(kO, cfg, convLeve_(), confs_(), reservas_()), linhaD;
+      var cfg = cfg_(), c = contagem_(kO, cfg, [], [], reservas_()), linhaD;
       if (exD) linhaD = exD.linha;
       else { linhaD = Math.max(sh.getLastRow(), 1) + 1; sh.getRange(linhaD, 2).setNumberFormat('@'); sh.getRange(linhaD, 1, 1, 2).setValues([[chaveDeIso_(isoDest, prog), isoDest]]); }
       sh.getRange(linhaD, 3, 1, PROG_COL_REF - 2).setValues([v]);
@@ -1532,278 +925,111 @@ function gDiaMover(k, isoOrig, isoDest) {
   }, arguments);
 }
 
-/* ---------- HARMONIZAÇÃO DA LISTA DE CONVIDADOS (planilha de trabalho) COM O BANCO OFICIAL ----------
- * A planilha "Lista de convidados" (preenchida pela equipe) é lida e cruzada com a aba Convidados.
- * Regras (só o que é seguro é aplicado; o resto vai para a aba "Harmonizacao" para decisão humana):
- *  1. Telefone: entra no banco (coluna J) no formato (xx) 9xxxx-xxxx. Telefone fora do padrão NÃO entra; vai ao relatório.
- *  2. Tipo do convite (Físico/Digital) entra na coluna K.
- *  3. Pessoa que está na lista e não existe no banco, com noite definida pelo estilo, é incluída (grupo "Lista").
- *     Sem estilo definido: não é incluída; vai ao relatório.
- *  4. Quando a lista nomeia o acompanhante em linha própria (linha "-" logo após um convite Físico) e o banco o tinha como "+1",
- *     o "+1" do titular é zerado (a vaga continua contando uma vez só, agora com nome).
- *  5. Quando a lista tem "+1" para o titular, o banco passa a ter acompanhante = 1 e a linha do acompanhante que antes tinha nome
- *     (logo abaixo do titular no banco, que a lista não traz mais) é removida, se ainda não respondeu. A vaga continua contando uma vez só.
- *  6. Nome escrito de outra forma na lista (grafia, sobrenome a mais, apelido com mesmo sobrenome na mesma noite) casa com a mesma pessoa;
- *     o nome do banco é mantido e o nome da lista entra na busca_extra, para o convidado se achar pelos dois.
- *  7. Nada é movido de noite nem renomeado. Divergências de noite e nomes só do banco vão ao relatório.
- * Repetir a sincronização é seguro (idempotente). */
+/* ======================= LEGADO: convidados da semana de inauguração → aba Reservas =======================
+ * Desde 25/11 o pub opera só com reservas. Os dados de convites ficam na aba Reservas como LEGADO (coluna N "origem" começa com "legado"):
+ *  · convite confirmado → uma linha por pessoa (titular e acompanhante), status Confirmado, protocolo = id do convite (G055…)
+ *  · sem resposta ou "não vai" → uma linha (o convidado), status Cancelado
+ * Não gera WhatsApp, não aparece na consulta do público e não conta para noites futuras. Idempotente: não duplica um convite já migrado.
+ * Depois de conferir, "Apagar abas antigas" (painel, perfil GESTÃO) tira Convidados/Confirmacoes (antes salva uma cópia da planilha no Drive). */
+var LEG_PREF = 'legado';
 
-var LISTA_ID = '1Pi6Za8_D4me13YUZna6y9TrsIZA7EpM-dZry-pzODgA';
-var LISTA_ABA = 'Semana de Inauguração';
-var LISTA_COL = {TEL: 10, TIPO: 11, ENV: 12, LEM: 14, HOR: 15};          // colunas J, K, L da aba Convidados
-var LISTA_ESTILOS = {'1': {dia: 18, estilo: 'Formal'}, '2': {dia: 19, estilo: 'MPB'}, '3': {dia: 20, estilo: 'Rock'}, '4': {dia: 21, estilo: 'Pop Rock'}};
-var LISTA_GRUPOS = {'família': 'Família', 'projeto': 'Projeto', 'autoridades': 'Autoridades'};
-
-function lnNorm_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\+\s*1/g, ' ').replace(/\([^)]*\)/g, ' ').replace(/\b(dr|dra|sr|sra)\b\.?/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim(); }
-function lnTokens_(s) { return lnNorm_(s).split(' ').filter(function (t) { return t; }); }
-
-/* devolve {tel:'(47) 99999-0000'} ou {erro:'motivo', bruto:'...'} ou {} se vazio */
-function lnTel_(bruto) {
-  var d = String(bruto == null ? '' : bruto).replace(/\D/g, '');
-  if (!d) return {};
-  if (d.length >= 12 && d.slice(0, 2) === '55') d = d.slice(2);
-  if (d.length === 11 && d.charAt(0) === '0') d = d.slice(1);
-  if (/^[1-9][1-9]9\d{8}$/.test(d)) return {tel: '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7)};
-  var m = d.length === 9 ? 'faltam os 2 dígitos do DDD' : d.length === 10 ? 'só 10 dígitos (falta o 9 do celular?)' : d.length > 11 ? 'dígitos a mais (' + d.length + ')' : d.length < 9 ? 'dígitos a menos (' + d.length + ')' : 'fora do padrão (xx) 9xxxx-xxxx';
-  return {erro: m, bruto: String(bruto)};
+function legadoLer_() {
+  var ss = ss_(), sc = ss.getSheetByName(ABA.CONV), sf = ss.getSheetByName(ABA.CONF), conv = [], ult = {};
+  if (sc && sc.getLastRow() > 1) sc.getRange(2, 1, sc.getLastRow() - 1, Math.min(sc.getMaxColumns(), 11)).getValues().forEach(function (r) {
+    if (r[0]) conv.push({id: String(r[0]).trim(), nome: String(r[1] || '').trim(), dia: Number(r[2]), estilo: String(r[3] || ''), grupo: String(r[4] || ''), acomp: Number(r[5]) === 1 ? 1 : 0, tel: String(r[9] || '').trim()});
+  });
+  if (sf && sf.getLastRow() > 1) sf.getRange(2, 1, sf.getLastRow() - 1, 13).getValues().forEach(function (r) {
+    var id = String(r[1] || '').trim(); if (!id || String(r[9]) === 'Substituído') return;
+    ult[id] = {ts: r[0], dia: Number(r[3]), titNome: String(r[4] || '').trim(), titTel: String(r[5] || '').trim(), acNome: String(r[6] || '').trim(), acTel: String(r[7] || '').trim(), status: String(r[9] || '')};
+  });
+  return {conv: conv, ult: ult, tem: !!(sc || sf)};
 }
 
-function lnDist_(a, b) {
-  var m = a.length, n = b.length, d = [], i, j;
-  for (i = 0; i <= m; i++) { d[i] = [i]; }
-  for (j = 1; j <= n; j++) d[0][j] = j;
-  for (i = 1; i <= m; i++) for (j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
-  return d[m][n];
-}
-function lnGrafia_(ta, tb) {   // mesmos tokens, cada um igual ou com 1 letra de diferença (mín. 5 letras)
-  if (ta.length !== tb.length || ta.length < 2) return false;
-  var difs = 0;
-  for (var i = 0; i < ta.length; i++) { if (ta[i] === tb[i]) continue; if (ta[i].length >= 5 && tb[i].length >= 5 && lnDist_(ta[i], tb[i]) <= 1) difs++; else return false; }
-  return difs <= 1;
+/* linhas de Reservas (11 colunas A–K + L andar + M bonificada + N origem) para um convite */
+function legadoLinhas_(g, u) {
+  var agora = new Date(), conf = u && u.status === 'Confirmado', dia = (u && u.dia) || g.dia, lote = [];
+  var base = LEG_PREF + ' · convite ' + g.id + (g.grupo ? ' · ' + g.grupo : '') + (g.estilo ? ' · ' + g.estilo : '');
+  var mk = function (n, nome, tel, status, titTel, obs, origem) { return [(u && u.ts) || agora, g.id, dia, n, nome, tel, status, titTel, 'Legado: convite da inauguração', '', agora, '', '', origem]; };
+  if (conf) {
+    var tt = u.titTel || g.tel;
+    lote.push(mk(1, u.titNome || g.nome, u.titTel || g.tel, 'Confirmado', tt, '', base + ' · confirmado'));
+    if (u.acNome) lote.push(mk(2, u.acNome, u.acTel || '', 'Confirmado', tt, '', base + ' · acompanhante'));
+  } else lote.push(mk(1, g.nome, g.tel, 'Cancelado', g.tel, '', base + (u ? ' · não foi' : ' · sem resposta')));
+  return lote;
 }
 
-/* mesma pessoa com grafia diferente: mesma quantidade de palavras; cada palavra igual ou, se tiver 6+ letras, com 1 letra de diferença (Carolina/Caroline, Henckels/Henkels).
-   Nomes curtos (Helon/Heron, Maria/Marta) nunca casam por aproximação: são pessoas diferentes. Só é usado junto com telefone igual. */
-function lnMesmaPessoa_(ta, tb) {
-  if (ta.length !== tb.length || ta.length < 2) return false;
-  var iguais = 0;
-  for (var i = 0; i < ta.length; i++) {
-    if (ta[i] === tb[i]) { iguais++; continue; }
-    if (!(ta[i].length >= 6 && tb[i].length >= 6 && lnDist_(ta[i], tb[i]) <= 1)) return false;
+function legadoResumo_() {
+  var L = legadoLer_(), sh = ss_().getSheetByName(ABA.RES), ja = {}, nres = 0;
+  if (sh && sh.getLastRow() > 1) {
+    var mx = Math.min(sh.getMaxColumns(), RES_COL_ORIG);
+    if (mx >= RES_COL_ORIG) sh.getRange(2, 1, sh.getLastRow() - 1, RES_COL_ORIG).getValues().forEach(function (r) { var o = String(r[RES_COL_ORIG - 1] || ''); if (o.indexOf(LEG_PREF) === 0) { ja[String(r[1])] = 1; nres++; } });
   }
-  return iguais >= 1;
+  var pend = L.conv.filter(function (g) { return !ja[g.id]; }).length;
+  return {abas: L.tem, convites: L.conv.length, migrados: L.conv.length - pend, pendentes: pend, linhas: nres};
 }
-function lnTipo_(s) { var t = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); return t.indexOf('fisico') === 0 ? 'Físico' : t.indexOf('digital') === 0 ? 'Digital' : ''; }
 
-/* linhas brutas da lista (array de arrays, sem cabeçalho): [#, data, nome, grupo, estilo, convite, telefone] */
-function lnParse_(linhas) {
-  var out = [];
-  linhas.forEach(function (r, i) {
-    var nome = String(r[2] || '').replace(/\s+/g, ' ').trim();
-    if (!nome) return;
-    var est = LISTA_ESTILOS[String(r[4] || '').trim().charAt(0)] || null;
-    if (!est) { var m = /^(\d{1,2})\/(\d{1,2})/.exec(String(r[1] || '')); if (m && Number(m[2]) === 11 && Number(m[1]) >= 18 && Number(m[1]) <= 21) est = LISTA_ESTILOS[String(Number(m[1]) - 17)]; }
-    var g = LISTA_GRUPOS[String(r[3] || '').trim().toLowerCase()] || '';
-    out.push({i: i, n: String(r[0] || ''), nome: nome, mais1: /\+\s*1\b/.test(nome), dia: est ? est.dia : 0, estilo: est ? est.estilo : '', grupo: g,
-              convite: String(r[5] || '').trim(), tipo: lnTipo_(r[5]), tel: lnTel_(r[6]), telBruto: String(r[6] == null ? '' : r[6]).trim()});
+function legadoMigrar_() {
+  var L = legadoLer_();
+  if (!L.tem) return {ok: true, convites: 0, gravados: 0, nota: 'Abas antigas não existem (já removidas).'};
+  var sh = aba_(ABA.RES); resColunas_(sh);
+  var feitos = {}; if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, RES_COL_ORIG).getValues().forEach(function (r) { if (String(r[RES_COL_ORIG - 1] || '').indexOf(LEG_PREF) === 0) feitos[String(r[1])] = 1; });
+  var lote = [], conf = 0, canc = 0, pend = 0;
+  L.conv.forEach(function (g) {
+    if (feitos[g.id]) return;
+    var u = L.ult[g.id]; pend++;
+    legadoLinhas_(g, u).forEach(function (x) { lote.push(x); if (x[6] === 'Confirmado') conf++; else canc++; });
   });
-  return out;
-}
-
-/* banco: [{linha,id,nome,dia,estilo,grupo,acomp,tel,tipo}] ; lista: saída de lnParse_ ; devolve o plano de mudanças */
-function lnPlano_(lista, banco) {
-  var plano = {tel: [], tipo: [], novos: [], zeraAc: [], marcaAc: [], busca: [], remover: [], rel: []};   // rel: [categoria, nome, detalhe]
-  var rel = function (c, n, d) { plano.rel.push([c, n, d || '']); };
-  var titulares = lista.filter(function (l) { return !l.mais1; });
-  var mais1 = {};
-  lista.forEach(function (l) { if (l.mais1) mais1[lnNorm_(l.nome)] = 1; });
-
-  var porNorm = {}; banco.forEach(function (b) { porNorm[lnNorm_(b.nome) + '|' + b.dia] = b; });
-  function acha(l, livres) {
-    var k = lnNorm_(l.nome); if (l.dia && porNorm[k + '|' + l.dia]) return {b: porNorm[k + '|' + l.dia], modo: 'exato'};
-    if (!l.dia) { var ex = banco.filter(function (b) { return lnNorm_(b.nome) === k; }); if (ex.length === 1) return {b: ex[0], modo: 'exato'}; }
-    var tl = lnTokens_(l.nome), cand = banco.filter(function (b) {
-      var tb = lnTokens_(b.nome), c = tl.length <= tb.length ? [tl, tb] : [tb, tl];
-      return c[0].length >= 2 && c[0].every(function (t) { return c[1].indexOf(t) >= 0; }) && (!l.dia || l.dia === b.dia);
-    });
-    if (cand.length === 1) return {b: cand[0], modo: 'parcial'};
-    if (l.tel && l.tel.tel) {   // mesmo celular + nome com grafia parecida (Carolina/Caroline) = mesma pessoa, não cria convite novo
-      cand = banco.filter(function (b) { return b.tel === l.tel.tel && (!l.dia || l.dia === b.dia) && lnMesmaPessoa_(tl, lnTokens_(b.nome)); });
-      if (cand.length === 1) return {b: cand[0], modo: 'grafia'};
-    }
-    cand = banco.filter(function (b) { return (!l.dia || l.dia === b.dia) && lnGrafia_(tl, lnTokens_(b.nome)); });
-    return cand.length === 1 ? {b: cand[0], modo: 'grafia'} : null;
+  if (lote.length) {
+    var l0 = proximaLinha_(sh); if (l0 + lote.length > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), lote.length + 20);
+    sh.getRange(l0, 1, lote.length, RES_COL_ORIG).setValues(lote);
+    SpreadsheetApp.flush();
+    if (String(sh.getRange(l0 + lote.length - 1, 2).getValue()) !== String(lote[lote.length - 1][1])) throw new Error('ESCRITA_FALHOU: migração do legado não confirmada');
   }
-  var usados = {}, casou = [];
-  titulares.forEach(function (l) { var a = acha(l); casou.push(a); if (a) usados[a.b.id] = 1; });
-  /* 2ª passada: mesmo sobrenome e mesma noite, entre quem sobrou dos dois lados (apelido, ex.: Beto/Roberto) */
-  titulares.forEach(function (l, ix) {
-    if (casou[ix] || !l.dia) return;
-    var tl = lnTokens_(l.nome), ult = tl[tl.length - 1];
-    var cand = banco.filter(function (b) { var tb = lnTokens_(b.nome); return !usados[b.id] && b.dia === l.dia && tl.length >= 2 && tb.length >= 2 && tb[tb.length - 1] === ult && ult.length >= 4; });
-    var concorre = titulares.filter(function (x, j) { var tx = lnTokens_(x.nome); return !casou[j] && j !== ix && x.dia === l.dia && tx[tx.length - 1] === ult; }).length;
-    if (cand.length === 1 && !concorre) { casou[ix] = {b: cand[0], modo: 'apelido'}; usados[cand[0].id] = 1; }
-  });
-
-  titulares.forEach(function (l, ix) {
-    var a = casou[ix], b = a && a.b;
-    if (b) {
-      if (a.modo !== 'exato') {
-        rel(a.modo === 'apelido' ? 'Nome diferente (conferir se é a mesma pessoa)' : 'Nome diferente (mesma pessoa)', l.nome, 'banco: "' + b.nome + '" · mantido o nome do banco; o nome da lista entra na busca');
-        plano.busca.push({linha: b.linha, id: b.id, texto: l.nome.replace(/\+\s*1/g, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(), atual: b.busca || ''});
-      }
-      if (l.dia && l.dia !== b.dia) rel('Noite diferente', l.nome, 'lista: ' + l.dia + ' · banco: ' + b.dia + ' · nada alterado');
-      if (l.tel.tel && l.tel.tel !== b.tel) plano.tel.push({linha: b.linha, id: b.id, nome: b.nome, tel: l.tel.tel});
-      if (l.tipo && l.tipo !== b.tipo) plano.tipo.push({linha: b.linha, tipo: l.tipo});
-      var tem = !!mais1[lnNorm_(l.nome)];
-      if (tem && !b.acomp) { plano.marcaAc.push({linha: b.linha, id: b.id, nome: b.nome}); rel('Acompanhante (+1) incluído no banco', b.nome, 'a lista tem "+1"; banco passa a ter direito a acompanhante'); }
-    } else if (l.dia) {
-      plano.novos.push({nome: l.nome, dia: l.dia, estilo: l.estilo, grupo: l.grupo || 'Lista', acomp: mais1[lnNorm_(l.nome)] ? 1 : 0, tel: l.tel.tel || '', tipo: l.tipo, ref: l.n});
-    } else {
-      rel('Sem noite definida (não incluída)', l.nome, 'estilo vazio na lista · defina o estilo para incluir');
-    }
-    if (l.tel.erro) rel('Telefone fora do padrão (não importado)', l.nome, '"' + l.tel.bruto + '" · ' + l.tel.erro);
-  });
-
-  /* regra 4: acompanhante nomeado em linha própria (logo após o titular) substitui o "+1" que o banco tinha */
-  titulares.forEach(function (l, ix) {
-    var a = casou[ix], b = a && a.b, prox = titulares[ix + 1];
-    if (!b || !b.acomp || mais1[lnNorm_(l.nome)] || !prox || prox.mais1 || prox.dia !== b.dia) return;
-    var pnovo = plano.novos.filter(function (x) { return x.ref === prox.n && x.nome === prox.nome; })[0], pb = casou[ix + 1];
-    var par = /^-/.test(prox.convite) && l.tipo === 'Físico' && (pnovo || (pb && pb.b.id !== b.id));   // 2º nome do mesmo convite físico
-    var novo = pnovo && !!l.tipo && l.tipo === prox.tipo;                                              // 2º nome novo, mesmo tipo de convite
-    if (par || novo) { plano.zeraAc.push({linha: b.linha, id: b.id, nome: b.nome, acomp: prox.nome}); rel('Acompanhante agora tem nome', b.nome, '"+1" do banco zerado · acompanhante na lista: ' + prox.nome); }
-  });
-
-  /* regra 5: linha de acompanhante que a lista não traz mais, logo abaixo do titular que agora tem "+1" */
-  var ordem = banco.slice().sort(function (x, y) { return x.linha - y.linha; }), removidos = {};
-  ordem.forEach(function (o, ix) {
-    if (usados[o.id] || !ix) return;
-    var ant = ordem[ix - 1], li = titulares.filter(function (x, j) { return casou[j] && casou[j].b.id === ant.id; })[0];
-    if (li && mais1[lnNorm_(li.nome)] && ant.dia === o.dia) { plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: ant.nome}); removidos[o.id] = 1; rel('Acompanhante com nome removido do banco', o.nome, 'a lista agora traz só "+1" para ' + ant.nome + ' · vaga continua contando uma vez só'); }
-  });
-  /* convites duplicados já existentes no banco: mesma noite, mesmo celular, nome com grafia parecida -> fica o mais antigo */
-  var jaVistos = [];
-  ordem.forEach(function (o) {
-    if (removidos[o.id] || !o.tel) return;
-    var orig = jaVistos.filter(function (x) { return x.tel === o.tel && x.dia === o.dia && lnMesmaPessoa_(lnTokens_(x.nome), lnTokens_(o.nome)); })[0];
-    if (orig && (usados[o.id] || usados[orig.id])) rel('Possível convite duplicado (conferir)', o.nome, 'mesmo celular e nome parecido com "' + orig.nome + '" (noite ' + o.dia + ') · nada alterado');
-    else if (orig) {
-      plano.remover.push({linha: o.linha, id: o.id, nome: o.nome, titular: orig.nome}); removidos[o.id] = 1; usados[o.id] = 1;
-      if (lnNorm_(orig.busca).indexOf(lnNorm_(o.nome)) < 0) plano.busca.push({linha: orig.linha, id: orig.id, texto: o.nome, atual: orig.busca || ''});
-      rel('Convite duplicado removido', o.nome, 'mesmo celular e nome parecido com "' + orig.nome + '" (noite ' + o.dia + ') · mantido o convite mais antigo');
-    } else jaVistos.push(o);
-  });
-  var pend = banco.filter(function (b) { return !usados[b.id] && !removidos[b.id]; });
-  pend.forEach(function (b) { rel('Só no banco (não está na lista)', b.nome, 'noite ' + b.dia + ' · nada alterado'); });
-  /* "+1" divergente que sobrou */
-  banco.forEach(function (b) {
-    var l = titulares.filter(function (x, ix) { return casou[ix] && casou[ix].b.id === b.id; })[0];
-    if (!l) return;
-    var tem = !!mais1[lnNorm_(l.nome)];
-    var zerado = plano.zeraAc.some(function (z) { return z.id === b.id; });
-    if (b.acomp && !tem && !zerado) rel('Acompanhante (+1) só no banco', b.nome, 'banco: com acompanhante · lista: sem "+1" e sem nome em linha própria · nada alterado');
-  });
-  /* telefones repetidos entre pessoas diferentes */
-  var vistos = {};
-  titulares.forEach(function (l) { if (!l.tel.tel) return; (vistos[l.tel.tel] = vistos[l.tel.tel] || []).push(l.nome); });
-  Object.keys(vistos).forEach(function (t) { if (vistos[t].length > 1) rel('Telefone repetido', vistos[t].join(' · '), t); });
-  /* numeração repetida na lista */
-  var cont = {}; lista.forEach(function (l) { if (l.n) cont[l.n] = (cont[l.n] || 0) + 1; });
-  Object.keys(cont).forEach(function (n) { if (cont[n] > 1) rel('Número (#) repetido na lista', '#' + n, cont[n] + ' linhas'); });
-  plano.resumo = {lista: lista.length, titulares: titulares.length, mais1: lista.length - titulares.length, noBanco: banco.length, comTel: titulares.filter(function (l) { return l.tel.tel; }).length,
-                  semTel: titulares.filter(function (l) { return !l.tel.tel && !l.tel.erro; }).length, telInvalido: titulares.filter(function (l) { return l.tel.erro; }).length};
-  return plano;
+  return {ok: true, convites: pend, gravados: lote.length, pessoasConfirmadas: conf, canceladas: canc};
 }
 
-/* ---- leitura/escrita na planilha ---- */
-function lnGarantirColunas_(sh) {
-  var need = LISTA_COL.HOR; if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
-  var h = sh.getRange(1, LISTA_COL.TEL, 1, 3), v = h.getValues()[0];
-  if (!v[0]) h.getCell(1, 1).setValue('telefone');
-  if (!v[1]) h.getCell(1, 2).setValue('convite (tipo)');
-  if (!v[2]) h.getCell(1, 3).setValue('convite enviado em');
-  try { if (!String(sh.getRange(1, LISTA_COL.LEM).getValue() || '')) sh.getRange(1, LISTA_COL.LEM).setValue('lembrete de confirmação enviado em'); } catch (e) {}
-  try { if (!String(sh.getRange(1, LISTA_COL.HOR).getValue() || '')) sh.getRange(1, LISTA_COL.HOR).setValue('lembrete de horário enviado em'); } catch (e) {}
-  sh.getRange(2, LISTA_COL.TEL, Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
-}
-function lnBanco_() {
-  var sh = aba_(ABA.CONV); lnGarantirColunas_(sh);
-  var n = sh.getLastRow(); if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, LISTA_COL.ENV).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[0]), nome: String(r[1]).trim(), dia: Number(r[2]), estilo: String(r[3]), grupo: String(r[4]), acomp: Number(r[5]) === 1 ? 1 : 0, busca: String(r[6] || ''),
-            tel: String(r[LISTA_COL.TEL - 1] || ''), tipo: String(r[LISTA_COL.TIPO - 1] || ''), env: r[LISTA_COL.ENV - 1]};
-  }).filter(function (c) { return c.id; });
-}
-function lnLerLista_() {
-  var ss = SpreadsheetApp.openById(LISTA_ID), sh = ss.getSheetByName(LISTA_ABA) || ss.getSheets()[0], n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 7).getDisplayValues();
-}
-
-/* aplica o plano na aba Convidados e escreve o relatório; devolve o resumo */
-function lnAplicar_(plano, quem) {
-  var sh = aba_(ABA.CONV), conv = lnBanco_(), max = 0;
-  conv.forEach(function (c) { var m = /^G(\d+)$/.exec(c.id); if (m) max = Math.max(max, Number(m[1])); });
-  plano.tel.forEach(function (x) { sh.getRange(x.linha, LISTA_COL.TEL).setValue(x.tel); });
-  plano.tipo.forEach(function (x) { sh.getRange(x.linha, LISTA_COL.TIPO).setValue(x.tipo); });
-  plano.zeraAc.forEach(function (x) { sh.getRange(x.linha, 6).setValue(0); });
-  plano.marcaAc.forEach(function (x) { sh.getRange(x.linha, 6).setValue(1); });
-  plano.busca.forEach(function (x) {
-    var tem = lnNorm_(x.atual); if (lnNorm_(x.texto) && (' ' + tem + ' ').indexOf(' ' + lnNorm_(x.texto) + ' ') < 0) sh.getRange(x.linha, 7).setValue(x.atual ? x.atual + ' ' + x.texto : x.texto);
-  });
-  var ult = sh.getLastRow(), formulas = null;
-  try { if (ult >= 2) { var f = sh.getRange(ult, 8, 1, 2).getFormulas()[0]; if (f.some(function (z) { return z; })) formulas = sh.getRange(ult, 8, 1, 2); } } catch (e) {}
-  plano.novos.forEach(function (x) {
-    var id = 'G' + ('000' + (++max)).slice(-3), nl = ++ult;
-    if (nl > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 20);
-    sh.getRange(nl, 1, 1, 6).setValues([[id, x.nome, x.dia, x.estilo, x.grupo, x.acomp]]);
-    if (formulas) try { formulas.copyTo(sh.getRange(nl, 8, 1, 2)); } catch (e) {}
-    if (x.tel) sh.getRange(nl, LISTA_COL.TEL).setValue(x.tel);
-    if (x.tipo) sh.getRange(nl, LISTA_COL.TIPO).setValue(x.tipo);
-    x.id = id;
-  });
-  /* remoções por último (as linhas abaixo sobem); só quem ainda não respondeu */
-  var confs = confs_(), removidos = [];
-  plano.remover.slice().sort(function (x, y) { return y.linha - x.linha; }).forEach(function (x) {
-    if (ultConf_(x.id, confs)) { plano.rel.push(['Não removido (já respondeu)', x.nome, 'linha mantida; resolva no painel']); return; }
-    sh.deleteRow(x.linha); removidos.push(x);
-  });
-  plano.removidosOk = removidos;
-  SpreadsheetApp.flush();
-  var rel = garantirAba_('Harmonizacao', ['categoria', 'nome', 'detalhe']);
-  rel.clearContents(); rel.getRange(1, 1, 1, 3).setValues([['categoria', 'nome', 'detalhe']]).setFontWeight('bold');
-  var linhas = plano.rel.slice();
-  plano.marcaAc.forEach(function (x) { linhas.push(['"+1" aplicado ao banco', x.nome, 'acompanhante = 1']); });
-  plano.novos.forEach(function (x) { linhas.push(['Incluído no banco', x.nome, 'noite ' + x.dia + (x.acomp ? ' · com +1' : '') + ' · ' + x.id]); });
-  linhas.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
-  if (linhas.length) rel.getRange(2, 1, linhas.length, 3).setValues(linhas);
-  rel.getRange(linhas.length + 3, 1).setValue('Última sincronização: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss') + (quem ? ' · ' + quem : ''));
-  try { rel.setColumnWidths(1, 1, 280); rel.setColumnWidths(2, 1, 260); rel.setColumnWidths(3, 1, 520); } catch (e) {}
-  return {telefones: plano.tel.length, tipos: plano.tipo.length, incluidos: plano.novos.length, acZerados: plano.zeraAc.length, acIncluidos: plano.marcaAc.length, removidos: removidos.length, pendencias: plano.rel.length, resumo: plano.resumo};
-}
-
-function sincronizarLista_(quem) {
-  var lista = lnParse_(lnLerLista_()), plano = lnPlano_(lista, lnBanco_());
-  return lnAplicar_(plano, quem);
-}
-
-/* menu da planilha: Stammhaus > Sincronizar lista de convidados */
-function sincronizarListaMenu() {
-  var ui = SpreadsheetApp.getUi();
+/* roda sozinha uma vez (gatilho de 5 min do painel); registra o resultado na aba Auditoria */
+function legadoMigrarSeguro_() {
   try {
-    var lista = lnParse_(lnLerLista_()), plano = lnPlano_(lista, lnBanco_());
-    var r = ui.alert('Sincronizar lista de convidados',
-      'Telefones a gravar: ' + plano.tel.length + '\nPessoas a incluir: ' + plano.novos.length + '\nAcompanhantes (+1) a ajustar: ' + plano.zeraAc.length +
-      '\nPendências para revisar (aba Harmonizacao): ' + plano.rel.length + '\n\nNada é apagado nem movido de noite. Aplicar?', ui.ButtonSet.OK_CANCEL);
-    if (r !== ui.Button.OK) return;
-    var o = lnAplicar_(plano, 'menu'); atualizarPainelSeguro_();
-    ui.alert('Pronto', 'Telefones: ' + o.telefones + ' · incluídos: ' + o.incluidos + ' · pendências: ' + o.pendencias + '\nVeja a aba Harmonizacao.', ui.ButtonSet.OK);
-  } catch (e) { ui.alert('Não foi possível sincronizar: ' + e.message); }
+    var pr = PropertiesService.getScriptProperties();
+    if (pr.getProperty('LEGADO_MIGRADO') === 'SIM') return;
+    var lock = LockService.getScriptLock(); if (!lock.tryLock(5000)) return;
+    try {
+      var r = legadoMigrar_(), v = legadoResumo_();
+      aud_({nome: 'sistema'}, 'Migrou convidados para Reservas (legado)', 'convites ' + r.convites + ' · linhas ' + r.gravados + ' · confirmadas ' + (r.pessoasConfirmadas || 0) + ' · canceladas ' + (r.canceladas || 0) + ' · pendentes após: ' + v.pendentes);
+      if (v.pendentes === 0) pr.setProperty('LEGADO_MIGRADO', 'SIM');
+    } finally { lock.releaseLock(); }
+  } catch (e) { try { console.error('legado: ' + e.message); } catch (_) {} }
 }
 
-/* sem menu: para rodar direto do editor do Apps Script (Executar) */
-function sincronizarListaAgora() {
-  var o = sincronizarLista_('editor'); atualizarPainelSeguro_();
-  console.log(JSON.stringify(o)); return o;
+/* conferência: cada convite tem linhas de legado e o total de pessoas confirmadas bate com a aba Confirmacoes */
+function legadoConferir_() {
+  var L = legadoLer_(), v = legadoResumo_(), esperado = 0;
+  L.conv.forEach(function (g) { var u = L.ult[g.id]; if (u && u.status === 'Confirmado') esperado += 1 + (u.acNome ? 1 : 0); });
+  var sh = ss_().getSheetByName(ABA.RES), real = 0;
+  if (sh && sh.getLastRow() > 1 && sh.getMaxColumns() >= RES_COL_ORIG) sh.getRange(2, 1, sh.getLastRow() - 1, RES_COL_ORIG).getValues().forEach(function (r) { if (String(r[RES_COL_ORIG - 1] || '').indexOf(LEG_PREF) === 0 && String(r[6]) === 'Confirmado') real++; });
+  return {convites: v.convites, migrados: v.migrados, pendentes: v.pendentes, pessoasEsperadas: esperado, pessoasMigradas: real, confere: v.pendentes === 0 && esperado === real};
+}
+
+function gLegadoEstado_() { try { var v = legadoResumo_(); v.conferencia = v.abas ? legadoConferir_() : null; return v; } catch (e) { return {abas: false, erro: String(e.message).slice(0, 120)}; } }
+
+function gLegadoMigrar(k) {
+  return api_('gLegadoMigrar', function () {
+    return gMut_(k, 'legado', function (a) {
+      var r = legadoMigrar_(); aud_(a, 'Migrou convidados para Reservas (legado)', JSON.stringify(r)); return {ok: true};
+    });
+  }, arguments);
+}
+
+function gLegadoApagar(k) {
+  return api_('gLegadoApagar', function () {
+    return gMut_(k, 'legadoapagar', function (a) {
+      var c = legadoConferir_(); if (!c.confere) return {ok: false, code: 'invalido', campo: 'geral', msg: 'A conferência não bate (esperadas ' + c.pessoasEsperadas + ' pessoas confirmadas, migradas ' + c.pessoasMigradas + '; convites pendentes ' + c.pendentes + '). Nada foi apagado.'};
+      var ss = ss_(), nome = 'Backup antes de apagar convidados · ' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+      var cop = DriveApp.getFileById(ss.getId()).makeCopy(nome);
+      [ABA.CONF, ABA.CONV].forEach(function (n) { var s = ss.getSheetByName(n); if (s) ss.deleteSheet(s); });
+      aud_(a, 'Apagou abas Convidados e Confirmacoes', 'cópia de segurança no Drive: ' + nome + ' (' + cop.getId() + ')');
+      return {ok: true};
+    });
+  }, arguments);
 }

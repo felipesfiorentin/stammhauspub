@@ -128,26 +128,30 @@ function valorDe_(cfg, p) { return (p && p.valorCustom !== '' && p.valorCustom !
 function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
-function convLeve_() {
-  var sh = aba_(ABA.CONV), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 6).getValues().filter(function (r) { return r[0]; }).map(function (r) {
-    return {id: String(r[0]), dia: Number(r[2]), acomp: Number(r[5]) === 1 ? 1 : 0};
-  });
-}
+function convLeve_() { return []; }   // convidados desativados (25/11): a lotação vem só das reservas; os dados antigos ficam em Reservas como legado
 
 // Colunas Reservas (público): A data/hora, B protocolo, C dia, D nº da pessoa, E nome, F celular,
 // G status (Confirmado/Cancelado), H celular do titular da reserva, I consentimento, J compareceu, K atualizado
 /* ambiente escolhido na reserva: Reservas, coluna L. 'Térreo' (mais perto do palco) ou 'Andar superior' (mais calmo); vazio = sem preferência */
 var RES_COL_ANDAR = 12, ANDAR_CAB = 'ambiente (Térreo / Andar superior)';
+/* entrada bonificada (por pessoa; 'Sim' = sem cobrança de entrada) e origem (legado = veio da lista de convidados da inauguração) */
+var RES_COL_BONUS = 13, BONUS_CAB = 'entrada bonificada (Sim / vazio)', RES_COL_ORIG = 14, ORIG_CAB = 'origem (legado: convite da inauguração)';
+function resColunas_(sh) {   // garante colunas L, M e N e seus cabeçalhos na aba Reservas
+  try {
+    if (sh.getMaxColumns() < RES_COL_ORIG) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ORIG - sh.getMaxColumns());
+    [[RES_COL_ANDAR, ANDAR_CAB], [RES_COL_BONUS, BONUS_CAB], [RES_COL_ORIG, ORIG_CAB]].forEach(function (c) { if (!String(sh.getRange(1, c[0]).getValue() || '')) sh.getRange(1, c[0]).setValue(c[1]); });
+  } catch (e) {}
+}
+function bonifNorm_(v) { return /^(s|sim|x|1|true)$/i.test(String(v == null ? '' : v).trim()); }
 function andarNorm_(v) { var s = String(v == null ? '' : v).trim().toLowerCase(); return /^t/.test(s) ? 'Térreo' : /^(s|a)/.test(s) ? 'Andar superior' : ''; }
 function reservas_() {
   var sh = ss_().getSheetByName(ABA.RES), n = sh ? sh.getLastRow() : 0;
   if (n < 2) return [];
-  var lc = Math.min(RES_COL_ANDAR, sh.getMaxColumns());   // coluna L (ambiente) só existe depois da primeira reserva com escolha
+  var lc = Math.min(RES_COL_ORIG, sh.getMaxColumns());   // colunas L–N só existem depois da primeira reserva que as usa
   return sh.getRange(2, 1, n - 1, lc).getValues().map(function (r, i) {
     return {linha: i + 2, ts: r[0], prot: String(r[1]), dia: Number(r[2]), n: Number(r[3]) || 0, nome: String(r[4]),
-            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1])};
+            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1]),
+            bonif: bonifNorm_(r[RES_COL_BONUS - 1]), origem: String(r[RES_COL_ORIG - 1] || '')};
   }).filter(function (r) { return r.prot; });
 }
 
@@ -166,22 +170,15 @@ function contribConv_(g, confs, cfg) {
 
 function contagem_(dia, cfg, conv, confs, resv) {
   var teto = tetoDe_(cfg, dia), o = {dia: dia, teto: teto, padrao: cfg.teto, excecao: teto !== cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
-           pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, reservas: 0, canceladasPublico: 0};
+           pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, bonificadas: 0, pagantes: 0, reservas: 0, canceladasPublico: 0};
   var prots = {};
-  conv.forEach(function (g) {
-    if (g.dia !== dia) return;
-    o.convites++;
-    var ult = null; confs.forEach(function (c) { if (c.id === g.id && c.status !== 'Substituído') ult = c; });
-    if (!ult) { o.pendentesConvites++; o.pendentesPessoas += 1 + (cfg.pendAc ? g.acomp : 0); }
-    else if (ult.status === 'Confirmado') o.confirmadosPessoas += ult.pessoas;
-    else o.naoVaiConvites++;
-  });
   resv.forEach(function (r) {
     if (r.dia !== dia) return;
-    if (r.status === 'Confirmado') { o.publico++; prots[r.prot] = 1; } else if (r.n === 1) o.canceladasPublico++;
+    if (r.status === 'Confirmado') { o.publico++; prots[r.prot] = 1; if (r.bonif) o.bonificadas++; } else if (r.n === 1) o.canceladasPublico++;
   });
   o.reservas = Object.keys(prots).length;
-  o.lista = o.confirmadosPessoas + o.pendentesPessoas;
+  o.pagantes = o.publico - o.bonificadas;
+  o.lista = 0;
   o.total = o.lista + o.publico;
   o.restantes = Math.max(0, teto - o.total);
   o.lotado = o.total >= teto;
@@ -198,19 +195,17 @@ function lotacaoTodas_() {
 function atualizarPainel_() {
   var ss = ss_(), sh = ss.getSheetByName(ABA.PAINEL) || ss.insertSheet(ABA.PAINEL);
   var L = lotacaoTodas_(), cfg = cfg_(), agora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss');
-  var cab = ['dia', 'atração', 'capacidade', 'teto (74+10%)', 'convidados confirmados (pessoas)', 'convidados sem resposta (pessoas contadas)',
-             'convidados que não vão (convites)', 'lista garantida (pessoas)', 'reservas do público (pessoas)', 'total comprometido',
-             'vagas restantes', '% do teto', 'situação'];
+  var cab = ['dia', 'atração', 'capacidade', 'teto (74+10%)', 'reservas', 'pessoas', 'entradas bonificadas', 'total comprometido', 'vagas restantes', '% do teto', 'situação'];
   var v = [cab].concat(L.map(function (c) {
-    return [c.dia, c.prog && c.prog.atracao || '', c.capacidade, c.teto, c.confirmadosPessoas, c.pendentesPessoas, c.naoVaiConvites,
-            c.lista, c.publico, c.total, c.restantes, c.pct / 100, c.lotado ? 'LOTADO' : 'Disponível'];
+    return [c.dia, c.prog && c.prog.atracao || '', c.capacidade, c.teto, c.reservas, c.publico, c.bonificadas, c.total, c.restantes, c.pct / 100, c.lotado ? 'LOTADO' : 'Disponível'];
   }));
-  sh.getRange(1, 1, v.length, 13).setValues(v);
-  sh.getRange(v.length + 2, 1).setValue('Atualizado em ' + agora + ' · regra: lista garantida + público ≤ ' + cfg.teto + ' pessoas por noite');
+  sh.getRange(1, 1, Math.max(v.length, 1), 13).clearContent();
+  sh.getRange(1, 1, v.length, 11).setValues(v);
+  sh.getRange(v.length + 2, 1).setValue('Atualizado em ' + agora + ' · regra: pessoas em reservas ≤ ' + cfg.teto + ' por noite');
   try {
-    sh.getRange(1, 1, 1, 13).setFontWeight('bold').setBackground('#113325').setFontColor('#EAE7DA').setWrap(true);
-    sh.getRange(2, 12, Math.max(L.length, 1), 1).setNumberFormat('0.0%');
-    L.forEach(function (c, i) { sh.getRange(i + 2, 13).setBackground(c.lotado ? '#E04E27' : '#BFE3C4').setFontWeight('bold'); });
+    sh.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#113325').setFontColor('#EAE7DA').setWrap(true);
+    sh.getRange(2, 10, Math.max(L.length, 1), 1).setNumberFormat('0.0%');
+    L.forEach(function (c, i) { sh.getRange(i + 2, 11).setBackground(c.lotado ? '#E04E27' : '#BFE3C4').setFontWeight('bold'); });
     sh.setFrozenRows(1);
   } catch (e) {}
 }
@@ -268,14 +263,7 @@ function prog_() {
 // G acompanhante, H tel acomp., I pessoas, J status, K consentimento, L compareceu, M atualizado
 var STATUS_NAO = 'Não vai';
 
-function confs_() {
-  var sh = aba_(ABA.CONF), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 13).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[1]), dia: Number(r[3]), titNome: String(r[4]), titTel: String(r[5]),
-            acNome: String(r[6]), acTel: String(r[7]), pessoas: Number(r[8]) || 0, status: String(r[9])};
-  }).filter(function (c) { return c.id; });
-}
+function confs_() { return []; }   // idem
 
 /* ---------- proteção contra abuso ---------- */
 function limite_(chave, max, seg) {
@@ -467,7 +455,7 @@ function reservar_(p) {
 
 function achaReservas_(nome, tel) {
   var d = digitos_(tel), nn = normNome_(nome), grupos = {}, ordem = [];
-  var rows = reservas_().filter(function (r) { return r.status === 'Confirmado'; });
+  var rows = reservas_().filter(function (r) { return r.status === 'Confirmado' && !/^legado/.test(r.origem || ''); });
   rows.forEach(function (r) { if (digitos_(r.tel) === d && normNome_(r.nome) === nn && !grupos[r.prot]) { grupos[r.prot] = []; ordem.push(r.prot); } });
   rows.forEach(function (r) { if (grupos[r.prot]) grupos[r.prot].push(r); });
   return ordem.map(function (p) { return grupos[p]; });
@@ -783,90 +771,7 @@ function testeWhats() {
 }
 
 
-/* ======================= CONVITES POR WHATSAPP (envio automático, em lote) =======================
- * Projeto PÚBLICO. Lê a aba Convidados (J telefone, L "convite enviado em", M situação do envio pela API) e dispara o template de
- * convite (categoria Marketing, aprovado na Meta) a quem tem celular válido e ainda não recebeu. Gatilho de 1 min, 15 por rodada.
- * Liga/desliga: Config convites_ativo = SIM/NAO. Propriedades: WA_TEMPLATE_CONVITE (padrão convite_inauguracao), WA_IDIOMA, WA_TOKEN, WA_PHONE_ID.
- * Quem já recebeu (pelo painel ou pela API) tem a coluna L preenchida e nunca é reenviado. Falha: 3 tentativas e fica "FALHOU" (reenvio manual). */
-var CV_COL = {TEL: 10, ENV: 12, SIT: 13};
-var CV_LOTE = 15, CV_MAX_DIA = 200;   // 200/dia: abaixo do limite de 250 destinatários por 24 h do número novo
-
-function cvAtivo_() { var o = {}; lerConfig_().forEach(function (r) { if (r[0]) o[String(r[0]).trim()] = r[1]; }); return String(o.convites_ativo || 'NAO').trim().toUpperCase() === 'SIM'; }
-function cvTelOk_(t) { return /^\([1-9]\d\) 9\d{4}-\d{4}$/.test(String(t || '').trim()); }
-function cvAcomp_(ac) { return Number(ac) === 1 ? 'Seu convite inclui um acompanhante.' : 'Convite individual.'; }
-
-function cvEnviar_(tel, nome, dia, ac, prog) {
-  var p = prog[dia] || {};
-  var body = {messaging_product: 'whatsapp', recipient_type: 'individual', to: waNum_(tel), type: 'template', template: {
-    name: waProp_('WA_TEMPLATE_CONVITE', 'convite_inauguracao'), language: {code: waProp_('WA_IDIOMA', 'pt_BR')},
-    components: [{type: 'body', parameters: [{type: 'text', text: String(nome).trim().split(/\s+/)[0]}, {type: 'text', text: p.label || ('Noite ' + dia)},
-      {type: 'text', text: p.atracao || '-'}, {type: 'text', text: cvAcomp_(ac)}]}]}};
-  var r = UrlFetchApp.fetch(WA_API + waProp_('WA_PHONE_ID') + '/messages', {method: 'post', muteHttpExceptions: true, contentType: 'application/json',
-    headers: {Authorization: 'Bearer ' + waProp_('WA_TOKEN')}, payload: JSON.stringify(body)});
-  var j = JSON.parse(r.getContentText() || '{}');
-  if (r.getResponseCode() >= 300 || !j.messages) throw new Error('WA_CONVITE ' + r.getResponseCode() + ': ' + (j.error && j.error.message || r.getContentText()).slice(0, 150));
-  return j.messages[0].id;
-}
-
-function cvGarantirColunas_(sh) { try { if (sh.getMaxColumns() < CV_COL.SIT) sh.insertColumnsAfter(sh.getMaxColumns(), CV_COL.SIT - sh.getMaxColumns()); } catch (e) {} }
-
-/* situação: '' (não tentado) | 'ENVIADO · wamid' | 'ERRO n · mensagem' | 'FALHOU · mensagem' */
+/* Convites por WhatsApp: desativados em 25/11/2026 (a casa opera só com reservas). Se ainda existir um gatilho antigo, ele se remove sozinho. */
 function processarConvitesWhats() {
-  if (!cvAtivo_() || !waPronto_()) return {ok: false, motivo: 'desligado ou sem credenciais'};
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return {ok: false, motivo: 'ocupado'};
-  var ini = Date.now(), feitos = 0, erros = 0;
-  try {
-    var sh = aba_(ABA.CONV), n = sh.getLastRow(), prog = prog_();
-    if (n < 2) return {ok: true, feitos: 0};
-    cvGarantirColunas_(sh);
-    var v = sh.getRange(2, 1, n - 1, CV_COL.SIT).getValues(), hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), enviadosHoje = 0;
-    v.forEach(function (r) { var e = r[CV_COL.ENV - 1]; if (e instanceof Date && Utilities.formatDate(e, TZ, 'yyyy-MM-dd') === hoje && /^ENVIADO/.test(String(r[CV_COL.SIT - 1]))) enviadosHoje++; });
-    for (var i = 0; i < v.length && feitos < CV_LOTE && enviadosHoje + feitos < CV_MAX_DIA && Date.now() - ini < 240000; i++) {
-      var r = v[i], li = i + 2, tel = String(r[CV_COL.TEL - 1] || '').trim(), sit = String(r[CV_COL.SIT - 1] || '');
-      if (!r[1] || !cvTelOk_(tel) || r[CV_COL.ENV - 1] || /^(ENVIADO|FALHOU)/.test(sit)) continue;
-      if (sh.getRange(li, CV_COL.ENV).getValue()) continue;   // alguém marcou enviado pelo painel enquanto rodava
-      var tent = (/^ERRO (\d)/.exec(sit) || [0, 0])[1] * 1;
-      try {
-        var wamid = cvEnviar_(tel, String(r[1]), Number(r[2]), r[5], prog);
-        sh.getRange(li, CV_COL.ENV).setValue(new Date()); sh.getRange(li, CV_COL.SIT).setValue('ENVIADO · ' + wamid);
-      } catch (e) {
-        var msg = String(e.message).slice(0, 160);
-        sh.getRange(li, CV_COL.SIT).setValue((tent + 1 >= WA_MAX_TENT ? 'FALHOU · ' : 'ERRO ' + (tent + 1) + ' · ') + msg);
-        registrarErro_('WA', 'processarConvitesWhats', 'S99', e); erros++;
-        if (erros >= 5) break;   // algo sistêmico (token, template não aprovado): para e não queima as tentativas de todos
-      }
-      feitos++;
-      Utilities.sleep(250);
-    }
-    return {ok: true, feitos: feitos, erros: erros};
-  } finally { lock.releaseLock(); }
-}
-
-/* contagens para conferir antes de ligar (rodar no editor) */
-function resumoConvitesWhats() {
-  var sh = aba_(ABA.CONV), n = sh.getLastRow(); if (n < 2) return {};
-  cvGarantirColunas_(sh);
-  var v = sh.getRange(2, 1, n - 1, CV_COL.SIT).getValues(), o = {convidados: 0, comTelefone: 0, jaEnviados: 0, aEnviar: 0, falhou: 0};
-  v.forEach(function (r) {
-    if (!r[1]) return; o.convidados++;
-    var ok = cvTelOk_(r[CV_COL.TEL - 1]); if (ok) o.comTelefone++;
-    if (r[CV_COL.ENV - 1]) o.jaEnviados++; else if (/^FALHOU/.test(String(r[CV_COL.SIT - 1]))) o.falhou++; else if (ok) o.aEnviar++;
-  });
-  console.log(JSON.stringify(o)); return o;
-}
-
-/* cria a linha de controle na aba Config (desligada) e instala o gatilho de 1 minuto. Rodar uma vez, depois de aprovar o template. */
-function instalarConvitesWhats() {
-  var sh = aba_(ABA.CFG), v = lerConfig_(), tem = v.some(function (r) { return String(r[0]).trim() === 'convites_ativo'; });
-  if (!tem) sh.getRange(sh.getLastRow() + 1, 1, 1, 2).setValues([['convites_ativo', 'NAO']]);
-  if (!ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'processarConvitesWhats'; })) ScriptApp.newTrigger('processarConvitesWhats').timeBased().everyMinutes(1).create();
-  return 'ok: ligue com Config convites_ativo = SIM';
-}
-
-/* teste: envia o convite a UM celular (propriedade WA_TESTE_TEL) sem mexer na planilha */
-function testeConviteWhats() {
-  var tel = waProp_('WA_TESTE_TEL'); if (!tel) throw new Error('Defina a propriedade WA_TESTE_TEL (ex.: 47999999999)');
-  var prog = prog_(), dia = Number(Object.keys(prog).sort()[0]);
-  return cvEnviar_(tel, 'Teste Stammhaus', dia, 1, prog);
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'processarConvitesWhats') ScriptApp.deleteTrigger(t); });
 }
