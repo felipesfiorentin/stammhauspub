@@ -127,7 +127,7 @@ function reservar_(p) {
 
 function achaReservas_(nome, tel) {
   var d = digitos_(tel), nn = normNome_(nome), grupos = {}, ordem = [];
-  var rows = reservas_().filter(function (r) { return r.status === 'Confirmado'; });
+  var rows = reservas_().filter(function (r) { return r.status === 'Confirmado' && !/^legado/.test(r.origem || ''); });
   rows.forEach(function (r) { if (digitos_(r.tel) === d && normNome_(r.nome) === nn && !grupos[r.prot]) { grupos[r.prot] = []; ordem.push(r.prot); } });
   rows.forEach(function (r) { if (grupos[r.prot]) grupos[r.prot].push(r); });
   return ordem.map(function (p) { return grupos[p]; });

@@ -9,7 +9,7 @@ function garantirAba_(nome, cab) {
   return sh;
 }
 
-function atualizarPainelMenu() { atualizarPainelSeguro_(); }
+function atualizarPainelMenu() { atualizarPainelSeguro_(); try { legadoMigrarSeguro_(); } catch (e) {} }
 
 function prepararReservas() {
   var sc = ss_().getSheetByName(ABA.CFG);

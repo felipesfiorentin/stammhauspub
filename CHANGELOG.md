@@ -1,5 +1,13 @@
 # Histórico de mudanças
 
+## 2026-11-25 — operação só com reservas
+- Fim da lista de convidados: a lotação, o painel, a lista de portaria e os relatórios vêm só da aba Reservas. Removidos a página de convidados (/convidados/ redireciona para /reservas/), busca de nomes, sincronização da lista, convites/lembretes por WhatsApp e métricas de acesso do convite.
+- Legado: `Legado.src.gs` migra os convites da inauguração para Reservas (protocolo G###, coluna N "origem" = legado · …): confirmado → uma linha por pessoa (titular e acompanhante, status Confirmado); sem resposta/recusa → status Cancelado. Idempotente, roda sozinha no gatilho de 5 min, com conferência de pessoas. Cartão "Legado dos convites" no painel e botão "Apagar abas Convidados e Confirmacoes" (só se a conferência bater; salva antes uma cópia da planilha no Drive). Legado não aparece na consulta do público nem trava celular em reservas novas.
+- Entrada bonificada (Reservas col M = 'Sim'), por pessoa: na nova reserva ("para todos"), ao incluir pessoas, e no painel por pessoa/reserva (`gReservaBonificar`). Ocupa vaga, mas não entra na entrada estimada (pagantes × valor); aparece no calendário, na noite, na lista de portaria (PDF) e no texto do WhatsApp.
+- Aba Lotacao: novas colunas "entradas bonificadas" e "total comprometido".
+- Testes: e2e31 (legado, bonificada, painel). Testes do fluxo de convidados movidos para tests/legacy-convidados (não rodam).
+
+
 ## 2026-11-24 (5)
 - Reserva pública: quantidade de pessoas agora é digitada (1 até o máximo/vagas); pede só o celular do TITULAR e o nome completo das demais pessoas (celular das demais fica vazio na planilha; só o titular entra na fila de WhatsApp). "Adicionar pessoas" na consulta também pede só nomes.
 - Gestão interna: "Incluir pessoas" na reserva aceita vários nomes de uma vez (um por linha, celular opcional após ";"), função `gReservaPessoas`; valida tudo antes de gravar.

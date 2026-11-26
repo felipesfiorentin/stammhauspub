@@ -125,26 +125,30 @@ function valorDe_(cfg, p) { return (p && p.valorCustom !== '' && p.valorCustom !
 function tetoDe_(cfg, dia) { return (cfg.tetos && cfg.tetos[dia]) || cfg.teto; }
 
 /* ---------- leituras usadas na contagem de lotação (sem nomes de convidados) ---------- */
-function convLeve_() {
-  var sh = aba_(ABA.CONV), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 6).getValues().filter(function (r) { return r[0]; }).map(function (r) {
-    return {id: String(r[0]), dia: Number(r[2]), acomp: Number(r[5]) === 1 ? 1 : 0};
-  });
-}
+function convLeve_() { return []; }   // convidados desativados (25/11): a lotação vem só das reservas; os dados antigos ficam em Reservas como legado
 
 // Colunas Reservas (público): A data/hora, B protocolo, C dia, D nº da pessoa, E nome, F celular,
 // G status (Confirmado/Cancelado), H celular do titular da reserva, I consentimento, J compareceu, K atualizado
 /* ambiente escolhido na reserva: Reservas, coluna L. 'Térreo' (mais perto do palco) ou 'Andar superior' (mais calmo); vazio = sem preferência */
 var RES_COL_ANDAR = 12, ANDAR_CAB = 'ambiente (Térreo / Andar superior)';
+/* entrada bonificada (por pessoa; 'Sim' = sem cobrança de entrada) e origem (legado = veio da lista de convidados da inauguração) */
+var RES_COL_BONUS = 13, BONUS_CAB = 'entrada bonificada (Sim / vazio)', RES_COL_ORIG = 14, ORIG_CAB = 'origem (legado: convite da inauguração)';
+function resColunas_(sh) {   // garante colunas L, M e N e seus cabeçalhos na aba Reservas
+  try {
+    if (sh.getMaxColumns() < RES_COL_ORIG) sh.insertColumnsAfter(sh.getMaxColumns(), RES_COL_ORIG - sh.getMaxColumns());
+    [[RES_COL_ANDAR, ANDAR_CAB], [RES_COL_BONUS, BONUS_CAB], [RES_COL_ORIG, ORIG_CAB]].forEach(function (c) { if (!String(sh.getRange(1, c[0]).getValue() || '')) sh.getRange(1, c[0]).setValue(c[1]); });
+  } catch (e) {}
+}
+function bonifNorm_(v) { return /^(s|sim|x|1|true)$/i.test(String(v == null ? '' : v).trim()); }
 function andarNorm_(v) { var s = String(v == null ? '' : v).trim().toLowerCase(); return /^t/.test(s) ? 'Térreo' : /^(s|a)/.test(s) ? 'Andar superior' : ''; }
 function reservas_() {
   var sh = ss_().getSheetByName(ABA.RES), n = sh ? sh.getLastRow() : 0;
   if (n < 2) return [];
-  var lc = Math.min(RES_COL_ANDAR, sh.getMaxColumns());   // coluna L (ambiente) só existe depois da primeira reserva com escolha
+  var lc = Math.min(RES_COL_ORIG, sh.getMaxColumns());   // colunas L–N só existem depois da primeira reserva que as usa
   return sh.getRange(2, 1, n - 1, lc).getValues().map(function (r, i) {
     return {linha: i + 2, ts: r[0], prot: String(r[1]), dia: Number(r[2]), n: Number(r[3]) || 0, nome: String(r[4]),
-            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1])};
+            tel: String(r[5]), status: String(r[6]), titTel: String(r[7]), andar: andarNorm_(r[RES_COL_ANDAR - 1]),
+            bonif: bonifNorm_(r[RES_COL_BONUS - 1]), origem: String(r[RES_COL_ORIG - 1] || '')};
   }).filter(function (r) { return r.prot; });
 }
 
@@ -163,22 +167,15 @@ function contribConv_(g, confs, cfg) {
 
 function contagem_(dia, cfg, conv, confs, resv) {
   var teto = tetoDe_(cfg, dia), o = {dia: dia, teto: teto, padrao: cfg.teto, excecao: teto !== cfg.teto, capacidade: cfg.capacidade, convites: 0, confirmadosPessoas: 0, pendentesConvites: 0,
-           pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, reservas: 0, canceladasPublico: 0};
+           pendentesPessoas: 0, naoVaiConvites: 0, publico: 0, bonificadas: 0, pagantes: 0, reservas: 0, canceladasPublico: 0};
   var prots = {};
-  conv.forEach(function (g) {
-    if (g.dia !== dia) return;
-    o.convites++;
-    var ult = null; confs.forEach(function (c) { if (c.id === g.id && c.status !== 'Substituído') ult = c; });
-    if (!ult) { o.pendentesConvites++; o.pendentesPessoas += 1 + (cfg.pendAc ? g.acomp : 0); }
-    else if (ult.status === 'Confirmado') o.confirmadosPessoas += ult.pessoas;
-    else o.naoVaiConvites++;
-  });
   resv.forEach(function (r) {
     if (r.dia !== dia) return;
-    if (r.status === 'Confirmado') { o.publico++; prots[r.prot] = 1; } else if (r.n === 1) o.canceladasPublico++;
+    if (r.status === 'Confirmado') { o.publico++; prots[r.prot] = 1; if (r.bonif) o.bonificadas++; } else if (r.n === 1) o.canceladasPublico++;
   });
   o.reservas = Object.keys(prots).length;
-  o.lista = o.confirmadosPessoas + o.pendentesPessoas;
+  o.pagantes = o.publico - o.bonificadas;
+  o.lista = 0;
   o.total = o.lista + o.publico;
   o.restantes = Math.max(0, teto - o.total);
   o.lotado = o.total >= teto;
@@ -195,19 +192,17 @@ function lotacaoTodas_() {
 function atualizarPainel_() {
   var ss = ss_(), sh = ss.getSheetByName(ABA.PAINEL) || ss.insertSheet(ABA.PAINEL);
   var L = lotacaoTodas_(), cfg = cfg_(), agora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss');
-  var cab = ['dia', 'atração', 'capacidade', 'teto (74+10%)', 'convidados confirmados (pessoas)', 'convidados sem resposta (pessoas contadas)',
-             'convidados que não vão (convites)', 'lista garantida (pessoas)', 'reservas do público (pessoas)', 'total comprometido',
-             'vagas restantes', '% do teto', 'situação'];
+  var cab = ['dia', 'atração', 'capacidade', 'teto (74+10%)', 'reservas', 'pessoas', 'entradas bonificadas', 'total comprometido', 'vagas restantes', '% do teto', 'situação'];
   var v = [cab].concat(L.map(function (c) {
-    return [c.dia, c.prog && c.prog.atracao || '', c.capacidade, c.teto, c.confirmadosPessoas, c.pendentesPessoas, c.naoVaiConvites,
-            c.lista, c.publico, c.total, c.restantes, c.pct / 100, c.lotado ? 'LOTADO' : 'Disponível'];
+    return [c.dia, c.prog && c.prog.atracao || '', c.capacidade, c.teto, c.reservas, c.publico, c.bonificadas, c.total, c.restantes, c.pct / 100, c.lotado ? 'LOTADO' : 'Disponível'];
   }));
-  sh.getRange(1, 1, v.length, 13).setValues(v);
-  sh.getRange(v.length + 2, 1).setValue('Atualizado em ' + agora + ' · regra: lista garantida + público ≤ ' + cfg.teto + ' pessoas por noite');
+  sh.getRange(1, 1, Math.max(v.length, 1), 13).clearContent();
+  sh.getRange(1, 1, v.length, 11).setValues(v);
+  sh.getRange(v.length + 2, 1).setValue('Atualizado em ' + agora + ' · regra: pessoas em reservas ≤ ' + cfg.teto + ' por noite');
   try {
-    sh.getRange(1, 1, 1, 13).setFontWeight('bold').setBackground('#113325').setFontColor('#EAE7DA').setWrap(true);
-    sh.getRange(2, 12, Math.max(L.length, 1), 1).setNumberFormat('0.0%');
-    L.forEach(function (c, i) { sh.getRange(i + 2, 13).setBackground(c.lotado ? '#E04E27' : '#BFE3C4').setFontWeight('bold'); });
+    sh.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#113325').setFontColor('#EAE7DA').setWrap(true);
+    sh.getRange(2, 10, Math.max(L.length, 1), 1).setNumberFormat('0.0%');
+    L.forEach(function (c, i) { sh.getRange(i + 2, 11).setBackground(c.lotado ? '#E04E27' : '#BFE3C4').setFontWeight('bold'); });
     sh.setFrozenRows(1);
   } catch (e) {}
 }
@@ -265,14 +260,7 @@ function prog_() {
 // G acompanhante, H tel acomp., I pessoas, J status, K consentimento, L compareceu, M atualizado
 var STATUS_NAO = 'Não vai';
 
-function confs_() {
-  var sh = aba_(ABA.CONF), n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 13).getValues().map(function (r, i) {
-    return {linha: i + 2, id: String(r[1]), dia: Number(r[3]), titNome: String(r[4]), titTel: String(r[5]),
-            acNome: String(r[6]), acTel: String(r[7]), pessoas: Number(r[8]) || 0, status: String(r[9])};
-  }).filter(function (c) { return c.id; });
-}
+function confs_() { return []; }   // idem
 
 /* ---------- proteção contra abuso ---------- */
 function limite_(chave, max, seg) {

@@ -318,9 +318,12 @@ for p, h in pages.items():
 # páginas de reservas e de confirmação de presença: HTML estático no GitHub Pages falando com o Apps Script por fetch.
 # (o navegador embutido do Instagram/WhatsApp deixa em branco as páginas servidas pelo próprio script.google.com)
 AS = os.path.join(HERE, '..', 'apps-script')
-for dest, src, url in (('reservas/index.html', 'publico/Index.html', APP_PUB), ('convidados/index.html', 'convidados/Index.html', APP)):
+for dest, src, url in (('reservas/index.html', 'publico/Index.html', APP_PUB),):
     h = open(os.path.join(AS, src), encoding='utf-8').read()
     assert "var EXEC='';" in h
     os.makedirs(os.path.dirname(os.path.join(OUT, dest)), exist_ok=True)
     open(os.path.join(OUT, dest), 'w', encoding='utf-8').write(h.replace("var EXEC='';", "var EXEC='%s';" % url, 1))
+# a página de convidados foi desativada (só reservas): quem abrir o link antigo é levado para /reservas/
+os.makedirs(os.path.join(OUT, 'convidados'), exist_ok=True)
+open(os.path.join(OUT, 'convidados/index.html'), 'w', encoding='utf-8').write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Das Stammhaus Pub · Reservas</title><meta http-equiv="refresh" content="0;url=/reservas/"><link rel="canonical" href="/reservas/"></head><body style="background:#190E0D;color:#EAE7DA;font-family:sans-serif;text-align:center;padding:40px"><p>Redirecionando para as <a href="/reservas/" style="color:#B47E00">reservas</a>…</p><script>location.replace("/reservas/")</script></body></html>')
 print('ok', list(pages))
