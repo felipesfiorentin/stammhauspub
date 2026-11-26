@@ -3,7 +3,7 @@
  *  · convite confirmado → uma linha por pessoa (titular e acompanhante), status Confirmado, protocolo = id do convite (G055…)
  *  · sem resposta ou "não vai" → uma linha (o convidado), status Cancelado
  * Não gera WhatsApp, não aparece na consulta do público e não conta para noites futuras. Idempotente: não duplica um convite já migrado.
- * Depois de conferir, "Apagar abas antigas" (painel, perfil GESTÃO) tira Convidados/Confirmacoes (antes salva uma cópia da planilha no Drive). */
+ * Depois de conferir, "Apagar abas antigas" (painel, perfil GESTÃO) tira Convidados/Confirmacoes (antes guarda uma cópia em abas ocultas). */
 var LEG_PREF = 'legado';
 
 function legadoLer_() {
@@ -98,10 +98,15 @@ function gLegadoApagar(k) {
   return api_('gLegadoApagar', function () {
     return gMut_(k, 'legadoapagar', function (a) {
       var c = legadoConferir_(); if (!c.confere) return {ok: false, code: 'invalido', campo: 'geral', msg: 'A conferência não bate (esperadas ' + c.pessoasEsperadas + ' pessoas confirmadas, migradas ' + c.pessoasMigradas + '; convites pendentes ' + c.pendentes + '). Nada foi apagado.'};
-      var ss = ss_(), nome = 'Backup antes de apagar convidados · ' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
-      var cop = DriveApp.getFileById(ss.getId()).makeCopy(nome);
+      var ss = ss_(), carimbo = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), feitos = [];
+      // cópia de segurança dentro da própria planilha (sem exigir novo acesso ao Drive): abas ocultas, que a equipe pode excluir depois
+      [[ABA.CONV, 'Backup Convidados'], [ABA.CONF, 'Backup Confirmacoes']].forEach(function (x) {
+        var s0 = ss.getSheetByName(x[0]); if (!s0) return;
+        var c = s0.copyTo(ss); c.setName(x[1] + ' ' + carimbo); try { c.hideSheet(); } catch (e) {} feitos.push(c.getName());
+      });
+      if (feitos.length < 1) return {ok: false, code: 'invalido', campo: 'geral', msg: 'Não foi possível criar a cópia de segurança. Nada foi apagado.'};
       [ABA.CONF, ABA.CONV].forEach(function (n) { var s = ss.getSheetByName(n); if (s) ss.deleteSheet(s); });
-      aud_(a, 'Apagou abas Convidados e Confirmacoes', 'cópia de segurança no Drive: ' + nome + ' (' + cop.getId() + ')');
+      aud_(a, 'Apagou abas Convidados e Confirmacoes', 'cópia de segurança (abas ocultas): ' + feitos.join(', '));
       return {ok: true};
     });
   }, arguments);

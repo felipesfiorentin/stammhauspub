@@ -30,7 +30,7 @@ const R=x=>JSON.parse(JSON.stringify(x));
   const pctx=vm.createContext({Date:global.Date,console,SpreadsheetApp:{flush(){},openById:()=>ss,getActiveSpreadsheet:()=>ss},CacheService:w.guest.CacheService,LockService:w.guest.LockService,ScriptApp:w.guest.ScriptApp,HtmlService:{},Utilities:w.guest.Utilities});
   vm.runInContext(pubSrc,pctx);w.pub=pctx;w.guest.prepararReservas();return w}
  const usr=(w,perfil)=>{const u='u'+Math.random().toString(36).slice(2,6);w.sheets.Usuarios.rows.push([u,'Felipe',perfil||'GESTAO','SIM','Inicial@123','','','','']);const e=R(w.guest.entrar(u,'Inicial@123'));w.guest.trocarSenha(e.sessao,'Inicial@123','Senha@Nova1');return e.sessao};
- const w=W(),K=usr(w),rows=()=>w.sheets.Reservas.rows;
+ const mkSheetX=rows=>({rows:rows.map(x=>x.slice()),getLastRow(){return this.rows.length}});const w=W(),K=usr(w),rows=()=>w.sheets.Reservas.rows;
  ok(typeof w.guest.buscarNome==='undefined'&&typeof w.guest.gAddConvidado==='undefined'&&typeof w.guest.confirmar==='undefined','funções de convidados não existem mais no projeto de gestão');
  // ---- legado
  let e=R(w.guest.painel(K));ok(e.convidados===undefined,'estado do painel sem "convidados"');
@@ -57,10 +57,8 @@ const R=x=>JSON.parse(JSON.stringify(x));
  const Kc=usr(w,'CONSULTA');r=R(w.guest.gReservaBonificar(Kc,g.prot,[],true));ok(r.ok===false&&r.code==='sem_permissao','perfil de consulta não bonifica');
  w.pub.cacheLimpa_&&w.pub.cacheLimpa_();
  // ---- apagar abas
- w.guest.DriveApp={getFileById:()=>({makeCopy:(n)=>({getId:()=>'COPIA'})})};w.guest.eval&&0;
- vm.runInContext("DriveApp={getFileById:function(){return{makeCopy:function(){return{getId:function(){return 'COPIA'}}}}}};ss_().deleteSheet=function(s){delete this.__x};",w.guest);
  const ss=w.guest.SpreadsheetApp.getActiveSpreadsheet();ss.deleteSheet=s=>{for(const k in w.sheets)if(w.sheets[k]===s)delete w.sheets[k]};
- r=R(w.guest.gLegadoApagar(K));ok(r.ok!==false&&!w.sheets.Convidados&&!w.sheets.Confirmacoes,'apaga Convidados e Confirmacoes depois de conferir');
+ for(const k of ['Convidados','Confirmacoes']){const o=w.sheets[k];o.copyTo=()=>{const c=mkSheetX(o.rows);c.nm='';c.getName=()=>c.nm;c.setName=n=>{c.nm=n;w.sheets[n]=c};c.hideSheet=()=>{};return c}};r=R(w.guest.gLegadoApagar(K));ok(r.ok!==false&&!w.sheets.Convidados&&!w.sheets.Confirmacoes,'apaga Convidados e Confirmacoes depois de conferir');
  ok(rows().filter(x=>/^legado/.test(String(x[13]||''))).length===5,'dados de legado continuam em Reservas');
  e=R(w.guest.painel(K));ok(e.ok!==false&&(!e.legado||!e.legado.abas),'painel funciona sem as abas antigas');
  // ---- UI do painel
